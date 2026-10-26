@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kestrel Survey · Ludic Canvas + Three.js</title>
+  </head>
+  <body class="survey-standalone">
+    <div id="survey-stage">
+      <canvas id="survey-world" aria-hidden="true"></canvas
+      ><canvas
+        id="survey-ui"
+        aria-label="Kestrel Survey interface. Navigate to three sites and collect their samples."
+      ></canvas>
+      <p id="survey-loading" role="status">Preparing the survey...</p>
+    </div>
+    <script type="module" src="/src/standalone.ts"></script>
+  </body>
+</html>

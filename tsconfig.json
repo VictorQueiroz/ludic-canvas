@@ -14,7 +14,10 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node"],
+    "paths": {
+      "ludic-canvas": ["./src/index.ts"]
+    }
   },
   "include": ["src", "docs", "tests", "examples", "*.config.ts"]
 }

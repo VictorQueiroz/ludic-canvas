@@ -155,3 +155,13 @@ Text uses pre-baked glyphs and greedy wrapping. Complex-script shaping, kerning,
 ## License
 
 MIT © Victor Queiroz. The bundled font uses the SIL Open Font License. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [licenses/](licenses/).
+
+## 3D example project
+
+[Play Kestrel Survey](https://libraries.ludic-canvas.victorqueiroz.dev/3d/) or run the [independent example project](examples/kestrel-survey). It combines a procedural Three.js world with a fully custom Ludic Canvas interface: projected site labels, mission cards, telemetry, minimap, camera controls, modal menus and a mobile site picker.
+
+```sh
+cd examples/kestrel-survey
+npm install
+npm run dev
+```
