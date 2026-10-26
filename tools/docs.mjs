@@ -130,7 +130,9 @@ for (const file of ['root', 'primitives', 'assets', 'defaults', 'runtime/types',
     let declaration = source
       .slice(start, end)
       .trim()
-      .replace(/export \{\};\s*$/, '');
+      .replace(/export \{\};\s*$/, '')
+      .replace(/^export type \{[^}]*\} from [^;]+;\s*$/gm, '')
+      .trim();
     if (match[1] === 'AtlasJson')
       declaration = 'interface Bounds { left: number; top: number; right: number; bottom: number; }\n\n' + declaration;
     entries.push({ name: match[1], declaration });
@@ -138,7 +140,7 @@ for (const file of ['root', 'primitives', 'assets', 'defaults', 'runtime/types',
 }
 for (const name of publicNames)
   if (!entries.some((entry) => entry.name === name)) throw new Error(`Undocumented public export: ${name}`);
-const api = `<p class="eyebrow">REFERENCE / GENERATED FROM TYPESCRIPT</p><h1>The public API.</h1><p class="lead">Exact signatures, types and property documentation for version ${version}.</p><p>Generated from package declarations. Optional properties use <code>?</code>. Dimensions use CSS pixels unless stated otherwise. Import these symbols from <code>ludic-canvas</code>. Internal renderer, layout and GPU classes are intentionally private.</p>${entries.map(({ name, declaration }) => `<section id="${name}" class="api-entry"><h2>${name}<a class="anchor" href="#${name}" aria-label="Link to ${name}">#</a></h2>${code(declaration)}</section>`).join('')}`;
+const api = `<p class="eyebrow">REFERENCE / GENERATED FROM TYPESCRIPT</p><h1>The public API.</h1><p class="lead">Exact signatures, types and property documentation for version ${version}.</p><p>Generated from package declarations. Optional properties use <code>?</code>. Dimensions use CSS pixels unless stated otherwise. Import these symbols from <code>ludic-canvas</code>. ReactNode and ComponentType refer to the standard React types. FontName is a string identifying one of your registered faces. Internal renderer, layout and GPU classes are intentionally private.</p>${entries.map(({ name, declaration }) => `<section id="${name}" class="api-entry"><h2>${name}<a class="anchor" href="#${name}" aria-label="Link to ${name}">#</a></h2>${code(declaration)}</section>`).join('')}`;
 for (const [path, html] of [
   ['docs/index.html', layout('React interfaces for browser games', 'home', home)],
   [
