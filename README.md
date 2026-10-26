@@ -78,9 +78,11 @@ ui.render(
 ui.destroy();
 ```
 
-## Playable integration example
+## Playable integration examples
 
-[Orbital Relay](https://libraries.ludic-canvas.victorqueiroz.dev/play/) is a small courier game with a Canvas 2D world and a transparent Ludic Canvas HUD. It includes cargo collection and delivery, collisions, boost, pause and replay, a responsive manifest, and keyboard/touch controls.
+The [Play gallery](https://libraries.ludic-canvas.victorqueiroz.dev/play/) offers selectable thumbnails, one active game viewport and integration notes for each example.
+
+[Orbital Relay](https://libraries.ludic-canvas.victorqueiroz.dev/play/?example=orbital-relay) is a small courier game with a Canvas 2D world and a transparent Ludic Canvas HUD. It includes cargo collection and delivery, collisions, boost, pause and replay, a responsive manifest, and keyboard/touch controls.
 
 The [example source](examples/orbital-relay) uses only public library exports. Its interface and mission modules each define a font family and a CLI configuration. The application root composes both `FontSource` values, keeps simulation state outside React, and drives `ui.frame(now)` from the game loop.
 
@@ -158,7 +160,7 @@ MIT © Victor Queiroz. The bundled font uses the SIL Open Font License. See [THI
 
 ## 3D example project
 
-[Play Kestrel Survey](https://libraries.ludic-canvas.victorqueiroz.dev/3d/) or run the [independent example project](examples/kestrel-survey). It combines a procedural Three.js world with a fully custom Ludic Canvas interface: projected site labels, mission cards, telemetry, minimap, camera controls, modal menus and a mobile site picker.
+[Play Kestrel Survey](https://libraries.ludic-canvas.victorqueiroz.dev/play/?example=kestrel-survey) or run the [independent example project](examples/kestrel-survey). It combines a procedural Three.js world with a fully custom Ludic Canvas interface: projected site labels, mission cards, telemetry, minimap, camera controls, modal menus and a mobile site picker.
 
 ```sh
 cd examples/kestrel-survey

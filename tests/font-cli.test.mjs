@@ -41,6 +41,21 @@ function pixels(png) {
 }
 
 describe('packaged font atlas compiler', () => {
+  it.each(['font-atlas-manifest', 'FONT-ATLAS-MANIFEST', 'Font-Atlas-Manifest'])(
+    'rejects the reserved stem %s before changing existing outputs',
+    async (name) => {
+      const { path, output, config } = await fixture();
+      await generateFontAtlases(path, silent);
+      const manifest = await readFile(join(output, 'font-atlas-manifest.json'));
+      const metrics = await readFile(join(output, 'interface.json'));
+      config.fonts[0].name = name;
+      await writeFile(path, JSON.stringify(config));
+      await expect(generateFontAtlases(path, silent)).rejects.toThrow('reserved');
+      expect(await readFile(join(output, 'font-atlas-manifest.json'))).toEqual(manifest);
+      expect(await readFile(join(output, 'interface.json'))).toEqual(metrics);
+    },
+  );
+
   it.each(['fixture.ttf', 'fixture.otf', 'fixture.woff', 'fixture.woff2', 'fixture-cff.woff', 'fixture-cff.woff2'])(
     'generates usable MTSDF PNG and metrics from %s',
     async (source) => {

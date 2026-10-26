@@ -35,6 +35,8 @@ export function validateConfig(config, configPath) {
     keys(font, ['name', 'source', 'size', 'distanceRange', 'charset', 'characters', 'variations'], where);
     if (typeof font.name !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(font.name))
       fail(`${where}.name must contain 1–64 letters, digits, hyphens or underscores`);
+    if (font.name.toLowerCase() === 'font-atlas-manifest')
+      fail(`${where}.name is reserved for the font atlas cache manifest: ${font.name}`);
     if (names.has(font.name.toLowerCase())) fail(`Duplicate font name: ${font.name}`);
     names.add(font.name.toLowerCase());
     if (typeof font.source !== 'string' || !font.source.trim()) fail(`${where}.source must be a font file path`);

@@ -31,6 +31,9 @@ for (const file of [
   'site/guide/index.html',
   'site/api/index.html',
   'site/play/index.html',
+  'site/play/orbital-relay/index.html',
+  'site/examples/orbital-relay.png',
+  'site/examples/kestrel-survey.png',
   'site/3d/index.html',
 ]) {
   if (!existsSync(file)) throw new Error('Missing distribution file: ' + file);

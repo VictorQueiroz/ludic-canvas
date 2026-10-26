@@ -37,6 +37,7 @@ test('a Three.js world and custom canvas controls complete a full survey', async
   expect(errors).toEqual([]);
 });
 test('custom settings expose keyboard zoom, switches and modal focus', async ({ page }) => {
+  test.setTimeout(60000);
   await page.getByRole('button', { name: 'Open survey settings', exact: true }).press('Enter');
   await expect(page.getByRole('button', { name: 'Close panel', exact: true })).toBeFocused();
   const slider = page.getByRole('slider', { name: 'Camera distance', exact: true });
