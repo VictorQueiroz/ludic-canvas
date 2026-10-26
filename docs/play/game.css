@@ -131,10 +131,17 @@
 .game-page.embedded .game-frame {
   border: 0;
   border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+.game-page.embedded .game-toolbar {
+  flex-shrink: 0;
 }
 .game-page.embedded #game-stage {
-  height: calc(100dvh - 96px);
-  min-height: 620px;
+  flex: 1;
+  height: auto;
+  min-height: 580px;
 }
 @media (max-width: 760px) {
   .game-document {
