@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "generatorHash": "8d7c08c6523e23b3ff4d3b4a31e34a8ee8b5a442d9e73526fc62645fae9875d9",
+  "fonts": [
+    {
+      "name": "telemetry",
+      "atlas": "telemetry.png",
+      "metrics": "telemetry.json",
+      "inputHash": "b7155797eae2d384cd1775b580805595adc4045debf3fe7692d3ad384b9e45df",
+      "atlasHash": "2dcc94a4a8b485e06d98a33a2ce8aa2b6d854f7a73ed2a806c0ea61e816bc895",
+      "metricsHash": "03c0db39d2a6b66f5a548317cf8bd48bec5ca5c269f59ecb92a2816c3f9bb25a"
+    }
+  ]
+}

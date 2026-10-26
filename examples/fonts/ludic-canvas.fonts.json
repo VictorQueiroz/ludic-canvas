@@ -1,10 +1,12 @@
 {
   "$schema": "../../font-atlas.schema.json",
   "output": "../../build/example-fonts",
-  "fonts": [{
-    "name": "interface",
-    "source": "../../tools/fontgen/fonts/BarlowCondensed-SemiBold.ttf",
-    "size": 48,
-    "distanceRange": 6
-  }]
+  "fonts": [
+    {
+      "name": "interface",
+      "source": "../../tools/fontgen/fonts/BarlowCondensed-SemiBold.ttf",
+      "size": 48,
+      "distanceRange": 6
+    }
+  ]
 }

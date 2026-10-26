@@ -78,6 +78,17 @@ ui.render(
 ui.destroy();
 ```
 
+## Playable integration example
+
+[Orbital Relay](https://libraries.ludic-canvas.victorqueiroz.dev/play/) is a small courier game with a Canvas 2D world and a transparent Ludic Canvas HUD. It includes cargo collection and delivery, collisions, boost, pause and replay, a responsive manifest, and keyboard/touch controls.
+
+The [example source](examples/orbital-relay) uses only public library exports. Its interface and mission modules each define a font family and a CLI configuration. The application root composes both `FontSource` values, keeps simulation state outside React, and drives `ui.frame(now)` from the game loop.
+
+```sh
+npm run fonts:game    # regenerate Oxanium and Space Mono atlases
+npm run dev           # open /play/ or play inside the homepage
+```
+
 ## Architecture
 
 ```text

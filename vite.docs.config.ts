@@ -14,6 +14,7 @@ export default defineConfig({
         home: resolve(import.meta.dirname, 'docs/index.html'),
         guide: resolve(import.meta.dirname, 'docs/guide/index.html'),
         api: resolve(import.meta.dirname, 'docs/api/index.html'),
+        play: resolve(import.meta.dirname, 'docs/play/index.html'),
       },
     },
   },

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "generatorHash": "8d7c08c6523e23b3ff4d3b4a31e34a8ee8b5a442d9e73526fc62645fae9875d9",
+  "fonts": [
+    {
+      "name": "display",
+      "atlas": "display.png",
+      "metrics": "display.json",
+      "inputHash": "3086e22c6fdcb0271163207291e06f1fbd2327b880539c0349362a3f6ce0e41b",
+      "atlasHash": "24284b44c55d2a0c884dbdf970f51036031aa55886cf62bf1877c71cd2666e32",
+      "metricsHash": "3a9b584cd5c7b38432df08a6328956bcc4098d1de9e3197e0fbeec75fcb05df2"
+    }
+  ]
+}
