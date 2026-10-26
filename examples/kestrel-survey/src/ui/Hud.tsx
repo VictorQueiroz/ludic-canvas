@@ -766,10 +766,10 @@ export function SurveyHud({
               Sites
             </Button>
             <Button label="Toggle overview camera" onPress={game.overview} style={{ flex: 1 }}>
-              {state.overview ? 'Follow' : 'Overview'}
+              {state.overview ? 'Follow' : 'View'}
             </Button>
             <Button label="Open survey settings" onPress={() => show('settings')} style={{ flex: 1 }}>
-              Settings
+              Prefs
             </Button>
             <Button label="Open field manual" onPress={() => show('help')} style={{ width: 38, paddingX: 4 }}>
               ?
