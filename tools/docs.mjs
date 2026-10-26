@@ -4,6 +4,8 @@ const escape = (s) =>
   s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const code = (s) => `<pre><code>${escape(s.trim())}</code></pre>`;
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
+mkdirSync('docs/public', { recursive: true });
+writeFileSync('docs/public/font-atlas.schema.json', readFileSync('font-atlas.schema.json'));
 const nav = (active) =>
   `<a class="brand" href="/"><span class="mark">lc</span> Ludic Canvas<span class="version">${version}</span></a><nav aria-label="Main navigation"><a ${active === 'home' ? 'aria-current="page"' : ''} href="/">Overview</a><a ${active === 'guide' ? 'aria-current="page"' : ''} href="/guide/">Guide</a><a ${active === 'api' ? 'aria-current="page"' : ''} href="/api/">API reference</a><a href="https://github.com/VictorQueiroz/ludic-canvas">GitHub <span aria-hidden="true">↗</span></a></nav>`;
 const layout = (title, active, content, aside = '') =>
@@ -23,13 +25,16 @@ ui.render(
 
 // When leaving the scene:
 ui.destroy();`;
-const installation = `npm install https://github.com/VictorQueiroz/ludic-canvas/releases/download/v${version}/ludic-canvas-${version}.tgz react@19.3.1`;
+const installation =
+  version === '0.1.0'
+    ? 'npm install https://github.com/VictorQueiroz/ludic-canvas/releases/download/v0.1.0/ludic-canvas-0.1.0.tgz react@19.3.1'
+    : `npm install ludic-canvas@^${version} react@19.3.1`;
 const home = `<section class="hero"><div class="hero-copy"><p class="eyebrow"><span class="status-dot"></span> An interface layer for your next world</p><h1>React in.<br><span>Game UI out.</span></h1><p class="lead">Build menus, inventories and HUDs with familiar components. Let Yoga handle layout and WebGL handle the pixels.</p><div class="actions"><a class="button primary" href="/guide/">Start building <span>→</span></a><a class="button secondary" href="/api/">Explore the API</a></div><p class="hero-note">TypeScript first. Engine independent. Yours to style.</p></div><div class="hero-system" aria-label="Architecture: React components flow into Yoga WASM layout, then WebGL rendering"><div class="orbit"></div><div class="system-title">THE RENDERING PIPELINE <span>01—03</span></div><div class="pipeline-step"><span class="step-number">01</span><div><strong>Compose</strong><span>React components & hooks</span></div><b>tsx</b></div><div class="pipeline-wire"></div><div class="pipeline-step"><span class="step-number">02</span><div><strong>Arrange</strong><span>Yoga flexbox in WebAssembly</span></div><b>wasm</b></div><div class="pipeline-wire"></div><div class="pipeline-step"><span class="step-number">03</span><div><strong>Draw</strong><span>Batched primitives & MSDF text</span></div><b>gl</b></div><div class="system-foot"><span>Retained tree</span><span>One canvas. Your loop.</span></div></div></section><div class="feature-strip"><span><b>04</b> typed primitives</span><span><b>CSS-like</b> flex layout</span><span><b>MSDF</b> crisp text</span><span><b>DOM</b> keyboard mirror</span></div><section class="playground" id="playground"><div class="section-heading"><div><p class="eyebrow">A working interface, not a screenshot</p><h2>Give it a try.</h2></div><p>Every panel below is rendered by the library.<br>Click the canvas, or Tab into its controls.</p></div><div class="demo-shell"><div class="demo-toolbar"><div role="group" aria-label="Example"><button class="example-tab active" data-example="hud" aria-pressed="true">Tactical HUD</button><button class="example-tab" data-example="menu" aria-pressed="false">Pause menu</button><button class="example-tab" data-example="inventory" aria-pressed="false">Inventory</button></div><span class="demo-indicator"><span class="status-dot"></span> LIVE WEBGL</span></div><div class="canvas-wrap"><canvas id="demo" aria-label="Interactive UI example"></canvas><p id="demo-status" role="status">Loading the renderer…</p></div><div class="demo-bottom"><span>React → Yoga → WebGL</span><label><input id="motion" type="checkbox"> Reduce motion</label><span id="frame-stats">Initializing</span></div></div></section><section class="principles"><article><span class="card-number">01 / COMPOSITION</span><h3>The React you know.</h3><p>State, effects, context and reusable components. Four primitives become the building blocks of your visual language.</p></article><article><span class="card-number">02 / CONTROL</span><h3>Make it your own.</h3><p>Supply image URLs or an asset catalog. Register your own font atlases, change theme tokens, and drive frames from your game loop.</p></article><article><span class="card-number">03 / INTEGRATION</span><h3>A small boundary.</h3><p>Your simulation owns game state. The interface reads snapshots and calls actions. Use a transparent canvas overlay or draw into a WebGL 1 context.</p></article></section><section class="start-section"><div><p class="eyebrow">From a canvas to an interface</p><h2>A few lines.<br>A world of possibilities.</h2><p>Start with the included font and layout module. Add your game’s identity through composition, assets and style.</p><a class="text-link" href="/guide/">Read the integration guide →</a></div>${code(quickstart)}</section><section class="scope-note"><h3>A focused first release.</h3><p>Version ${version} targets browser games with React 19.3.1 and WebGL 1. It supports menus, HUDs and inventories. Text uses pre-baked glyph atlases and greedy wrapping; complex-script shaping, editable text, controller navigation and native engine bindings are future work. The accessibility mirror covers pressable controls and live announcements, not full document semantics.</p></section>`;
 const guideSections = [
   [
     'start',
     'Getting started',
-    `<p>Ludic Canvas is an ESM TypeScript library for browser game interfaces. It uses React 19.3.1, a custom reconciler, Yoga 3.2.1 compiled with raw Clang/LLVM, and WebGL 1. Consumers use the included compiled assets; CMake and LLVM are only needed to rebuild the native module.</p><h3>Install the release package</h3>${code(installation)}<p>This URL installs the GitHub release tarball, including JavaScript, TypeScript declarations, the layout module and a default font atlas. No npm registry release is required. Use a bundler such as Vite with its automatic React JSX transform.</p><h3>Give the canvas a size</h3>${code(`<div style="position:relative;width:100%;height:480px">
+    `<p>Ludic Canvas is an ESM TypeScript library for browser game interfaces. It uses React 19.3.1, a custom reconciler, Yoga 3.2.1 compiled with raw Clang/LLVM, and WebGL 1. Consumers use the included compiled assets; CMake and LLVM are only needed to rebuild the native module.</p><h3>Install the release package</h3>${code(installation)}<p>Releases include JavaScript, TypeScript declarations, the layout module and a default font atlas. Starting with 0.2.0, the package also includes the portable font CLI. The 0.1.0 GitHub tarball predates npm publication and the CLI. Use a bundler such as Vite with its automatic React JSX transform.</p><h3>Give the canvas a size</h3>${code(`<div style="position:relative;width:100%;height:480px">
   <canvas id="ui" style="display:block;width:100%;height:100%"></canvas>
 </div>`)}<p>The root measures CSS dimensions. The canvas parent should contain only the game view and its UI overlay; an accessibility mirror is positioned relative to it. Avoid CSS transforms that scale or rotate the canvas. If you manage a different layout, supply your own aligned <code>accessibilityContainer</code>.</p>${code(`const canvas = document.querySelector<HTMLCanvasElement>('#ui')!;
 ${quickstart}`)}`,
@@ -69,7 +74,54 @@ ${quickstart}`)}`,
     { name: 'interface', atlas: '/fonts/interface.png', metrics: '/fonts/interface.json' },
   ],
 });
-await ui.preloadImages(['portrait', 'emblem']);`)}<p>Omit <code>assets</code> to use image URLs directly. Alternatively pass a resolver function that maps an identifier to image metadata. Unknown catalog identifiers render no image; explicit preloading rejects unknown identifiers. Failed requests call <code>onError</code> and cause preloads to reject. Failed cache entries stay failed until you recreate the root. Assets must be immutable for a root's lifetime. Fetches and decoded uploads are root-owned and disposed when it is destroyed.</p><p>Register one to four MSDF/MTSDF font faces; the first face is the default. Choose a face with <code>fontFamily</code>. Each atlas needs a fallback question-mark glyph. Atlas JSON must use top-origin coordinates and the msdf-atlas-gen metrics schema. Glyphs absent from the atlas fall back to <code>?</code>. The included face covers Latin-1 and selected punctuation. There is no kerning, bidi, ligature shaping or emoji fallback in this release.</p><p>Run <code>npm run fonts</code> in the repository to build the pinned msdf-atlas-gen tool and bake <code>tools/fontgen/faces.json</code>. Font baking requires CMake, a native C++ compiler, FreeType and libpng. It is separate from the browser and documentation build. Font licenses remain with their fonts.</p><p>The texture budget is a soft LRU budget. Recently visible textures remain resident even if they exceed it. SVGs are quantized and rasterized at the requested pixel size. Cross-origin image and font URLs require CORS headers.</p>`,
+await ui.preloadImages(['portrait', 'emblem']);`)}<p>Omit <code>assets</code> to use image URLs directly. Alternatively pass a resolver function that maps an identifier to image metadata. Unknown catalog identifiers render no image; explicit preloading rejects unknown identifiers. Failed requests call <code>onError</code> and cause preloads to reject. Failed cache entries stay failed until you recreate the root. Assets must be immutable for a root's lifetime. Fetches and decoded uploads are root-owned and disposed when it is destroyed.</p><p>Register one to four MSDF/MTSDF font faces; the first face is the default. Choose a face with <code>fontFamily</code>. Each atlas needs a fallback question-mark glyph. Atlas JSON must use top-origin coordinates and the msdf-atlas-gen metrics schema. Glyphs absent from the atlas fall back to <code>?</code>. The included face covers Latin-1 and selected punctuation. There is no kerning, bidi, ligature shaping or emoji fallback in this release.</p><p>Generate custom atlases with the <a href="#font-cli">packaged font CLI</a>. It uses the bundled WASI compiler and works without CMake, FreeType installation, native executables or network access. Font licenses remain with their fonts. Native tools are needed only to rebuild the compiler itself.</p><p>The texture budget is a soft LRU budget. Recently visible textures remain resident even if they exceed it. SVGs are quantized and rasterized at the requested pixel size. Cross-origin image and font URLs require CORS headers.</p>`,
+  ],
+  [
+    'font-cli',
+    'Font atlas CLI',
+    `${version === '0.1.0' ? '<p><strong>Upcoming in 0.2.0:</strong> the published 0.1.0 GitHub package does not include this CLI. The implementation is on main and its minor Changesets release is pending. To use it before publication, clone the repository, run npm ci and npm pack, and install that local tarball.</p>' : ''}
+<p>The installed package exposes <code>ludic-canvas fonts</code>. Node 24+ runs a bundled, offline WebAssembly compiler containing FreeType, Brotli and msdf-atlas-gen. TTF, OpenType CFF/OTF, WOFF and WOFF2 outline fonts are supported; collections and bitmap-only fonts are outside this release.</p>
+<h3>1. Create a configuration</h3>${code('npx ludic-canvas fonts --init')}
+<p>Edit <code>ludic-canvas.fonts.json</code> and set your font paths. Every path is relative to this configuration file.</p>${code(
+      JSON.stringify(
+        {
+          $schema: 'https://libraries.ludic-canvas.victorqueiroz.dev/font-atlas.schema.json',
+          output: 'public/fonts',
+          charset: '[0x20, 0x7E]',
+          fonts: [
+            { name: 'interface', source: 'fonts/Interface.woff2', size: 48, distanceRange: 6, characters: 'áéíóúçãõ…' },
+          ],
+        },
+        null,
+        2,
+      ),
+    )}
+<h3>2. Generate and register</h3>${code('npx ludic-canvas fonts --config ludic-canvas.fonts.json')}
+<p>This creates <code>interface.png</code>, <code>interface.json</code> and <code>font-atlas-manifest.json</code>. The manifest stores content hashes for caching and uses relative output names. Register the generated files through the existing fonts option:</p>${code(`const ui = await createUI({
+  canvas,
+  fonts: [{ name: 'interface', atlas: '/fonts/interface.png', metrics: '/fonts/interface.json' }],
+});`)}
+<p>For deployments under a URL prefix, include your application's base path in those URLs. The source TTF/OTF/WOFF files are not needed by the browser.</p>
+<h3>3. Integrate with development and builds</h3>${code(
+      JSON.stringify(
+        {
+          scripts: {
+            'fonts:build': 'ludic-canvas fonts --config ludic-canvas.fonts.json',
+            predev: 'npm run fonts:build',
+            dev: 'vite',
+            prebuild: 'npm run fonts:build',
+            build: 'vite build',
+          },
+        },
+        null,
+        2,
+      ),
+    )}
+<p>Unchanged sources, configuration and compiler bytes reuse cached output. Modified or damaged PNG/JSON files are regenerated. <code>--force</code> always regenerates. A failure in any face leaves existing output files unchanged; successful generations replace the configured files but do not delete old fonts removed from configuration.</p>
+<h3>Configuration reference</h3>
+<p><code>size</code> is atlas pixels per em (8–128, default 48), independent of runtime fontSize. <code>distanceRange</code> is the distance range in atlas pixels (1–32, default 6). <code>charset</code> uses msdf-atlas-gen expressions, such as <code>[0x20, 0x7E], [0xA0, 0xFF]</code>. A font-level charset overrides the configuration default. <code>characters</code> adds literal Unicode characters. Space and <code>?</code> are always included. Missing requested characters fail with their Unicode codepoints; runtime text outside the generated set uses the fallback.</p>
+<p>Variable fonts accept four-character axis tags: <code>"variations": { "wght": 600 }</code>. Unknown axes and values outside the font's axis range fail. Each face name must contain 1–64 ASCII letters, digits, hyphens or underscores and be unique ignoring case. The compiler supports at most 16,384 requested codepoints and an 8192×8192 atlas; choose the character coverage your interface needs.</p>
+<p>The <a href="/font-atlas.schema.json">JSON schema</a> is also exported as <code>ludic-canvas/font-atlas.schema.json</code> for editors. <code>--help</code> and <code>--version</code> need no compilation. Node currently emits its standard WASI experimental-feature warning during generation; a successful command still exits with status 0.</p>`,
   ],
   [
     'integration',
@@ -102,6 +154,7 @@ npm run check
 # Optional: rebuild Yoga with raw Clang/LLVM (no Emscripten)
 npm run toolchain -- --llvm /path/to/llvm
 npm run wasm
+npm run fontgen:wasm
 
 # Build the distributable package
 npm pack`)}<p>Node 24 or newer is required for repository tooling. The native build needs CMake 3.28+, LLVM with wasm32 and wasm-ld. The bootstrap downloads SHA-256-pinned WASI sysroot and compiler-rt inputs. Yoga sources are pinned by version and hash. The committed layout module lets consumers and Vercel build without the native toolchain.</p><p>The public repository uses a fresh history and contains the library, generic examples, font notices and reproducible build sources. The API reference is generated from emitted TypeScript declarations during every documentation build. Run <code>npm run check</code> before a release. The Vercel project builds <code>npm run docs:build</code> and serves <code>site/</code> from the repository root.</p><p>Compatibility: React 19.3.1 is the tested peer version; react-reconciler 0.34.0 is pinned. Browser requirements include WebAssembly SIMD/bulk-memory, WebGL 1, createImageBitmap and Pointer Events. Browser integration tests cover the development browser; native engine bindings and wider device certification are outside this release.</p>`,

@@ -1,0 +1,14 @@
+{
+  "source": "tools/fontgen/wasm",
+  "target": "wasm32-wasip1 command, SIMD, bulk memory, exception handling",
+  "compiler": "Homebrew clang version 23.1.4",
+  "wasiSdk": "wasi-sdk-34",
+  "dependencies": {
+    "freetype": "2.14.3",
+    "brotli": "1.1.0",
+    "msdfgen": "1874bcf7d9624ccc85b4bc9a85d78116f690f35b",
+    "msdf-atlas-gen": "1.4"
+  },
+  "sha256": "8d7c08c6523e23b3ff4d3b4a31e34a8ee8b5a442d9e73526fc62645fae9875d9",
+  "bytes": 1023860
+}

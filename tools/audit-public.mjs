@@ -15,6 +15,13 @@ for (const file of [
   'dist/index.js',
   'dist/index.d.ts',
   'assets/layout.wasm',
+  'assets/fontgen.wasm',
+  'assets/fontgen-provenance.json',
+  'cli/index.mjs',
+  'font-atlas.schema.json',
+  'licenses/FreeType-FTL.txt',
+  'licenses/Brotli-MIT.txt',
+  'site/font-atlas.schema.json',
   'assets/default-font.png',
   'assets/default-font.json',
   'LICENSE',
@@ -28,4 +35,7 @@ for (const file of [
 }
 const exports = WebAssembly.Module.exports(new WebAssembly.Module(readFileSync('assets/layout.wasm')));
 if (!exports.some((item) => item.name === 'lcl_abi_version')) throw new Error('Layout ABI missing');
+const fontgen = new WebAssembly.Module(readFileSync('assets/fontgen.wasm'));
+if (!WebAssembly.Module.exports(fontgen).some((item) => item.name === '_start'))
+  throw new Error('Font compiler entry point missing');
 console.log('Public library boundaries, distribution assets and documentation verified');

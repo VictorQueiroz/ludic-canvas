@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://libraries.ludic-canvas.victorqueiroz.dev/font-atlas.schema.json",
+  "title": "Ludic Canvas font atlas configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["output", "fonts"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "output": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Output directory, relative to this configuration file."
+    },
+    "charset": {
+      "type": "string",
+      "minLength": 1,
+      "default": "[0x20, 0x7E]",
+      "description": "Default msdf-atlas-gen Unicode charset expression."
+    },
+    "fonts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "source"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
+            "description": "Unique face name and output filename stem; names are case-insensitive for collision checks."
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Single-face TTF, OTF, WOFF or WOFF2 file, relative to this configuration file."
+          },
+          "size": {
+            "type": "number",
+            "minimum": 8,
+            "maximum": 128,
+            "default": 48,
+            "description": "Atlas pixels per em. Text fontSize is chosen separately at runtime."
+          },
+          "distanceRange": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 32,
+            "default": 6,
+            "description": "Distance range in atlas pixels."
+          },
+          "charset": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Override the configuration's charset expression for this font."
+          },
+          "characters": {
+            "type": "string",
+            "description": "Additional literal Unicode characters. Space and question mark are always included."
+          },
+          "variations": {
+            "type": "object",
+            "propertyNames": { "pattern": "^[A-Za-z0-9 ]{4}$" },
+            "additionalProperties": { "type": "number" },
+            "description": "Variable-font axis values, for example { wght: 600 }. Unknown axes fail generation."
+          }
+        }
+      }
+    }
+  }
+}

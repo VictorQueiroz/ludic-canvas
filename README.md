@@ -14,7 +14,46 @@ The GitHub release includes JavaScript, TypeScript declarations, a precompiled Y
 npm install https://github.com/VictorQueiroz/ludic-canvas/releases/download/v0.1.0/ludic-canvas-0.1.0.tgz react@19.3.1
 ```
 
-The package is distributed through GitHub Releases. It is not currently published to the npm registry.
+The original 0.1.0 package is available through GitHub Releases. npm releases use the Changesets version-PR workflow described in [docs/RELEASING.md](docs/RELEASING.md); the initial owner-authenticated npm setup must finish before automated publication can succeed. After the 0.2.0 version PR is merged and published, install with `npm install ludic-canvas@^0.2.0 react@19.3.1`.
+
+## Font atlas CLI (0.2.0+)
+
+The next minor Changesets release includes a portable CLI:
+
+```sh
+npx ludic-canvas fonts --init
+# Set the font source paths in ludic-canvas.fonts.json
+npx ludic-canvas fonts --config ludic-canvas.fonts.json
+```
+
+```json
+{
+  "$schema": "https://libraries.ludic-canvas.victorqueiroz.dev/font-atlas.schema.json",
+  "output": "public/fonts",
+  "fonts": [
+    {
+      "name": "interface",
+      "source": "fonts/Interface.woff2",
+      "size": 48,
+      "distanceRange": 6
+    }
+  ]
+}
+```
+
+Inputs are single-face outline **TTF, OTF, WOFF and WOFF2** fonts, including variable
+fonts configured with axis tags such as `"variations": { "wght": 600 }`.
+Paths are relative to the configuration file. The CLI generates an MTSDF PNG,
+JSON metrics and a cache manifest. Register the PNG/JSON through `createUI({ fonts })`.
+No native compiler, external executable or network connection is needed after installation.
+
+Add the CLI command to your project's `predev` and `prebuild` scripts to generate
+only when inputs change. Use `--force` to rebuild. See the
+[font CLI guide](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#font-cli)
+for character coverage, variable fonts and diagnostics.
+
+The original GitHub 0.1.0 tarball does not contain the CLI. Before 0.2.0 is
+published, install a tarball built from the repository with `npm ci && npm pack`.
 
 ## First interface
 
@@ -79,10 +118,21 @@ Rebuild the optional native tools:
 ```sh
 npm run toolchain -- --llvm /path/to/llvm
 npm run wasm
-npm run fonts
+npm run fontgen:wasm
+npm run fonts:example
 ```
 
-Yoga uses C++23, CMake 3.28+, raw Clang/LLVM and wasm-ld, with SHA-256-pinned Yoga and WASI toolchain downloads. Emscripten is not used. The font tool builds pinned msdf-atlas-gen sources against FreeType and libpng. Consumers do not need these tools.
+Yoga uses C++23, CMake 3.28+, raw Clang/LLVM and wasm-ld, with SHA-256-pinned Yoga and WASI toolchain downloads. Emscripten is not used. The portable font compiler builds pinned msdf-atlas-gen, FreeType and Brotli sources into a WASI command. Consumers run the included compiler with Node and do not need native tools.
+
+## Publishing
+
+Run `npm run changeset` for publishable behavior changes. Merges to `main` open or
+update a version PR. Merging the version PR publishes through npm OIDC, with
+provenance, after Linux/macOS/Windows checks pass. The workflow creates tags and
+GitHub releases and skips versions already present on npm.
+
+See [docs/RELEASING.md](docs/RELEASING.md) for the one-time npm ownership and trusted
+publisher setup. No npm token is stored in GitHub secrets.
 
 ## Compatibility and scope
 
