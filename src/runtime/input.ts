@@ -31,6 +31,7 @@ export class InputSystem {
   #announced = '';
   #enabled = true;
   #modal: HostNode | undefined;
+  #pendingModalFocus = false;
   #previousFocus: HTMLElement | undefined;
   onPointer: (nx: number, ny: number) => void = () => {};
   onActivity: () => void = () => {};
@@ -467,9 +468,23 @@ export class InputSystem {
         this.#buttons.delete(node);
       }
     if (changedModal) {
-      if (modal) (this.#eligible()[0]?.[1] ?? this.#canvas).focus({ preventScroll: true });
-      else (this.#previousFocus?.isConnected ? this.#previousFocus : this.#canvas).focus({ preventScroll: true });
+      if (modal) {
+        const first = this.#eligible()[0]?.[1];
+        this.#pendingModalFocus = !first;
+        (first ?? this.#canvas).focus({ preventScroll: true });
+      } else {
+        this.#pendingModalFocus = false;
+        (this.#previousFocus?.isConnected ? this.#previousFocus : this.#canvas).focus({ preventScroll: true });
+      }
       if (!modal) this.#previousFocus = undefined;
+    } else if (modal && this.#pendingModalFocus) {
+      const first = this.#eligible()[0]?.[1];
+      if (first) {
+        // Enter animations may hide all controls during the first modal frame.
+        // Honor a deliberate focus move outside this root while waiting.
+        if (document.activeElement === this.#canvas) first.focus({ preventScroll: true });
+        this.#pendingModalFocus = false;
+      }
     }
   }
 }

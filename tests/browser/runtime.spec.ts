@@ -37,6 +37,16 @@ test('modal isolates hotkeys, traps Tab and restores focus', async ({ page }) =>
   await page.keyboard.press('b');
   await count(page, 1);
 });
+test('an animated modal focuses controls when its entrance becomes visible', async ({ page }) => {
+  await scenario(page, 'animated');
+  const close = page.getByRole('button', { name: 'Close dialog', exact: true });
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('button', { name: 'Other action', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('canvas')).toBeFocused();
+});
 test('pointer capture and keyboard semantics support a slider', async ({ page }) => {
   await scenario(page, 'pointer');
   const box = await page.locator('canvas').boundingBox();

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -90,8 +90,21 @@ ui.render(createElement(Text, null, 'A?'));\n`,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  // Copy the entire 3D project away from this checkout. All imports and assets
+  // must resolve through its own dependencies and the freshly packed library.
+  const survey = join(staging, 'standalone 3d project');
+  await cp(join(root, 'examples/kestrel-survey'), survey, {
+    recursive: true,
+    filter: (source) => !source.split(/[\\/]/).some((part) => part === 'node_modules' || part === 'dist'),
+  });
+  const surveyPackage = JSON.parse(await readFile(join(survey, 'package.json'), 'utf8'));
+  surveyPackage.dependencies['ludic-canvas'] = join(staging, packed.filename);
+  await writeFile(join(survey, 'package.json'), JSON.stringify(surveyPackage, null, 2) + '\n');
+  npm(['install', '--no-audit', '--no-fund'], survey);
+  npm(['run', 'build'], survey);
+  await access(join(survey, 'dist/index.html'));
   console.log(
-    `Packed consumer verified: normal install, CLI bin, WOFF2 generation, cache and both Vite examples, including the documentation starter (${packed.size} package bytes)`,
+    `Packed consumer verified: CLI, WOFF2 generation/cache, both Vite starters and independent Three.js project (${packed.size} package bytes)`,
   );
 } catch (error) {
   if (error.stderr) console.error(error.stderr.toString());

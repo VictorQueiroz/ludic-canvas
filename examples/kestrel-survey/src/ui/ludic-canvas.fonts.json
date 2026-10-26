@@ -1,0 +1,15 @@
+{
+  "$schema": "https://libraries.ludic-canvas.victorqueiroz.dev/font-atlas.schema.json",
+  "output": "fonts/generated",
+  "fonts": [
+    {
+      "name": "display",
+      "source": "fonts/Oxanium[wght].ttf",
+      "size": 48,
+      "distanceRange": 6,
+      "variations": {
+        "wght": 600
+      }
+    }
+  ]
+}

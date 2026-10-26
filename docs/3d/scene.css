@@ -1,0 +1,67 @@
+.survey-document {
+  max-width: 1536px;
+}
+.survey-frame {
+  overflow: hidden;
+  border: 1px solid #536454;
+  border-radius: 10px;
+  background: #172723;
+}
+.survey-frame #survey-stage {
+  height: 760px;
+  min-height: 560px;
+}
+.survey-status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 20px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #b1bfab;
+  background: #172723;
+}
+.survey-integration {
+  max-width: 860px;
+  margin: 48px auto 0;
+}
+.survey-integration h2 {
+  margin-top: 40px;
+}
+.survey-integration p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.survey-integration code {
+  font-size: 0.85em;
+}
+.survey-document .game-heading {
+  margin-bottom: 24px;
+}
+@media (max-width: 850px) {
+  .survey-frame #survey-stage {
+    height: 720px;
+  }
+  .survey-status {
+    font-size: 8px;
+    padding: 10px 12px;
+  }
+  .survey-status span:last-child {
+    display: none;
+  }
+  .survey-document {
+    padding: 28px 10px;
+  }
+  .survey-document .game-heading {
+    padding: 0 4px;
+  }
+  .survey-integration {
+    margin-top: 28px;
+  }
+}
+@media (max-width: 400px) {
+  .survey-frame #survey-stage {
+    height: 680px;
+  }
+}

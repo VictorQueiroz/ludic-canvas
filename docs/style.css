@@ -590,7 +590,7 @@ pre {
 }
 .learning-path {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin: 26px 0 36px;
 }
@@ -1087,5 +1087,46 @@ aside a:hover {
   * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+.three-example-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(120deg, #263c2c, #101d26);
+  margin-top: 28px;
+}
+.three-example-callout h3 {
+  font-size: 27px;
+  margin: 6px 0;
+}
+.three-example-callout p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+@media (max-width: 760px) {
+  .three-example-callout {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 22px;
+  }
+}
+
+@media (max-width: 950px) {
+  header {
+    height: auto;
+    min-height: 83px;
+    flex-wrap: wrap;
+  }
+  nav {
+    width: 100%;
+    flex-wrap: wrap;
+    column-gap: 14px;
+    row-gap: 10px;
   }
 }
