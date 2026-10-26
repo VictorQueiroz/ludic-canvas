@@ -27,13 +27,20 @@ if (query.get('embed') === '1') {
     open.href = card.dataset.page!;
     player.title = `Play ${card.dataset.title}`;
     player.dataset.example = game;
-    if (requested && matchMedia('(max-width: 1100px)').matches) {
-      // Explicit mobile selections should reveal the game before its first frame.
-      viewer.style.scrollMarginTop = `${document.querySelector('header')!.getBoundingClientRect().height + 12}px`;
-      viewer.scrollIntoView({ block: 'start', behavior: 'instant' });
-    }
-    // The gallery owns Back/Forward; game changes must not add iframe history entries.
-    player.contentWindow!.location.replace(new URL(card.dataset.src!, location.href).href);
+    const loadGame = () => {
+      void document.fonts.ready.then(() => {
+        if (selected !== game) return;
+        if (requested && matchMedia('(max-width: 1100px)').matches) {
+          // Reveal against settled gallery dimensions before starting the game.
+          viewer.style.scrollMarginTop = `${document.querySelector('header')!.getBoundingClientRect().height + 12}px`;
+          viewer.scrollIntoView({ block: 'start', behavior: 'instant' });
+        }
+        // The gallery owns Back/Forward; game changes replace the iframe's entry.
+        player.contentWindow!.location.replace(new URL(card.dataset.src!, location.href).href);
+      });
+    };
+    if (document.readyState === 'complete') loadGame();
+    else window.addEventListener('load', loadGame, { once: true });
     announcement.textContent = `${card.dataset.title} selected.`;
     if (navigate) {
       const url = new URL(location.href);
