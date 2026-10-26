@@ -21,7 +21,9 @@ test('the built game fits a narrow viewport with both font families', async ({ p
   await page.goto('http://127.0.0.1:6174/play/');
   await expect(page.getByRole('button', { name: 'Launch courier', exact: true })).toBeAttached();
   await expect(page.locator('#game-stats')).toContainText('2 MSDF families');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true,
+  );
   const box = await page.locator('#game-ui').boundingBox();
   expect(box!.width).toBeLessThanOrEqual(320);
   expect(box!.height).toBeGreaterThan(0);

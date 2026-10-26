@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { createUI, defaultAssets, View, Text, Image, type UIRoot } from '../../src/index.ts';
 const canvas = document.querySelector('canvas')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
@@ -19,10 +19,15 @@ let root: UIRoot,
   count = 0,
   restored = 0,
   errors = 0;
+let committedScenario = '';
 const update = () => {
-  status.textContent = JSON.stringify({ count, restored, errors, scenario, ...root.frame() });
+  const frame = root.frame();
+  status.textContent = JSON.stringify({ count, restored, errors, scenario: committedScenario, ...frame });
 };
 function App() {
+  useLayoutEffect(() => {
+    committedScenario = scenario;
+  }, [scenario]);
   const [value, setValue] = useState(0);
   const [open, setOpen] = useState(true);
   return (
