@@ -33,10 +33,11 @@ function App() {
         hotkey="b"
         onPress={() => {
           count++;
+          setValue((value) => value + 1);
         }}
         style={{ position: 'absolute', top: 10, left: 10, width: 130, height: 48, background: '#4080c0' }}
       >
-        <Text>Below {count}</Text>
+        <Text>Below {value}</Text>
       </View>
       {scenario === 'basic' && (
         <View style={{ position: 'absolute', top: 65, left: 10, width: 290, gap: 4 }}>
@@ -185,11 +186,11 @@ function App() {
     </View>
   );
 }
-async function mount() {
+async function mount(manageCanvasSize = true) {
   root = await createUI({
     canvas,
     context: gl,
-    manageCanvasSize: true,
+    manageCanvasSize,
     maxDpr: 1,
     fonts: ['default', 'second', 'third', 'fourth'].map((name) => ({ name, atlas: defaultAssets.fontAtlas, metrics })),
     assets: { alpha: { url: image.toDataURL() } },
@@ -201,12 +202,12 @@ async function mount() {
       restored++;
     },
   });
-  root.render(<App key={scenario} />);
+  root.render(<App />);
   status.dataset.ready = 'true';
 }
 selector.addEventListener('change', () => {
   scenario = selector.value;
-  root.render(<App key={scenario} />);
+  root.render(<App />);
 });
 document.querySelector('#loss')!.addEventListener('click', () => contextLoss.loseContext());
 document.querySelector('#restore')!.addEventListener('click', () => contextLoss.restoreContext());
@@ -216,8 +217,10 @@ document.querySelector('#recreate')!.addEventListener('click', () => {
   void mount();
 });
 document.querySelector('#size')!.addEventListener('click', () => {
+  root.destroy();
   canvas.width = 640;
   canvas.height = 240;
+  void mount(false);
 });
 document.querySelector('#hidden')!.addEventListener('click', () => {
   canvas.style.display = canvas.style.display === 'none' ? 'block' : 'none';
@@ -233,6 +236,7 @@ requestAnimationFrame(tick);
 // This fixture deliberately exposes only the test contract to remote CI.
 Object.assign(window, {
   contract: {
+    createUI,
     get root() {
       return root;
     },

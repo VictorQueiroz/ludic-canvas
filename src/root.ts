@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { createAssetResolver, type AssetResolver, type ImageAssets } from './assets.ts';
 import { defaultAssets } from './defaults.ts';
 import { UiBatch } from './gfx/batch.ts';
-import { Font, FontBook, loadFontJson, type AtlasJson } from './gfx/font.ts';
+import { Font, FontBook, loadFontJson, validateFontMetrics, type AtlasJson } from './gfx/font.ts';
 import { createTexture, parseColor } from './gfx/gl.ts';
 import { TextureStore } from './gfx/textures.ts';
 import { UiRuntime } from './runtime/runtime.ts';
@@ -288,10 +288,17 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
     );
     layout = await YogaLayout.load(options.layout ?? defaultAssets.layout, { signal, maxBytes: limits.maxBytes });
     for (const source of sources) {
-      const metrics =
-        typeof source.metrics === 'string'
-          ? await loadFontJson(source.metrics, { signal, maxBytes: limits.maxBytes })
-          : source.metrics;
+      const metrics = validateFontMetrics(
+        structuredClone(
+          typeof source.metrics === 'string'
+            ? await loadFontJson(source.metrics, { signal, maxBytes: limits.maxBytes })
+            : source.metrics,
+        ),
+      );
+      const fontBytes =
+        loaded.reduce((sum, source) => sum + source.metrics.atlas.width * source.metrics.atlas.height * 4, 0) +
+        metrics.atlas.width * metrics.atlas.height * 4;
+      if (fontBytes > limits.maxFontBytes) throw new Error('Font atlases exceed resourceLimits.maxFontBytes');
       const bytes = await fetchBytes(source.atlas, { signal, maxBytes: limits.maxBytes, label: 'Font atlas' });
       loaded.push({ name: source.name, metrics, blob: new Blob([bytes]) });
     }

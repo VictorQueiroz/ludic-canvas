@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
+  page.on('pageerror', (error) => console.error('Browser page error:', error.message));
   await page.goto('/tests/browser/');
   await expect(page.locator('#status')).toHaveAttribute('data-ready', 'true');
   await expect(page.getByRole('button', { name: 'Below', exact: true })).toBeVisible();
@@ -77,12 +78,18 @@ test('context loss rebuilds GPU resources and preserves React state', async ({ p
   await page.getByRole('button', { name: 'Below', exact: true }).focus();
   await page.keyboard.press('Enter');
   await count(page, 1);
+  await expect
+    .poll(() => page.evaluate(() => JSON.stringify((window as any).contract.root.inspect())))
+    .toContain('Below 1');
   await page.locator('#loss').click();
   await expect(page.locator('#status')).toContainText('"contextLost":true');
   await page.locator('#restore').click();
   await expect(page.locator('#status')).toContainText('"restored":1');
   await expect(page.locator('#status')).toContainText('"contextLost":false');
   await count(page, 1);
+  await expect
+    .poll(() => page.evaluate(() => JSON.stringify((window as any).contract.root.inspect())))
+    .toContain('Below 1');
   await expect(page.locator('#status')).toContainText('"errors":0');
 });
 test('transparent images use premultiplied alpha without inherited flip state', async ({ page }) => {
@@ -120,4 +127,68 @@ test('large HUD stays within the batch draw-call budget', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => (window as any).contract.root.frame().drawCalls)).toBeGreaterThan(0);
   expect(await page.evaluate(() => (window as any).contract.root.frame().drawCalls)).toBeLessThan(8);
   await expect(page.locator('#status')).toContainText('"errors":0');
+});
+
+test('engine-owned backing dimensions keep CSS layout and pointer coordinates', async ({ page }) => {
+  await page.locator('#size').click();
+  await expect(page.locator('#status')).toContainText('"height":240');
+  await scenario(page, 'scale');
+  const box = await page.locator('canvas').boundingBox();
+  await page.mouse.click(box!.x + 80, box!.y + 80);
+  await count(page, 1);
+  await expect(page.locator('#status')).toContainText('"cssHeight":360');
+});
+
+test('UI frames preserve the engine VAO and its element buffer', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const { root, gl } = (window as any).contract;
+    const ext = gl.getExtension('OES_vertex_array_object');
+    if (!ext) throw new Error('VAO extension unavailable');
+    const vao = ext.createVertexArrayOES(),
+      indices = gl.createBuffer();
+    ext.bindVertexArrayOES(vao);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2]), gl.STATIC_DRAW);
+    root.frame();
+    const same =
+      gl.getParameter(ext.VERTEX_ARRAY_BINDING_OES) === vao &&
+      gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING) === indices;
+    ext.bindVertexArrayOES(null);
+    ext.deleteVertexArrayOES(vao);
+    gl.deleteBuffer(indices);
+    return same;
+  });
+  expect(result).toBe(true);
+});
+
+test('separate roots own cancellation, parent styles and duplicate-mount guards', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const api = (window as any).contract,
+      parent = document.querySelector('#stage')! as HTMLElement;
+    let duplicate = false;
+    try {
+      await api.createUI({ canvas: api.canvas });
+    } catch (error) {
+      duplicate = String(error).includes('already');
+    }
+    const second = document.createElement('canvas');
+    parent.appendChild(second);
+    const lifetime = new AbortController();
+    const other = await api.createUI({ canvas: second, signal: lifetime.signal, autoStart: false });
+    api.root.destroy();
+    const remains = parent.style.position === 'relative';
+    lifetime.abort();
+    const restored = parent.style.position === '';
+    const mirrors = parent.querySelectorAll('[data-ludic-canvas]').length;
+    second.remove();
+    return { duplicate, remains, restored, mirrors };
+  });
+  expect(result).toEqual({ duplicate: true, remains: true, restored: true, mirrors: 0 });
+});
+
+test('touch input activates a control once', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, 'Touch project only');
+  const box = await page.locator('canvas').boundingBox();
+  await page.touchscreen.tap(box!.x + 40, box!.y + 30);
+  await count(page, 1);
 });

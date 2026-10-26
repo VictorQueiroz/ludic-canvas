@@ -6,12 +6,15 @@ export interface ResourceLimits {
   maxTextureSize: number;
   /** Maximum concurrent image fetch/decode/upload tasks. Default: 4. */
   maxConcurrentLoads: number;
+  /** Combined RGBA font atlas allocation per root. Default: 64 MiB. */
+  maxFontBytes: number;
 }
 
 export const defaultResourceLimits: Readonly<ResourceLimits> = Object.freeze({
   maxBytes: 32 * 1024 * 1024,
   maxTextureSize: 8192,
   maxConcurrentLoads: 4,
+  maxFontBytes: 64 * 1024 * 1024,
 });
 
 export function throwIfAborted(signal?: AbortSignal) {
@@ -79,16 +82,20 @@ export class LoadQueue {
   run<T>(work: () => Promise<T>, signal: AbortSignal): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       let canceled = signal.aborted;
+      let task: (() => void) | undefined;
       const cancel = () => {
         canceled = true;
+        if (task) {
+          const index = this.#pending.indexOf(task);
+          if (index >= 0) this.#pending.splice(index, 1);
+        }
         reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
       };
       if (canceled) {
         cancel();
         return;
       }
-      signal.addEventListener('abort', cancel, { once: true });
-      this.#pending.push(() => {
+      task = () => {
         signal.removeEventListener('abort', cancel);
         if (canceled) return;
         this.#active++;
@@ -99,7 +106,9 @@ export class LoadQueue {
             this.#active--;
             this.#drain();
           });
-      });
+      };
+      signal.addEventListener('abort', cancel, { once: true });
+      this.#pending.push(task);
       this.#drain();
     });
   }
