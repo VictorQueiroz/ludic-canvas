@@ -50,6 +50,14 @@ test('pointer capture and keyboard semantics support a slider', async ({ page })
   await page.keyboard.press('ArrowRight');
   await expect(slider).toHaveAttribute('aria-valuenow', '81');
 });
+
+test('a startup modal returns focus to the canvas when no prior control exists', async ({ page }) => {
+  await scenario(page, 'modal');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).press('Enter');
+  await expect(page.locator('canvas')).toBeFocused();
+  await page.keyboard.press('b');
+  await count(page, 1);
+});
 test('scale propagates to child drawing and hit testing', async ({ page }) => {
   await scenario(page, 'scale');
   const box = await page.locator('canvas').boundingBox();

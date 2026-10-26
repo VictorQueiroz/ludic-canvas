@@ -391,7 +391,12 @@ export class InputSystem {
     if (changedModal) {
       this.#cancel();
       if (!this.#modal && modal)
-        this.#previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+        this.#previousFocus =
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement !== document.body &&
+          document.activeElement !== document.documentElement
+            ? document.activeElement
+            : this.#canvas;
       this.#modal = modal;
     }
     const live = new Set<HostNode>();
@@ -450,7 +455,7 @@ export class InputSystem {
       }
     if (changedModal) {
       if (modal) (this.#eligible()[0]?.[1] ?? this.#canvas).focus({ preventScroll: true });
-      else if (this.#previousFocus?.isConnected) this.#previousFocus.focus({ preventScroll: true });
+      else (this.#previousFocus?.isConnected ? this.#previousFocus : this.#canvas).focus({ preventScroll: true });
       if (!modal) this.#previousFocus = undefined;
     }
   }
