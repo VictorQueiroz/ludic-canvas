@@ -1,5 +1,5 @@
 import { createUI, type UIRoot } from 'ludic-canvas';
-import { createSurvey } from './game.ts';
+import { advanceSurvey, createSurvey } from './game.ts';
 import { createSurveyWorld, type SurveyWorld } from './world.ts';
 import { SurveyHud } from './ui/Hud.tsx';
 import { displayFont } from './ui/fonts.ts';
@@ -171,8 +171,8 @@ export async function mountSurvey() {
       if (destroyed) return;
       try {
         if (!document.hidden && visible && width > 0 && height > 0) {
-          const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60;
-          if (!world!.contextLost) game.tick(dt);
+          const dt = last ? Math.min(0.25, (now - last) / 1000) : 1 / 60;
+          if (!world!.contextLost) advanceSurvey(game, dt);
           const state = game.read();
           if (state.dialog !== 'none' || state.complete) releaseKeys();
           if (reduced !== state.reducedMotion) {

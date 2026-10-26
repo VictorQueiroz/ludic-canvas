@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { createSurvey, sites, terrainHeight } from '../examples/kestrel-survey/src/game.ts';
+import { advanceSurvey, createSurvey, sites, terrainHeight } from '../examples/kestrel-survey/src/game.ts';
 const tick = (game: ReturnType<typeof createSurvey>, seconds: number) => {
   for (let i = 0; i < seconds * 20; i++) game.tick(0.05);
   game.publish();
 };
 describe('Kestrel Survey simulation', () => {
+  it('advances slow frames through bounded steps instead of slowing game time', () => {
+    const game = createSurvey();
+    game.setInput(1, 0);
+    advanceSurvey(game, 0.2);
+    expect(game.read().elapsed).toBeCloseTo(0.2);
+    expect(game.read().distance).toBeCloseTo(1);
+    advanceSurvey(game, 3);
+    expect(game.read().elapsed).toBeCloseTo(0.45);
+  });
   it('requires proximity before collecting a sample', () => {
     const game = createSurvey();
     game.scan();

@@ -233,3 +233,14 @@ export function createSurvey() {
   return api;
 }
 export type SurveyGame = ReturnType<typeof createSurvey>;
+
+/** Catch up a slow foreground frame without changing the simulation step size. */
+export function advanceSurvey(game: SurveyGame, delta: number) {
+  if (!Number.isFinite(delta) || delta <= 0) return;
+  let remaining = Math.min(delta, 0.25);
+  while (remaining > 0.000001) {
+    const step = Math.min(remaining, 0.05);
+    game.tick(step);
+    remaining -= step;
+  }
+}

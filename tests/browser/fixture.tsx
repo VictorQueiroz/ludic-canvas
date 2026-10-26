@@ -65,7 +65,7 @@ function App() {
           <Text>Disabled</Text>
         </View>
       )}
-      {scenario === 'modal' && open && (
+      {(scenario === 'modal' || scenario === 'animated') && open && (
         <View
           modal
           style={{
@@ -80,22 +80,27 @@ function App() {
           }}
         >
           <View
-            id="close"
-            label="Close dialog"
-            onPress={() => setOpen(false)}
-            style={{ height: 50, background: '#304060' }}
+            enter={scenario === 'animated' ? { opacity: 0, delay: 120, duration: 200 } : undefined}
+            style={{ gap: 10 }}
           >
-            <Text>Close dialog</Text>
-          </View>
-          <View
-            id="other"
-            label="Other action"
-            onPress={() => {
-              count += 10;
-            }}
-            style={{ height: 50, background: '#304060' }}
-          >
-            <Text>Other action</Text>
+            <View
+              id="close"
+              label="Close dialog"
+              onPress={() => setOpen(false)}
+              style={{ height: 50, background: '#304060' }}
+            >
+              <Text>Close dialog</Text>
+            </View>
+            <View
+              id="other"
+              label="Other action"
+              onPress={() => {
+                count += 10;
+              }}
+              style={{ height: 50, background: '#304060' }}
+            >
+              <Text>Other action</Text>
+            </View>
           </View>
         </View>
       )}

@@ -14,6 +14,12 @@ test('a Three.js world and custom canvas controls complete a full survey', async
       .evaluate((canvas) => Boolean((canvas as HTMLCanvasElement).getContext('webgl2'))),
   ).toBe(true);
   await expect(page.locator('#survey-stats')).toContainText('2 font families');
+  // Software-rendered CI uses the real low-power control; rendering quality
+  // and the default scene are also covered by the other browser cases.
+  await page.getByRole('button', { name: 'Open survey settings', exact: true }).press('Enter');
+  await expect(page.getByRole('button', { name: 'Close panel', exact: true })).toBeFocused();
+  await page.getByRole('switch', { name: 'Toggle low power rendering', exact: true }).press('Space');
+  await page.keyboard.press('Escape');
   const names = ['Basalt Rise', 'Amber Shelf', 'Echo Spire'];
   for (const [index, name] of names.entries()) {
     if (index) {
@@ -32,6 +38,7 @@ test('a Three.js world and custom canvas controls complete a full survey', async
 });
 test('custom settings expose keyboard zoom, switches and modal focus', async ({ page }) => {
   await page.getByRole('button', { name: 'Open survey settings', exact: true }).press('Enter');
+  await expect(page.getByRole('button', { name: 'Close panel', exact: true })).toBeFocused();
   const slider = page.getByRole('slider', { name: 'Camera distance', exact: true });
   const before = Number(await slider.getAttribute('aria-valuenow'));
   await slider.press('ArrowRight');
