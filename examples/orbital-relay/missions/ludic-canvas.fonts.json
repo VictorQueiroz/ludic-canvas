@@ -1,0 +1,5 @@
+{
+  "$schema": "../../../../font-atlas.schema.json",
+  "output": "fonts/generated",
+  "fonts": [{ "name": "telemetry", "source": "fonts/SpaceMono-Regular.ttf", "size": 48, "distanceRange": 6 }]
+}

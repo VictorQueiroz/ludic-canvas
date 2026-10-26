@@ -30,6 +30,7 @@ for (const file of [
   'site/index.html',
   'site/guide/index.html',
   'site/api/index.html',
+  'site/play/index.html',
 ]) {
   if (!existsSync(file)) throw new Error('Missing distribution file: ' + file);
 }
