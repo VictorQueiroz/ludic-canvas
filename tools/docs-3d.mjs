@@ -23,7 +23,7 @@ const ui = await createUI({
 ui.render(<SurveyHud game={game} width={width} height={height} onGround={pickGround} />);
 
 function frame(now: number) {
-  game.tick(deltaSeconds);
+  advanceSurvey(game, deltaSeconds); // Bounded simulation steps on slow frames
   world.draw(game.read(), width, height, deltaSeconds);
   game.publish(world.project()); // World coordinates -> CSS-pixel labels
   ui.frame(now);

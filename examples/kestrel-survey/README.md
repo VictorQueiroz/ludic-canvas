@@ -46,7 +46,7 @@ Power recharges while stationary. Settings include reduced motion and a low-powe
 
 The two canvases share a positioned container and CSS dimensions. Three.js renders a WebGL 2 world first. A transparent Ludic Canvas WebGL 1 canvas renders the interface afterward. They do not share graphics contexts. Camera projection converts 3D positions to CSS-pixel labels; pointer coordinates travel in the other direction through a Three.js raycast. Blocking HUD panels keep their clicks out of the world input surface.
 
-The world draws at display refresh rate; immutable React snapshots and projected label positions publish approximately 14 times per second. A single application-owned loop advances both layers. Visibility changes pause the simulation; focus loss clears held keys. Context restoration is handled separately by each renderer. Leaving the scene removes listeners and observers and disposes UI, geometries, materials, shadow resources and the renderer.
+The world draws at display refresh rate; immutable React snapshots and projected label positions publish approximately 14 times per second. A single application-owned loop advances both layers. Simulation updates use steps of at most 50 ms and catch up at most 250 ms per foreground frame. Visibility changes pause the simulation; focus loss clears held keys. Context restoration is handled separately by each renderer. Leaving the scene removes listeners and observers and disposes UI, geometries, materials, shadow resources and the renderer.
 
 This is a small navigation/sampling game with kinematic movement, not a physics simulation. The world is procedural and has no downloaded models or textures.
 
