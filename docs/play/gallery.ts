@@ -5,6 +5,7 @@ if (query.get('embed') === '1') {
 } else {
   const cards = [...document.querySelectorAll<HTMLButtonElement>('[data-game]')];
   const player = document.querySelector<HTMLIFrameElement>('#example-player')!;
+  const viewer = document.querySelector<HTMLElement>('.example-viewer')!;
   const title = document.querySelector<HTMLElement>('#selected-example')!;
   const renderer = document.querySelector<HTMLElement>('#selected-renderer')!;
   const open = document.querySelector<HTMLAnchorElement>('#open-example')!;
@@ -12,7 +13,8 @@ if (query.get('embed') === '1') {
   const notes = [...document.querySelectorAll<HTMLElement>('[data-integration]')];
   let selected = '';
   const select = (id: string | null, navigate: boolean) => {
-    const card = cards.find((item) => item.dataset.game === id) ?? cards[0]!;
+    const requested = cards.find((item) => item.dataset.game === id);
+    const card = requested ?? cards[0]!;
     const game = card.dataset.game!;
     if (game === selected) return;
     selected = game;
@@ -25,6 +27,11 @@ if (query.get('embed') === '1') {
     open.href = card.dataset.page!;
     player.title = `Play ${card.dataset.title}`;
     player.dataset.example = game;
+    if (requested && matchMedia('(max-width: 1100px)').matches) {
+      // Explicit mobile selections should reveal the game before its first frame.
+      viewer.style.scrollMarginTop = `${document.querySelector('header')!.getBoundingClientRect().height + 12}px`;
+      viewer.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
     // The gallery owns Back/Forward; game changes must not add iframe history entries.
     player.contentWindow!.location.replace(new URL(card.dataset.src!, location.href).href);
     announcement.textContent = `${card.dataset.title} selected.`;

@@ -9,6 +9,7 @@ test('the Play gallery switches one game viewport and its integration notes', as
   const kestrel = page.getByRole('button', { name: /Kestrel Survey/ });
   const player = page.locator('#example-player');
   const game = page.frameLocator('#example-player');
+  await player.scrollIntoViewIfNeeded();
   await expect(orbital).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('iframe')).toHaveCount(1);
   await expect(game.getByRole('button', { name: 'Launch courier', exact: true })).toBeAttached();
@@ -21,6 +22,7 @@ test('the Play gallery switches one game viewport and its integration notes', as
   await expect(kestrel).toHaveAttribute('aria-pressed', 'true');
   await expect(orbital).toHaveAttribute('aria-pressed', 'false');
   await expect(player).toHaveAttribute('data-example', 'kestrel-survey');
+  await expect(player).toBeInViewport({ ratio: 0.5 });
   await expect(game.getByRole('button', { name: 'Pause survey', exact: true })).toBeAttached();
   await expect(page.getByRole('heading', { name: 'How Kestrel Survey uses Ludic Canvas.', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'How Orbital Relay uses Ludic Canvas.', exact: true })).toHaveCount(0);
