@@ -114,7 +114,7 @@ async function main() {
   rmSync(resourceDir, { recursive: true, force: true });
   mkdirSync(join(resourceDir, 'lib'), { recursive: true });
   symlinkSync(join(hostResourceDir, 'include'), join(resourceDir, 'include'));
-  cpSync(builtins, join(resourceDir, 'lib'), { recursive: true });
+  cpSync(builtins, join(resourceDir, 'lib'), { recursive: true, dereference: true });
 
   const config = { llvmRoot, clang, wasmLd, clangVersion, sysroot, resourceDir, wasiSdk: WASI_SDK.release };
   writeFileSync(join(OUT, 'toolchain.json'), JSON.stringify(config, null, 2) + '\n');
