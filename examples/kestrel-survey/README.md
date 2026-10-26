@@ -60,3 +60,5 @@ npm run fonts
 ```
 
 The bundled font compiler runs during development. Runtime text uses the generated PNG/JSON files; source fonts and native build tools are unnecessary in the browser.
+
+License notices for the standalone production build are included in `public/third-party-notices.txt`.
