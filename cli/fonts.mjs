@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, open, readFile, realpath, rename, rm, writeFile } from 
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { encodePng } from './png.mjs';
+import { Worker } from 'node:worker_threads';
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const plainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -96,33 +97,42 @@ async function cached(entry, output, inputHash) {
 }
 
 async function compileFont(font, fontBytes, module, directory) {
-  const { WASI } = await import('node:wasi');
   const work = await mkdtemp(join(directory, 'face-'));
   await writeFile(join(work, 'source.font'), fontBytes);
   await writeFile(join(work, 'charset.txt'), font.charset);
-  const stderr = await open(join(work, 'stderr.txt'), 'w');
+  const args = [
+    'ludic-fontgen',
+    '/work/source.font',
+    '/work/charset.txt',
+    '/work/atlas.rgba',
+    '/work/metrics.json',
+    String(font.size),
+    String(font.distanceRange),
+    ...Object.entries(font.variations).map(([tag, value]) => `${tag}=${value}`),
+  ];
+  const worker = new Worker(new URL('./font-worker.mjs', import.meta.url), { workerData: { work, args, module } });
   let exitCode;
   try {
-    const wasi = new WASI({
-      version: 'preview1',
-      returnOnExit: true,
-      args: [
-        'ludic-fontgen',
-        '/work/source.font',
-        '/work/charset.txt',
-        '/work/atlas.rgba',
-        '/work/metrics.json',
-        String(font.size),
-        String(font.distanceRange),
-        ...Object.entries(font.variations).map(([tag, value]) => `${tag}=${value}`),
-      ],
-      preopens: { '/work': work },
-      stderr: stderr.fd,
+    exitCode = await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Font "${font.name}" exceeded the 120-second compiler deadline`)),
+        120000,
+      );
+      worker.once('message', (code) => {
+        clearTimeout(timer);
+        resolve(code);
+      });
+      worker.once('error', (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      worker.once('exit', (code) => {
+        clearTimeout(timer);
+        reject(new Error(`Font worker exited before returning a result (${code})`));
+      });
     });
-    const instance = await WebAssembly.instantiate(module, wasi.getImportObject());
-    exitCode = wasi.start(instance);
   } finally {
-    await stderr.close();
+    await worker.terminate();
   }
   const diagnostic = (await readFile(join(work, 'stderr.txt'), 'utf8')).trim();
   if (exitCode !== 0) fail(`Font "${font.name}" failed${diagnostic ? `: ${diagnostic}` : ` (exit ${exitCode})`}`);
@@ -139,12 +149,12 @@ async function compileFont(font, fontBytes, module, directory) {
 }
 
 /** Generate project-owned MTSDF atlases with the bundled, offline WASI compiler. */
-export async function generateFontAtlases(
+async function generateUnlocked(
   configFile = 'ludic-canvas.fonts.json',
-  { force = false, log = console.log } = {},
+  { force = false, log = console.log, config: validatedConfig } = {},
 ) {
   const path = resolve(configFile);
-  const config = validateConfig(await jsonFile(path), path);
+  const config = validatedConfig ?? validateConfig(await jsonFile(path), path);
   const manifestPath = join(config.output, 'font-atlas-manifest.json');
   const previous = await jsonFile(manifestPath, true);
   const wasmBytes = await readFile(new URL('../assets/fontgen.wasm', import.meta.url));
@@ -169,42 +179,56 @@ export async function generateFontAtlases(
     ),
   );
   if (targetPaths.has(await realpath(path))) fail('Configuration would be overwritten by generated output');
-  const inputs = await Promise.all(
-    config.fonts.map(async (font) => {
-      const source = await realpath(font.source).catch(() => fail(`Font source does not exist: ${font.source}`));
-      if (targetPaths.has(source)) fail(`Font source would be overwritten by generated output: ${font.source}`);
-      const bytes = await readFile(source);
-      if (bytes.length > 128 * 1024 * 1024) fail(`Font source exceeds 128 MiB: ${font.source}`);
-      const magic = bytes.subarray(0, 4).toString('hex');
-      if (!['00010000', '4f54544f', '74727565', '774f4646', '774f4632'].includes(magic))
-        fail(`Unsupported font data: ${font.source}. Use a single-face outline TTF, OTF, WOFF or WOFF2 file.`);
-      return {
-        font,
-        bytes,
-        inputHash: digest(
-          Buffer.concat([
-            bytes,
-            Buffer.from(
-              JSON.stringify({
-                format: 1,
-                name: font.name,
-                size: font.size,
-                distanceRange: font.distanceRange,
-                charset: font.charset,
-                variations: font.variations,
-                generatorHash,
-              }),
-            ),
-          ]),
-        ),
-      };
-    }),
-  );
+  const readInput = async (font) => {
+    const source = await realpath(font.source).catch(() => fail(`Font source does not exist: ${font.source}`));
+    if (targetPaths.has(source)) fail(`Font source would be overwritten by generated output: ${font.source}`);
+    const file = await open(source, 'r');
+    let bytes;
+    try {
+      const size = (await file.stat()).size;
+      if (size > 128 * 1024 * 1024) fail(`Font source exceeds 128 MiB: ${font.source}`);
+      bytes = Buffer.alloc(size + 1);
+      let length = 0;
+      while (length < bytes.length) {
+        const read = await file.read(bytes, length, bytes.length - length);
+        if (!read.bytesRead) break;
+        length += read.bytesRead;
+      }
+      if (length > size) fail(`Font source changed while reading: ${font.source}`);
+      bytes = bytes.subarray(0, length);
+    } finally {
+      await file.close();
+    }
+    const magic = bytes.subarray(0, 4).toString('hex');
+    if (!['00010000', '4f54544f', '74727565', '774f4646', '774f4632'].includes(magic))
+      fail(`Unsupported font data: ${font.source}. Use a single-face outline TTF, OTF, WOFF or WOFF2 file.`);
+    return {
+      font,
+      bytes,
+      inputHash: digest(
+        Buffer.concat([
+          bytes,
+          Buffer.from(
+            JSON.stringify({
+              format: 1,
+              name: font.name,
+              size: font.size,
+              distanceRange: font.distanceRange,
+              charset: font.charset,
+              variations: font.variations,
+              generatorHash,
+            }),
+          ),
+        ]),
+      ),
+    };
+  };
   const staging = await mkdtemp(join(tmpdir(), 'ludic-canvas-fonts-'));
   const results = [];
   let module;
   try {
-    for (const { font, bytes, inputHash } of inputs) {
+    for (const font of config.fonts) {
+      const { bytes, inputHash } = await readInput(font);
       const prior = Array.isArray(previous?.fonts)
         ? previous.fonts.find((entry) => plainObject(entry) && entry.name === font.name)
         : undefined;
@@ -257,4 +281,26 @@ export async function initConfig(configFile = 'ludic-canvas.fonts.json') {
   };
   await writeFile(path, JSON.stringify(sample, null, 2) + '\n', { flag: 'wx' });
   return path;
+}
+
+/** Serialize writers to the same output directory; compilation failures preserve existing outputs. */
+export async function generateFontAtlases(configFile = 'ludic-canvas.fonts.json', options = {}) {
+  const path = resolve(configFile);
+  const config = validateConfig(await jsonFile(path), path);
+  await mkdir(config.output, { recursive: true });
+  const lockPath = join(config.output, '.ludic-canvas-fonts.lock');
+  let lock;
+  try {
+    lock = await open(lockPath, 'wx');
+  } catch (error) {
+    if (error.code === 'EEXIST')
+      fail(`Font generation already owns ${config.output}. If a process was killed, remove ${lockPath} and retry.`);
+    throw error;
+  }
+  try {
+    return await generateUnlocked(path, { ...options, config });
+  } finally {
+    await lock.close();
+    await rm(lockPath, { force: true });
+  }
 }

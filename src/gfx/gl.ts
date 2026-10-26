@@ -11,7 +11,8 @@ export interface Program {
 
 export function createProgram(gl: GL, vertex: string, fragment: string): Program {
   const compile = (type: number, source: string) => {
-    const shader = gl.createShader(type)!;
+    const shader = gl.createShader(type);
+    if (!shader) throw new Error('Unable to allocate a WebGL shader');
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -21,29 +22,37 @@ export function createProgram(gl: GL, vertex: string, fragment: string): Program
     }
     return shader;
   };
-  const handle = gl.createProgram()!;
-  const vs = compile(gl.VERTEX_SHADER, vertex);
-  const fs = compile(gl.FRAGMENT_SHADER, fragment);
-  gl.attachShader(handle, vs);
-  gl.attachShader(handle, fs);
-  gl.linkProgram(handle);
-  gl.deleteShader(vs);
-  gl.deleteShader(fs);
-  if (!gl.getProgramParameter(handle, gl.LINK_STATUS)) {
-    throw new Error(`Program link failed: ${gl.getProgramInfoLog(handle)}`);
+  let handle: WebGLProgram | null = null;
+  let vs: WebGLShader | undefined, fs: WebGLShader | undefined;
+  try {
+    vs = compile(gl.VERTEX_SHADER, vertex);
+    fs = compile(gl.FRAGMENT_SHADER, fragment);
+    handle = gl.createProgram();
+    if (!handle) throw new Error('Unable to allocate a WebGL program');
+    gl.attachShader(handle, vs);
+    gl.attachShader(handle, fs);
+    gl.linkProgram(handle);
+    if (!gl.getProgramParameter(handle, gl.LINK_STATUS))
+      throw new Error(`Program link failed: ${gl.getProgramInfoLog(handle)}`);
+    const attrib: Record<string, number> = {};
+    for (let i = 0; i < gl.getProgramParameter(handle, gl.ACTIVE_ATTRIBUTES); i++) {
+      const info = gl.getActiveAttrib(handle, i)!;
+      attrib[info.name] = gl.getAttribLocation(handle, info.name);
+    }
+    const uniform: Record<string, WebGLUniformLocation | null> = {};
+    for (let i = 0; i < gl.getProgramParameter(handle, gl.ACTIVE_UNIFORMS); i++) {
+      const info = gl.getActiveUniform(handle, i)!;
+      const name = info.name.replace(/\[0\]$/, '');
+      uniform[name] = gl.getUniformLocation(handle, name);
+    }
+    return { handle, attrib, uniform };
+  } catch (error) {
+    if (handle) gl.deleteProgram(handle);
+    throw error;
+  } finally {
+    if (vs) gl.deleteShader(vs);
+    if (fs) gl.deleteShader(fs);
   }
-  const attrib: Record<string, number> = {};
-  for (let i = 0; i < gl.getProgramParameter(handle, gl.ACTIVE_ATTRIBUTES); i++) {
-    const info = gl.getActiveAttrib(handle, i)!;
-    attrib[info.name] = gl.getAttribLocation(handle, info.name);
-  }
-  const uniform: Record<string, WebGLUniformLocation | null> = {};
-  for (let i = 0; i < gl.getProgramParameter(handle, gl.ACTIVE_UNIFORMS); i++) {
-    const info = gl.getActiveUniform(handle, i)!;
-    const name = info.name.replace(/\[0\]$/, '');
-    uniform[name] = gl.getUniformLocation(handle, name);
-  }
-  return { handle, attrib, uniform };
 }
 
 /** Fragment precision: highp where available (UI SDFs work in device pixels). */
@@ -62,29 +71,61 @@ export interface Texture {
 export function createTexture(
   gl: GL,
   source: TexImageSource | { width: number; height: number; data: Uint8Array | null },
-  options: { premultiply?: boolean; linear?: boolean } = {},
+  options: { premultiply?: boolean; linear?: boolean; maxSize?: number } = {},
 ): Texture {
-  const handle = gl.createTexture()!;
-  gl.bindTexture(gl.TEXTURE_2D, handle);
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.premultiply ?? true);
-  gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
-  let width: number;
-  let height: number;
-  if ('data' in source) {
-    ({ width, height } = source);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, source.data);
-  } else {
-    width = (source as { width: number }).width;
-    height = (source as { height: number }).height;
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  const size = 'displayWidth' in source ? { width: source.displayWidth, height: source.displayHeight } : source;
+  const width = Number(
+    'videoWidth' in size ? size.videoWidth : 'naturalWidth' in size ? size.naturalWidth : size.width,
+  );
+  const height = Number(
+    'videoHeight' in size ? size.videoHeight : 'naturalHeight' in size ? size.naturalHeight : size.height,
+  );
+  const limit = Math.min(options.maxSize ?? 8192, gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width < 1 ||
+    height < 1 ||
+    width > limit ||
+    height > limit
+  )
+    throw new Error(`Texture dimensions ${width} x ${height} exceed the supported limit ${limit}`);
+  const handle = gl.createTexture();
+  if (!handle) throw new Error('Unable to allocate a WebGL texture');
+  // Decodes resolve between frames. Restore upload state so an engine's cached
+  // bindings, alignment and Y orientation remain valid until the UI draw pass.
+  const binding = gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture | null;
+  const parameters = [
+    gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,
+    gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,
+    gl.UNPACK_FLIP_Y_WEBGL,
+    gl.UNPACK_ALIGNMENT,
+  ];
+  const values = parameters.map((parameter) => gl.getParameter(parameter) as number);
+  try {
+    gl.bindTexture(gl.TEXTURE_2D, handle);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.premultiply ?? true);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    if ('data' in source) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, source.data);
+    } else {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    }
+    const filter = options.linear === false ? gl.NEAREST : gl.LINEAR;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return { handle, width, height, bytes: width * height * 4 };
+  } catch (error) {
+    gl.deleteTexture(handle);
+    throw error;
+  } finally {
+    for (const [index, parameter] of parameters.entries()) gl.pixelStorei(parameter, values[index]!);
+    gl.bindTexture(gl.TEXTURE_2D, binding);
   }
-  const filter = options.linear === false ? gl.NEAREST : gl.LINEAR;
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-  return { handle, width, height, bytes: width * height * 4 };
 }
 
 export interface Framebuffer {

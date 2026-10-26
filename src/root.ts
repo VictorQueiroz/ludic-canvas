@@ -7,6 +7,7 @@ import { createTexture, parseColor } from './gfx/gl.ts';
 import { TextureStore } from './gfx/textures.ts';
 import { UiRuntime } from './runtime/runtime.ts';
 import { YogaLayout } from './wasm/layout.ts';
+import { defaultResourceLimits, fetchBytes, throwIfAborted, type ResourceLimits } from './resources.ts';
 
 /** An MTSDF atlas and its metrics, produced by msdf-atlas-gen. Maximum: four faces per root. */
 export interface FontSource {
@@ -30,6 +31,8 @@ export interface FrameInfo {
   cssWidth: number;
   cssHeight: number;
   drawCalls: number;
+  contextLost: boolean;
+  textureBytes: number;
 }
 
 /** Browser root configuration. Game state and image content stay application-owned. */
@@ -59,6 +62,11 @@ export interface UIOptions {
   reducedMotion?: boolean;
   /** Soft cache budget in bytes. Currently visible textures may exceed it. */
   textureBudgetBytes?: number;
+  /** Abort initialization; after initialization, abort destroys this root. */
+  signal?: AbortSignal;
+  resourceLimits?: Partial<ResourceLimits>;
+  onContextLost?: () => void;
+  onContextRestored?: () => void;
   onError?: (error: unknown) => void;
 }
 
@@ -80,40 +88,144 @@ export interface UIRoot {
   /** Preload image identifiers. Rejects on unknown assets or failed requests. */
   preloadImages(ids: readonly string[]): Promise<void>;
   /** Host tree with computed boxes for development tools. */
+  invalidateImages(ids?: readonly string[]): void;
+  /** Focus a named pressable, or navigate spatially from a gamepad adapter. */
+  focus(id: string): boolean;
+  navigate(direction: 'up' | 'down' | 'left' | 'right'): boolean;
+  activateFocused(): boolean;
   inspect(): unknown;
 }
 
-const mounted = new WeakSet<HTMLCanvasElement>();
+// Ownership lives on the associated DOM surface, including across bundled copies.
+const ownerKey = Symbol.for('ludic-canvas.root');
+const parentKey = Symbol.for('ludic-canvas.parent-position');
+type OwnedCanvas = HTMLCanvasElement & { [ownerKey]?: object };
+type OwnedParent = HTMLElement & { [parentKey]?: { count: number; original: string } };
 function positive(value: number, name: string) {
   if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} must be a positive finite number`);
+}
+function positionParent(parent: OwnedParent): () => void {
+  let state = parent[parentKey];
+  if (state) state.count++;
+  else if (getComputedStyle(parent).position === 'static') {
+    state = parent[parentKey] = { count: 1, original: parent.style.position };
+    parent.style.position = 'relative';
+  }
+  if (!state) return () => {};
+  return () => {
+    if (--state.count === 0) {
+      if (parent.style.position === 'relative') parent.style.position = state.original;
+      delete parent[parentKey];
+    }
+  };
 }
 
 /** Create a React → Yoga WebAssembly → WebGL interface on a browser canvas. */
 export async function createUI(options: UIOptions): Promise<UIRoot> {
-  const { canvas } = options;
-  if (mounted.has(canvas)) throw new Error('This canvas already has a UI root');
+  const canvas = options.canvas as OwnedCanvas;
+  if (canvas[ownerKey]) throw new Error('This canvas already has a UI root');
+  throwIfAborted(options.signal);
   positive(options.maxDpr ?? 2, 'maxDpr');
   positive(options.textScale ?? 1, 'textScale');
   positive(options.textureBudgetBytes ?? 64 * 1024 * 1024, 'textureBudgetBytes');
+  const limits = { ...defaultResourceLimits, ...options.resourceLimits };
+  for (const [name, value] of Object.entries(limits)) {
+    positive(value, `resourceLimits.${name}`);
+    if (!Number.isSafeInteger(value)) throw new Error(`resourceLimits.${name} must be an integer`);
+  }
   const sources = options.fonts ?? [
     { name: 'default', atlas: defaultAssets.fontAtlas, metrics: defaultAssets.fontMetrics },
   ];
   if (!sources.length || sources.length > 4) throw new Error('Provide between one and four font atlases');
   if (new Set(sources.map((font) => font.name)).size !== sources.length || sources.some((font) => !font.name))
     throw new Error('Font names must be nonempty and unique');
-  mounted.add(canvas);
-  const report = options.onError ?? ((error: unknown) => console.error('[ludic-canvas]', error));
+  const owner = {};
+  canvas[ownerKey] = owner;
+  const lifetime = new AbortController();
+  const signal = lifetime.signal;
+  const report = (error: unknown) => {
+    try {
+      (options.onError ?? ((error: unknown) => console.error('[ludic-canvas]', error)))(error);
+    } catch (callbackError) {
+      console.error('[ludic-canvas] onError failed', callbackError);
+    }
+  };
+  const notify = (callback: (() => void) | undefined) => {
+    try {
+      callback?.();
+    } catch (error) {
+      report(error);
+    }
+  };
   const fonts = new FontBook();
-  let layout: YogaLayout | undefined;
-  let batch: UiBatch | undefined;
-  let textures: TextureStore | undefined;
-  let runtime: UiRuntime | undefined;
+  const loaded: { name: string; metrics: AtlasJson; blob: Blob }[] = [];
+  let layout: YogaLayout | undefined,
+    batch: UiBatch | undefined,
+    textures: TextureStore | undefined,
+    runtime: UiRuntime | undefined;
   let ownedA11y: HTMLElement | undefined;
   let restoreParent = () => {};
-  const originalTabIndex = canvas.getAttribute('tabindex');
-  const originalTouchAction = canvas.style.touchAction;
-  const originalCursor = canvas.style.cursor;
   let gl: WebGLRenderingContext | undefined;
+  let destroyed = false,
+    lost = false,
+    generation = 0,
+    raf = 0,
+    running = false,
+    last = 0;
+  const originalTabIndex = canvas.getAttribute('tabindex');
+  const originalTouchAction = canvas.style.touchAction,
+    originalCursor = canvas.style.cursor;
+  const cleanup = () => {
+    if (destroyed) return;
+    destroyed = true;
+    generation++;
+    running = false;
+    cancelAnimationFrame(raf);
+    lifetime.abort();
+    options.signal?.removeEventListener('abort', abort);
+    try {
+      runtime?.destroy();
+    } finally {
+      if (!runtime) layout?.dispose();
+      textures?.dispose();
+      batch?.dispose();
+      for (const font of fonts.all()) gl?.deleteTexture(font.texture.handle);
+      ownedA11y?.remove();
+      restoreParent();
+      if (originalTabIndex === null) canvas.removeAttribute('tabindex');
+      else canvas.setAttribute('tabindex', originalTabIndex);
+      canvas.style.touchAction = originalTouchAction;
+      canvas.style.cursor = originalCursor;
+      if (canvas[ownerKey] === owner) delete canvas[ownerKey];
+    }
+  };
+  const abort = () => cleanup();
+  options.signal?.addEventListener('abort', abort, { once: true });
+  const uploadFonts = async () => {
+    const created: Font[] = [];
+    try {
+      for (const [index, source] of loaded.entries()) {
+        const bitmap = await createImageBitmap(source.blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+        try {
+          throwIfAborted(signal);
+          if (gl!.isContextLost()) throw new Error('WebGL context lost while loading fonts');
+          const texture = createTexture(gl!, bitmap, { premultiply: false, maxSize: limits.maxTextureSize });
+          try {
+            created.push(new Font(source.name, index, source.metrics, texture));
+          } catch (error) {
+            gl!.deleteTexture(texture.handle);
+            throw error;
+          }
+        } finally {
+          bitmap.close();
+        }
+      }
+      return created;
+    } catch (error) {
+      for (const font of created) gl!.deleteTexture(font.texture.handle);
+      throw error;
+    }
+  };
   try {
     gl =
       options.context ??
@@ -127,32 +239,69 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
       undefined;
     if (!gl) throw new Error('WebGL 1 is unavailable');
     if (gl.canvas !== canvas) throw new Error('The context must belong to the supplied canvas');
-    layout = await YogaLayout.load(options.layout ?? defaultAssets.layout);
-    for (const [index, source] of sources.entries()) {
-      const metrics = typeof source.metrics === 'string' ? await loadFontJson(source.metrics) : source.metrics;
-      const response = await fetch(source.atlas);
-      if (!response.ok) throw new Error(`Font atlas failed: ${response.status} ${source.atlas}`);
-      const bitmap = await createImageBitmap(await response.blob(), {
-        premultiplyAlpha: 'none',
-        colorSpaceConversion: 'none',
-      });
-      try {
-        fonts.add(new Font(source.name, index, metrics, createTexture(gl, bitmap, { premultiply: false })));
-      } finally {
-        bitmap.close();
-      }
+    // GLSL 1.00 and OES vertex arrays are a WebGL 1 contract.
+    if (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext)
+      throw new Error('Supply a WebGL 1 context');
+    canvas.addEventListener(
+      'webglcontextlost',
+      (event) => {
+        event.preventDefault();
+        lost = true;
+        generation++;
+        runtime?.input.setEnabled(false);
+        textures?.invalidate();
+        notify(options.onContextLost);
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      'webglcontextrestored',
+      () => {
+        if (!runtime || destroyed) return;
+        const attempt = ++generation;
+        void (async () => {
+          const replacement = await uploadFonts();
+          if (destroyed || attempt !== generation) {
+            for (const font of replacement) gl!.deleteTexture(font.texture.handle);
+            return;
+          }
+          let next: UiBatch;
+          try {
+            next = new UiBatch(gl!);
+            next.setFonts(replacement);
+          } catch (error) {
+            for (const font of replacement) gl!.deleteTexture(font.texture.handle);
+            throw error;
+          }
+          batch?.dispose();
+          for (const font of fonts.all()) gl!.deleteTexture(font.texture.handle);
+          for (const font of replacement) fonts.replace(font);
+          batch = next;
+          lost = false;
+          last = 0;
+          notify(options.onContextRestored);
+        })().catch((error) => {
+          if (!destroyed) report(error);
+        });
+      },
+      { signal },
+    );
+    layout = await YogaLayout.load(options.layout ?? defaultAssets.layout, { signal, maxBytes: limits.maxBytes });
+    for (const source of sources) {
+      const metrics =
+        typeof source.metrics === 'string'
+          ? await loadFontJson(source.metrics, { signal, maxBytes: limits.maxBytes })
+          : source.metrics;
+      const bytes = await fetchBytes(source.atlas, { signal, maxBytes: limits.maxBytes, label: 'Font atlas' });
+      loaded.push({ name: source.name, metrics, blob: new Blob([bytes]) });
     }
+    for (const font of await uploadFonts()) fonts.add(font);
+    throwIfAborted(signal);
     let a11y = options.accessibilityContainer;
     if (!a11y) {
       const parent = canvas.parentElement;
       if (!parent) throw new Error('Attach the canvas or supply an accessibilityContainer');
-      const position = parent.style.position;
-      if (getComputedStyle(parent).position === 'static') {
-        parent.style.position = 'relative';
-        restoreParent = () => {
-          parent.style.position = position;
-        };
-      }
+      restoreParent = positionParent(parent);
       a11y = ownedA11y = document.createElement('div');
       a11y.dataset.ludicCanvas = 'accessibility';
       a11y.style.cssText = 'position:absolute;pointer-events:none;overflow:hidden';
@@ -160,21 +309,16 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
     }
     if (originalTabIndex === null) canvas.tabIndex = 0;
     canvas.style.touchAction = 'none';
-    textures = new TextureStore(gl, createAssetResolver(options.assets), options.textureBudgetBytes, report);
+    textures = new TextureStore(gl, createAssetResolver(options.assets), options.textureBudgetBytes, report, limits);
     batch = new UiBatch(gl);
     batch.setFonts(fonts.all());
-    runtime = new UiRuntime({ canvas, a11y, layout, fonts });
+    runtime = new UiRuntime({ canvas, a11y, layout, fonts, onError: report });
     Object.assign(runtime.theme, options.theme);
     runtime.setTextScale(options.textScale ?? 1);
     runtime.reducedMotion = options.reducedMotion ?? window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const context = gl,
-      ui = runtime,
+    const ui = runtime,
       cache = textures,
-      uiBatch = batch;
-    let destroyed = false,
-      raf = 0,
-      running = false,
-      last = 0;
+      context = gl;
     const clear = options.clearColor === undefined ? undefined : parseColor(options.clearColor);
     const ensureAlive = () => {
       if (destroyed) throw new Error('UI has been destroyed');
@@ -189,19 +333,36 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
         const rect = canvas.getBoundingClientRect();
         if (options.manageCanvasSize ?? !options.context) {
           const scale = Math.min(options.maxDpr ?? 2, window.devicePixelRatio || 1);
-          const width = Math.max(1, Math.round(rect.width * scale));
-          const height = Math.max(1, Math.round(rect.height * scale));
+          const width = Math.max(1, Math.round(rect.width * scale)),
+            height = Math.max(1, Math.round(rect.height * scale));
           if (canvas.width !== width) canvas.width = width;
           if (canvas.height !== height) canvas.height = height;
         }
         const width = canvas.width,
-          height = canvas.height;
-        const dpr = rect.width > 0 ? width / rect.width : 1;
+          height = canvas.height,
+          dpr = rect.width > 0 ? width / rect.width : 1;
+        const suspended =
+          lost || context.isContextLost() || rect.width <= 0 || rect.height <= 0 || width <= 0 || height <= 0;
+        ui.input.setEnabled(!suspended);
         if (ownedA11y) {
           ownedA11y.style.left = `${canvas.offsetLeft}px`;
           ownedA11y.style.top = `${canvas.offsetTop}px`;
           ownedA11y.style.width = `${rect.width}px`;
           ownedA11y.style.height = `${rect.height}px`;
+        }
+        const info = {
+          width,
+          height,
+          dpr,
+          cssWidth: rect.width,
+          cssHeight: rect.height,
+          drawCalls: 0,
+          contextLost: lost || context.isContextLost(),
+          textureBytes: cache.bytes,
+        };
+        if (suspended) {
+          last = 0;
+          return info;
         }
         context.bindFramebuffer(context.FRAMEBUFFER, null);
         context.viewport(0, 0, width, height);
@@ -211,7 +372,7 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
         context.disable(context.SCISSOR_TEST);
         context.colorMask(true, true, true, true);
         if (clear) {
-          context.clearColor(clear[0] * clear[3], clear[1] * clear[3], clear[2] * clear[3], clear[3]);
+          context.clearColor(...clear);
           context.clear(context.COLOR_BUFFER_BIT);
         } else if (!options.context) {
           context.clearColor(0, 0, 0, 0);
@@ -220,8 +381,8 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
         cache.tick();
         const dt = last ? Math.max(0, Math.min(0.1, (now - last) / 1000)) : 1 / 60;
         last = now;
-        ui.frame(uiBatch, cache, fonts, { width, height, dpr }, now, dt);
-        return { width, height, dpr, cssWidth: width / dpr, cssHeight: height / dpr, drawCalls: uiBatch.drawCalls };
+        ui.frame(batch!, cache, fonts, { width, height, dpr, cssWidth: rect.width, cssHeight: rect.height }, now, dt);
+        return { ...info, drawCalls: batch!.drawCalls, textureBytes: cache.bytes };
       },
       start() {
         ensureAlive();
@@ -247,22 +408,7 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
         raf = 0;
         last = 0;
       },
-      destroy() {
-        if (destroyed) return;
-        root.stop();
-        destroyed = true;
-        ui.destroy();
-        cache.dispose();
-        uiBatch.dispose();
-        for (const font of fonts.all()) context.deleteTexture(font.texture.handle);
-        ownedA11y?.remove();
-        restoreParent();
-        if (originalTabIndex === null) canvas.removeAttribute('tabindex');
-        else canvas.setAttribute('tabindex', originalTabIndex);
-        canvas.style.touchAction = originalTouchAction;
-        canvas.style.cursor = originalCursor;
-        mounted.delete(canvas);
-      },
+      destroy: cleanup,
       setTextScale(scale) {
         ensureAlive();
         positive(scale, 'textScale');
@@ -280,6 +426,22 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
         ensureAlive();
         return cache.preload(ids);
       },
+      invalidateImages(ids) {
+        ensureAlive();
+        cache.invalidate(ids);
+      },
+      focus(id) {
+        ensureAlive();
+        return ui.input.focus(id);
+      },
+      navigate(direction) {
+        ensureAlive();
+        return ui.input.navigate(direction);
+      },
+      activateFocused() {
+        ensureAlive();
+        return ui.input.activateFocused();
+      },
       inspect() {
         ensureAlive();
         return ui.dump();
@@ -288,18 +450,7 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
     if (options.autoStart !== false) root.start();
     return root;
   } catch (error) {
-    runtime?.destroy();
-    if (!runtime) layout?.dispose();
-    textures?.dispose();
-    batch?.dispose();
-    for (const font of fonts.all()) gl?.deleteTexture(font.texture.handle);
-    ownedA11y?.remove();
-    restoreParent();
-    if (originalTabIndex === null) canvas.removeAttribute('tabindex');
-    else canvas.setAttribute('tabindex', originalTabIndex);
-    canvas.style.touchAction = originalTouchAction;
-    canvas.style.cursor = originalCursor;
-    mounted.delete(canvas);
+    cleanup();
     throw error;
   }
 }

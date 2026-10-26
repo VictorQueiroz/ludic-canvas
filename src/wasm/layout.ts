@@ -47,14 +47,20 @@ export class YogaLayout {
     if (x.lcl_abi_version() !== LAYOUT_ABI_VERSION) throw new Error('lc_layout ABI mismatch');
   }
 
-  static async load(source: string | ArrayBuffer | Uint8Array): Promise<YogaLayout> {
+  static async load(
+    source: string | ArrayBuffer | Uint8Array,
+    options: { signal?: AbortSignal; maxBytes?: number } = {},
+  ): Promise<YogaLayout> {
     let self: YogaLayout | undefined;
-    const { instance } = await instantiate(source, (mem) =>
-      hostImports('lc_layout', mem, {
-        lcl_measure(ctx: number, w: number, wm: number, h: number, hm: number) {
-          self!.#measure(ctx, w, wm, h, hm);
-        },
-      }),
+    const { instance } = await instantiate(
+      source,
+      (mem) =>
+        hostImports('lc_layout', mem, {
+          lcl_measure(ctx: number, w: number, wm: number, h: number, hm: number) {
+            self!.#measure(ctx, w, wm, h, hm);
+          },
+        }),
+      options,
     );
     self = new YogaLayout(instance.exports as unknown as LayoutExports);
     return self;

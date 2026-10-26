@@ -181,7 +181,7 @@ const publicNames = new Set();
 for (const match of readFileSync('dist/index.d.ts', 'utf8').matchAll(/\{([^}]+)\}/g))
   for (const name of match[1].split(',')) if (name.trim()) publicNames.add(name.trim().replace(/^type\s+/, ''));
 const entries = [];
-for (const file of ['root', 'primitives', 'assets', 'defaults', 'runtime/types', 'gfx/font']) {
+for (const file of ['root', 'primitives', 'assets', 'defaults', 'runtime/types', 'gfx/font', 'resources']) {
   const source = readFileSync(`dist/${file}.d.ts`, 'utf8');
   const matches = [...source.matchAll(/^(?:export )?(?:declare )?(?:interface|type|const|function)\s+(\w+)/gm)];
   for (let index = 0; index < matches.length; index++) {

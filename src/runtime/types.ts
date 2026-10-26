@@ -82,6 +82,8 @@ export interface TextVisualStyle {
   weight?: number; // -0.1 … 0.15 SDF bias (thicker/thinner)
   shadow?: boolean;
   maxLines?: number;
+  /** Truncated maxLines text can end with an ellipsis. Default: clip. */
+  textOverflow?: 'clip' | 'ellipsis';
 }
 
 export interface ImageVisualStyle {
@@ -109,6 +111,24 @@ export interface Enter {
 }
 
 export interface Interactive {
+  /** Stable application identifier for root.focus(). */
+  id?: string;
+  /** Restrict this root's keyboard and focus navigation to the topmost modal subtree. */
+  modal?: boolean;
+  focusable?: boolean;
+  role?: 'button' | 'checkbox' | 'radio' | 'slider' | 'switch' | 'tab';
+  checked?: boolean;
+  expanded?: boolean;
+  selected?: boolean;
+  valueMin?: number;
+  valueMax?: number;
+  valueNow?: number;
+  valueText?: string;
+  onPointerDown?: (event: UIPointerEvent) => void;
+  onPointerMove?: (event: UIPointerEvent) => void;
+  onPointerUp?: (event: UIPointerEvent) => void;
+  onPointerCancel?: (event: UIPointerEvent) => void;
+  onKeyDown?: (event: UIKeyEvent) => void;
   onPress?: () => void;
   onHover?: (hovered: boolean) => void;
   /** Style overrides blended in while hovered / pressed / focused. */
@@ -122,6 +142,31 @@ export interface Interactive {
   /** Swallow presses/hover over this box (modal panels above a scrim). */
   block?: boolean;
   cursor?: 'pointer' | 'default';
+}
+
+export interface UIEvent {
+  preventDefault(): void;
+  stopPropagation(): void;
+}
+/** Coordinates are CSS pixels; local coordinates include the node's inherited scale. */
+export interface UIPointerEvent extends UIEvent {
+  x: number;
+  y: number;
+  localX: number;
+  localY: number;
+  pointerId: number;
+  pointerType: string;
+  button: number;
+  buttons: number;
+}
+export interface UIKeyEvent extends UIEvent {
+  key: string;
+  code: string;
+  repeat: boolean;
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
 }
 
 export interface CommonProps extends Interactive {

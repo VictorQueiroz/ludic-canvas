@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ludic Canvas browser contract</title>
+    <style>
+      body {
+        margin: 0;
+        background: #ddd;
+        font: 16px sans-serif;
+      }
+      #stage {
+        width: 320px;
+        height: 360px;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px;
+      }
+      button,
+      select {
+        font: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <label
+        >Scenario
+        <select id="scenario">
+          <option>basic</option>
+          <option>disabled</option>
+          <option>modal</option>
+          <option>pointer</option>
+          <option>scale</option>
+          <option>scroll</option>
+          <option>image</option>
+          <option>stress</option>
+        </select></label
+      ><button id="loss">Lose context</button><button id="restore">Restore context</button
+      ><button id="destroy">Destroy</button><button id="recreate">Recreate</button><button id="size">Engine size</button
+      ><button id="hidden">Hide canvas</button>
+    </nav>
+    <div id="stage"><canvas aria-label="Test interface"></canvas></div>
+    <output id="status">Loading</output>
+    <script type="module" src="./fixture.tsx"></script>
+  </body>
+</html>
