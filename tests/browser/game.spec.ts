@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('the built game launches, scopes pause input and resumes with keyboard', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('http://127.0.0.1:6174/play/');
+  await page.goto('http://127.0.0.1:6174/play/orbital-relay/');
   await page.getByRole('button', { name: 'Launch courier', exact: true }).press('Enter');
   await expect(page.locator('#game-ui')).toBeFocused();
   await expect(page.locator('#game-stats')).toContainText('2 MSDF families');
@@ -18,7 +18,7 @@ test('the built game launches, scopes pause input and resumes with keyboard', as
 
 test('the built game fits a narrow viewport with both font families', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto('http://127.0.0.1:6174/play/');
+  await page.goto('http://127.0.0.1:6174/play/orbital-relay/');
   await expect(page.getByRole('button', { name: 'Launch courier', exact: true })).toBeAttached();
   await expect(page.locator('#game-stats')).toContainText('2 MSDF families');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(

@@ -39,6 +39,24 @@
 .survey-document .game-heading {
   margin-bottom: 24px;
 }
+.game-page.embedded .survey-integration {
+  display: none;
+}
+.game-page.embedded .survey-frame {
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+.game-page.embedded .survey-frame #survey-stage {
+  flex: 1;
+  height: auto;
+  min-height: 560px;
+}
+.game-page.embedded .survey-status {
+  flex-shrink: 0;
+}
 @media (max-width: 850px) {
   .survey-frame #survey-stage {
     height: 720px;

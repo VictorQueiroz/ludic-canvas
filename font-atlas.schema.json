@@ -29,7 +29,8 @@
           "name": {
             "type": "string",
             "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$",
-            "description": "Unique face name and output filename stem; names are case-insensitive for collision checks."
+            "not": { "pattern": "^[fF][oO][nN][tT]-[aA][tT][lL][aA][sS]-[mM][aA][nN][iI][fF][eE][sS][tT]$" },
+            "description": "Unique face name and output filename stem; names are case-insensitive for collision checks. The name font-atlas-manifest is reserved, including case variants."
           },
           "source": {
             "type": "string",

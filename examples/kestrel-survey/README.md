@@ -2,7 +2,7 @@
 
 A complete 3D example project using **Three.js** for the world and **Ludic Canvas** for a fully custom interface. Pilot a rover across a procedural desert, collect samples at three mineral sites, and complete the survey.
 
-[Play the hosted example](https://libraries.ludic-canvas.victorqueiroz.dev/3d/).
+[Play the hosted example](https://libraries.ludic-canvas.victorqueiroz.dev/play/?example=kestrel-survey).
 
 ## Run independently
 
