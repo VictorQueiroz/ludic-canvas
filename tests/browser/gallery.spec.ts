@@ -61,6 +61,7 @@ test('the gallery and selected game fit 320 pixels, and legacy embeds still work
   await page.setViewportSize({ width: 320, height: 844 });
   await page.goto('http://127.0.0.1:6174/play/?example=kestrel-survey');
   const game = page.frameLocator('#example-player');
+  await expect(page.locator('#example-player')).toBeInViewport({ ratio: 0.5 });
   await expect(game.getByRole('button', { name: 'Open survey sites', exact: true })).toBeAttached();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(
