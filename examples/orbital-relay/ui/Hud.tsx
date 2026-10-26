@@ -74,7 +74,7 @@ function Overlay({ snapshot, game, compact }: { snapshot: Snapshot; game: Game; 
         )}
         <Button
           primary
-          hotkey="Enter"
+          hotkey={paused ? 'Escape' : 'Enter'}
           label={paused ? 'Resume flight' : ready ? 'Launch courier' : 'Fly again'}
           onPress={paused ? game.pause : game.start}
         >

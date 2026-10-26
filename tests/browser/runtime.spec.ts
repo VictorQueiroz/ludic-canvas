@@ -200,3 +200,47 @@ test('touch input activates a control once', async ({ page }, testInfo) => {
   await page.touchscreen.tap(box!.x + 40, box!.y + 30);
   await count(page, 1);
 });
+
+test('secondary pointers and cancellation cannot trigger a primary press', async ({ page }) => {
+  const box = await page.locator('canvas').boundingBox();
+  await page.mouse.move(box!.x + 40, box!.y + 30);
+  await page.mouse.down();
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas')!,
+      box = canvas.getBoundingClientRect();
+    for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'])
+      canvas.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          pointerId: 99,
+          pointerType: 'touch',
+          isPrimary: false,
+          button: 0,
+          buttons: 1,
+          clientX: box.left + 40,
+          clientY: box.top + 30,
+        }),
+      );
+  });
+  await page.mouse.up();
+  await count(page, 1);
+  await page.evaluate(() =>
+    document.querySelector('canvas')!.addEventListener(
+      'pointerdown',
+      (e) => {
+        (window as any).cancelId = e.pointerId;
+      },
+      { once: true },
+    ),
+  );
+  await page.mouse.down();
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas')!;
+    canvas.dispatchEvent(
+      new PointerEvent('pointercancel', { pointerId: (window as any).cancelId, pointerType: 'mouse', isPrimary: true }),
+    );
+  });
+  await page.mouse.up();
+  await count(page, 1);
+  await expect(page.locator('#status')).toContainText('"errors":0');
+});

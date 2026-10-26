@@ -82,6 +82,13 @@ export class InputSystem {
     listen(canvas, 'keydown', (e) => this.#key(e));
     listen(a11y, 'keydown', (e) => this.#key(e));
     window.addEventListener('blur', () => this.#cancel(), options);
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        if (document.hidden) this.#cancel();
+      },
+      options,
+    );
   }
   #report(error: unknown) {
     const report = this.#painter.hitList[0]?.ctx.onError;
@@ -196,7 +203,13 @@ export class InputSystem {
     return prevented;
   }
   #move(e: PointerEvent) {
-    if (!this.#enabled || (this.#pointerId !== undefined && e.pointerId !== this.#pointerId)) return;
+    if (
+      !this.#enabled ||
+      e.isPrimary === false ||
+      (e.pointerType === 'touch' && this.#pointerId === undefined) ||
+      (this.#pointerId !== undefined && e.pointerId !== this.#pointerId)
+    )
+      return;
     const [x, y] = this.#local(e);
     this.#pointer = [x, y];
     this.#lastEvent = e;
@@ -214,7 +227,7 @@ export class InputSystem {
     } else this.#hover(x, y);
   }
   #down(e: PointerEvent) {
-    if (!this.#enabled || e.button !== 0 || this.#pointerId !== undefined) return;
+    if (!this.#enabled || e.isPrimary === false || e.button !== 0 || this.#pointerId !== undefined) return;
     this.#canvas.focus({ preventScroll: true });
     this.onActivity();
     const [x, y] = this.#local(e);

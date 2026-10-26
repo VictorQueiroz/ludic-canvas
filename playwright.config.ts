@@ -14,11 +14,18 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  webServer: {
-    command: 'npm run test:browser:serve',
-    url: 'http://127.0.0.1:6173/tests/browser/',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'npm run test:browser:serve',
+      url: 'http://127.0.0.1:6173/tests/browser/',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'npm run docs:build && npm run docs:preview -- --host 127.0.0.1 --port 6174 --strictPort',
+      url: 'http://127.0.0.1:6174/play/',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
   projects: [
     {
       name: 'chromium',
