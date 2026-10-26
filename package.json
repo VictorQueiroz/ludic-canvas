@@ -59,8 +59,8 @@
     "wasm": "cmake --preset wasm-release && cmake --build --preset wasm-release -j 4",
     "fonts": "node tools/fontgen/build.mjs",
     "prepack": "npm run build",
-    "format": "prettier --write src tests tools cli examples .changeset docs/main.tsx docs/style.css docs/play/main.tsx docs/play/game.css *.json *.ts *.md .github",
-    "format:check": "prettier --check src tests tools cli examples .changeset docs/main.tsx docs/style.css docs/play/main.tsx docs/play/game.css *.json *.ts *.md .github",
+    "format": "prettier --write src tests tools cli examples .changeset docs/main.tsx docs/enhance.ts docs/style.css docs/play/main.tsx docs/play/game.css *.json *.ts *.md .github",
+    "format:check": "prettier --check src tests tools cli examples .changeset docs/main.tsx docs/enhance.ts docs/style.css docs/play/main.tsx docs/play/game.css *.json *.ts *.md .github",
     "prepare": "npm run build",
     "changeset": "changeset",
     "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts && npm run build && npm run docs:generate",
@@ -84,6 +84,7 @@
     "@types/react-reconciler": "0.34.1",
     "prettier": "3.9.10",
     "react": "19.3.1",
+    "shiki": "4.5.0",
     "typescript": "7.0.2",
     "vite": "8.3.5",
     "vitest": "5.0.5"
