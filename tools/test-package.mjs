@@ -75,8 +75,23 @@ ui.render(createElement(Text, null, 'A?'));\n`,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   await access(join(project, 'dist/fonts/interface.png'));
+  // Build the exact first-run source shown in the guide, against the installed tarball.
+  await copyFile(join(root, 'examples/starter/main.tsx'), join(project, 'starter.tsx'));
+  await writeFile(
+    join(project, 'index.html'),
+    '<!doctype html><html><body><div id="root"></div><script type="module" src="/starter.tsx"></script></body></html>',
+  );
+  await writeFile(
+    join(project, 'vite.config.mjs'),
+    "export default { oxc: { jsx: { runtime: 'automatic', importSource: 'react' } } };\n",
+  );
+  execFileSync(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'build'], {
+    cwd: project,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   console.log(
-    `Packed consumer verified: normal install, CLI bin, WOFF2 generation, cache and Vite build (${packed.size} package bytes)`,
+    `Packed consumer verified: normal install, CLI bin, WOFF2 generation, cache and both Vite examples, including the documentation starter (${packed.size} package bytes)`,
   );
 } catch (error) {
   if (error.stderr) console.error(error.stderr.toString());

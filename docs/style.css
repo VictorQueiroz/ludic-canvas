@@ -506,6 +506,231 @@ pre {
   tab-size: 2;
   white-space: pre;
 }
+.code-block {
+  min-width: 0;
+  max-width: 100%;
+  margin: 20px 0;
+  border: 1px solid #304159;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #0d1117;
+}
+.code-block figcaption {
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 15px;
+  border-bottom: 1px solid #29394f;
+  background: #131f30;
+  font:
+    11px/1.5 Menlo,
+    ui-monospace,
+    monospace;
+  color: #c2cfe0;
+}
+.code-title {
+  overflow-wrap: anywhere;
+}
+.code-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.code-language {
+  color: #a4b4cb;
+  font-size: 10px;
+}
+.code-actions button {
+  color: #c7d9ff;
+  background: #1b2c43;
+  border: 1px solid #405674;
+  border-radius: 4px;
+  padding: 4px 9px;
+  font: inherit;
+  cursor: pointer;
+}
+.code-actions button:hover {
+  background: #29405e;
+}
+.code-block pre,
+.document .code-block pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 20px;
+  font:
+    12px/1.8 Menlo,
+    ui-monospace,
+    monospace;
+}
+.code-block pre:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+.code-block pre code {
+  font: inherit;
+}
+.start-section > .code-block {
+  margin: 0;
+  align-self: start;
+}
+.page-toc {
+  width: 100%;
+}
+.page-toc summary {
+  display: none;
+}
+.page-toc > div {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.learning-path {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 26px 0 36px;
+}
+.learning-path a {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px;
+  border: 1px solid #304159;
+  border-radius: 8px;
+  background: #111d2d;
+}
+.learning-path a:hover {
+  border-color: var(--blue);
+}
+.learning-path span {
+  color: var(--mint);
+  font:
+    9px/1.5 Menlo,
+    ui-monospace,
+    monospace;
+}
+.learning-path strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.learning-path small {
+  color: #a5b5cb;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.doc-callout {
+  margin: 22px 0;
+  padding: 18px 20px;
+  border: 1px solid #38576b;
+  border-left: 3px solid var(--mint);
+  border-radius: 6px;
+  background: #10222f;
+}
+.doc-callout strong {
+  font-size: 14px;
+  color: #b5ead8;
+}
+.doc-callout p:last-child {
+  margin-bottom: 0;
+}
+.next-step {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--blue);
+  font-size: 14px;
+}
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.document table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.document th,
+.document td {
+  padding: 14px;
+  border: 1px solid #304159;
+  text-align: left;
+  vertical-align: top;
+  color: #a9b9d0;
+}
+.document th {
+  background: #17243a;
+  color: var(--text);
+  font-weight: 550;
+}
+.document td:first-child {
+  width: 27%;
+  color: #d6e0ee;
+}
+.document td a {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.document td code,
+.game-notes code {
+  font-family: Menlo, ui-monospace, monospace;
+  font-size: 0.9em;
+  color: #c7d9ff;
+  background: #17243a;
+  padding: 2px 4px;
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .code-block pre,
+  .document .code-block pre {
+    font-size: 11px;
+    padding: 16px;
+  }
+  .code-block figcaption {
+    padding: 8px 12px;
+  }
+  .page-toc summary {
+    display: list-item;
+    color: #c2cfe0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .page-toc > div {
+    padding-top: 16px;
+  }
+  .page-toc .aside-title {
+    display: none;
+  }
+  .learning-path {
+    grid-template-columns: 1fr;
+  }
+  .learning-path a {
+    gap: 5px;
+    padding: 13px;
+  }
+  .document section {
+    scroll-margin-top: 136px;
+  }
+  .document th,
+  .document td {
+    padding: 10px;
+    font-size: 12px;
+  }
+}
 p code,
 li code {
   font:
