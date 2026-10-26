@@ -107,46 +107,90 @@ export class UiBatch {
   readonly #program: Program;
   readonly #vbo: WebGLBuffer;
   readonly #ibo: WebGLBuffer;
+  readonly #vaoExtension: OES_vertex_array_object | null;
+  readonly #instancing: ANGLE_instanced_arrays | null;
+  readonly #vao: WebGLVertexArrayObjectOES | null;
+  #previousVao: WebGLVertexArrayObjectOES | null = null;
+  #disposed = false;
   readonly #data = new Float32Array(MAX_QUADS * 4 * FLOATS);
   #quads = 0;
   #image: Texture | undefined;
   #fonts: Font[] = [];
   #clip: [number, number, number, number] | undefined;
   #viewport: [number, number] = [1, 1];
+  #physical: [number, number] = [1, 1];
   #time = 0;
   drawCalls = 0;
 
   constructor(gl: GL) {
     this.#gl = gl;
     this.#program = createProgram(gl, VERTEX, FRAGMENT(fragmentPrecision(gl)));
-    this.#vbo = gl.createBuffer()!;
-    this.#ibo = gl.createBuffer()!;
+    this.#vaoExtension = gl.getExtension('OES_vertex_array_object');
+    this.#instancing = gl.getExtension('ANGLE_instanced_arrays');
+    this.#vao = this.#vaoExtension?.createVertexArrayOES() ?? null;
+    const vbo = gl.createBuffer(),
+      ibo = gl.createBuffer();
+    if (!vbo || !ibo || (this.#vaoExtension && !this.#vao)) {
+      if (vbo) gl.deleteBuffer(vbo);
+      if (ibo) gl.deleteBuffer(ibo);
+      if (this.#vao) this.#vaoExtension?.deleteVertexArrayOES(this.#vao);
+      gl.deleteProgram(this.#program.handle);
+      throw new Error('Unable to allocate WebGL batch resources');
+    }
+    this.#vbo = vbo;
+    this.#ibo = ibo;
     const indices = new Uint16Array(MAX_QUADS * 6);
     for (let i = 0, v = 0; i < indices.length; i += 6, v += 4) {
       indices.set([v, v + 1, v + 2, v + 2, v + 1, v + 3], i);
     }
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.#ibo);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    const previous = this.#vaoExtension
+      ? (gl.getParameter(this.#vaoExtension.VERTEX_ARRAY_BINDING_OES) as WebGLVertexArrayObjectOES | null)
+      : null;
+    const previousBuffer = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING) as WebGLBuffer | null;
+    try {
+      this.#vaoExtension?.bindVertexArrayOES(this.#vao);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.#ibo);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    } catch (error) {
+      this.dispose();
+      throw error;
+    } finally {
+      if (this.#vaoExtension) this.#vaoExtension.bindVertexArrayOES(previous);
+      else gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, previousBuffer);
+    }
   }
 
   dispose() {
+    if (this.#disposed) return;
+    this.#disposed = true;
     this.#gl.deleteBuffer(this.#vbo);
     this.#gl.deleteBuffer(this.#ibo);
     this.#gl.deleteProgram(this.#program.handle);
+    if (this.#vao) this.#vaoExtension?.deleteVertexArrayOES(this.#vao);
   }
 
   setFonts(fonts: Font[]) {
     this.#fonts = fonts;
   }
 
-  begin(width: number, height: number, time: number) {
+  begin(width: number, height: number, time: number, physicalWidth = width, physicalHeight = height) {
     this.#viewport = [width, height];
+    this.#physical = [physicalWidth, physicalHeight];
     this.#time = time;
     this.#quads = 0;
     this.#image = undefined;
     this.#clip = undefined;
     this.drawCalls = 0;
     const gl = this.#gl;
+    if (this.#vaoExtension) {
+      this.#previousVao = gl.getParameter(
+        this.#vaoExtension.VERTEX_ARRAY_BINDING_OES,
+      ) as WebGLVertexArrayObjectOES | null;
+      this.#vaoExtension.bindVertexArrayOES(this.#vao);
+    } else {
+      const count = gl.getParameter(gl.MAX_VERTEX_ATTRIBS) as number;
+      for (let index = 0; index < count; index++) gl.disableVertexAttribArray(index);
+    }
     gl.disable(gl.SCISSOR_TEST);
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
@@ -154,8 +198,12 @@ export class UiBatch {
   }
 
   end() {
-    this.flush();
-    this.#gl.disable(this.#gl.SCISSOR_TEST);
+    try {
+      this.flush();
+    } finally {
+      this.#gl.disable(this.#gl.SCISSOR_TEST);
+      this.#vaoExtension?.bindVertexArrayOES(this.#previousVao);
+    }
   }
 
   /** Clip subsequent primitives to a device-pixel rectangle (undefined = none). */
@@ -358,7 +406,16 @@ export class UiBatch {
     if (this.#clip) {
       const [x, y, w, h] = this.#clip;
       gl.enable(gl.SCISSOR_TEST);
-      gl.scissor(Math.floor(x), Math.floor(this.#viewport[1] - y - h), Math.ceil(w), Math.ceil(h));
+      const sx = this.#physical[0] / this.#viewport[0],
+        sy = this.#physical[1] / this.#viewport[1];
+      const left = Math.floor(x * sx),
+        bottom = Math.floor(this.#physical[1] - (y + h) * sy);
+      gl.scissor(
+        left,
+        bottom,
+        Math.max(0, Math.ceil((x + w) * sx) - left),
+        Math.max(0, Math.ceil(this.#physical[1] - y * sy) - bottom),
+      );
     } else {
       gl.disable(gl.SCISSOR_TEST);
     }
@@ -371,6 +428,7 @@ export class UiBatch {
       const loc = p.attrib[name];
       if (loc === undefined || loc < 0) return;
       gl.enableVertexAttribArray(loc);
+      this.#instancing?.vertexAttribDivisorANGLE(loc, 0);
       gl.vertexAttribPointer(loc, size, gl.FLOAT, false, stride, offset * 4);
     };
     attr('a_pos', 2, 0);

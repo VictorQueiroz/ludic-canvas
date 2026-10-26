@@ -3,6 +3,8 @@
 // stdio). Nothing here touches a real filesystem; stdout/stderr go to the
 // console and everything else reports "not supported".
 
+import { fetchBytes, throwIfAborted } from '../resources.ts';
+
 const ERRNO_SUCCESS = 0;
 const ERRNO_BADF = 8;
 const ERRNO_NOSYS = 52;
@@ -71,15 +73,16 @@ export function hostImports(name: string, mem: ModuleMemory, extraEnv: Record<st
 export async function instantiate(
   source: string | ArrayBuffer | Uint8Array,
   imports: (mem: ModuleMemory) => WebAssembly.Imports,
+  options: { signal?: AbortSignal; maxBytes?: number } = {},
 ): Promise<{ instance: WebAssembly.Instance; memory: WebAssembly.Memory }> {
   const mem: ModuleMemory = { memory: undefined };
   let bytes = source;
   if (typeof source === 'string') {
-    const response = await fetch(source);
-    if (!response.ok) throw new Error(`Layout module failed: ${response.status} ${source}`);
-    bytes = await response.arrayBuffer();
+    bytes = await fetchBytes(source, { ...options, label: 'Layout module' });
   }
+  throwIfAborted(options.signal);
   const { instance } = await WebAssembly.instantiate(bytes as BufferSource, imports(mem));
+  throwIfAborted(options.signal);
   mem.memory = instance.exports.memory as WebAssembly.Memory;
   // Reactor modules run their static constructors from _initialize.
   (instance.exports._initialize as (() => void) | undefined)?.();

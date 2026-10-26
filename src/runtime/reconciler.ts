@@ -24,6 +24,8 @@ const hostConfig = {
   extraDevToolsConfig: null,
 
   createInstance(type: HostType, props: AnyProps, container: Container): HostNode {
+    if (!['view', 'text', 'image', 'line'].includes(type))
+      throw new Error(`Unsupported canvas host type: ${type}. Use View, Text, Image or Line.`);
     return new HostNode(type, props, container.ctx);
   },
   createTextInstance(text: string): TextInstance {
@@ -151,9 +153,18 @@ export function createUiRoot(ctx: RuntimeContext): UiRoot {
     false,
     null,
     'lc',
-    (error) => console.error('Uncaught UI error', error),
-    (error) => console.error('Caught UI error', error),
-    (error) => console.warn('Recoverable UI error', error),
+    (error) => {
+      if (ctx.onError) ctx.onError(error);
+      else console.error('Uncaught UI error', error);
+    },
+    (error) => {
+      if (ctx.onError) ctx.onError(error);
+      else console.error('Caught UI error', error);
+    },
+    (error) => {
+      if (ctx.onError) ctx.onError(error);
+      else console.warn('Recoverable UI error', error);
+    },
     () => {},
     null,
   );

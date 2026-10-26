@@ -34,6 +34,8 @@ export interface RuntimeContext {
   fonts: FontBook;
   textScale: number;
   invalidate(): void;
+  onError?: (error: unknown) => void;
+  nextNodeId?: number;
 }
 
 export class TextInstance {
@@ -48,10 +50,8 @@ export class TextInstance {
   }
 }
 
-let nextId = 1;
-
 export class HostNode {
-  readonly id = nextId++;
+  readonly id: number;
   readonly type: HostType;
   readonly yoga: number;
   readonly ctx: RuntimeContext;
@@ -82,6 +82,7 @@ export class HostNode {
   #textCache = '';
 
   constructor(type: HostType, props: AnyProps, ctx: RuntimeContext) {
+    this.id = ctx.nextNodeId = (ctx.nextNodeId ?? 0) + 1;
     this.type = type;
     this.ctx = ctx;
     this.props = props;
@@ -114,7 +115,8 @@ export class HostNode {
       align: s.textAlign ?? 'left',
       upper: s.textTransform === 'uppercase',
       rich: Boolean(this.props.rich),
-      ...(s.maxLines ? { maxLines: s.maxLines } : {}),
+      ...(s.maxLines !== undefined ? { maxLines: s.maxLines } : {}),
+      ellipsis: s.textOverflow === 'ellipsis',
     };
   }
 
@@ -214,6 +216,7 @@ function textStyleChanged(a: AnyProps, b: AnyProps) {
     sa.letterSpacing !== sb.letterSpacing ||
     sa.textTransform !== sb.textTransform ||
     sa.maxLines !== sb.maxLines ||
+    sa.textOverflow !== sb.textOverflow ||
     sa.textAlign !== sb.textAlign ||
     a.rich !== b.rich
   );

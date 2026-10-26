@@ -6,7 +6,7 @@ import { Font, FontBook, type AtlasJson } from '../src/gfx/font.ts';
 import { createUiRoot } from '../src/runtime/reconciler.ts';
 import { HostNode } from '../src/runtime/nodes.ts';
 import { YogaLayout } from '../src/wasm/layout.ts';
-async function setup() {
+async function setup(onError?: (error: unknown) => void) {
   const layout = await YogaLayout.load(readFileSync(new URL('../assets/layout.wasm', import.meta.url)));
   const fonts = new FontBook();
   const metrics = JSON.parse(
@@ -15,7 +15,7 @@ async function setup() {
   fonts.add(new Font('custom-face', 0, metrics, { handle: {} as WebGLTexture, width: 512, height: 512, bytes: 0 }));
   const create = vi.spyOn(layout, 'create'),
     free = vi.spyOn(layout, 'free');
-  const root = createUiRoot({ layout, fonts, textScale: 1, invalidate() {} });
+  const root = createUiRoot({ layout, fonts, textScale: 1, invalidate() {}, onError });
   return { root, layout, create, free };
 }
 function texts(node: HostNode): string {
@@ -25,6 +25,15 @@ function texts(node: HostNode): string {
   ].join('');
 }
 describe('public React primitives', () => {
+  it('routes unsupported host errors to the root error callback', async () => {
+    const onError = vi.fn();
+    const { root, layout } = await setup(onError);
+    root.render(createElement('div'));
+    await vi.waitFor(() => expect(onError).toHaveBeenCalled());
+    expect(String(onError.mock.calls[0]![0])).toContain('Unsupported');
+    root.destroy();
+    layout.dispose();
+  });
   it('commits hook updates and releases every Yoga node and effect on unmount', async () => {
     const { root, layout, create, free } = await setup();
     const cleanup = vi.fn();

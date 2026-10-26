@@ -17,6 +17,7 @@ function Overlay({ snapshot, game, compact }: { snapshot: Snapshot; game: Game; 
   return (
     <View
       block
+      modal
       zIndex={20}
       style={{
         position: 'absolute',
@@ -73,7 +74,7 @@ function Overlay({ snapshot, game, compact }: { snapshot: Snapshot; game: Game; 
         )}
         <Button
           primary
-          hotkey="Enter"
+          hotkey={paused ? 'Escape' : 'Enter'}
           label={paused ? 'Resume flight' : ready ? 'Launch courier' : 'Fly again'}
           onPress={paused ? game.pause : game.start}
         >
@@ -334,6 +335,7 @@ export function Hud({ game, width, height }: { game: Game; width: number; height
       {manifestOpen && snapshot.status === 'paused' ? (
         <View
           block
+          modal
           zIndex={20}
           style={{
             position: 'absolute',

@@ -23,9 +23,21 @@ export class UiRuntime {
   theme = { focusRing: '#90b4ff', textColor: '#edf2ff', emphasisColor: '#90b4ff' };
   reducedMotion = false;
 
-  constructor(options: { canvas: HTMLCanvasElement; a11y: HTMLElement; layout: YogaLayout; fonts: FontBook }) {
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    a11y: HTMLElement;
+    layout: YogaLayout;
+    fonts: FontBook;
+    onError?: (error: unknown) => void;
+  }) {
     this.#layout = options.layout;
-    this.ctx = { layout: options.layout, fonts: options.fonts, textScale: 1, invalidate: () => {} };
+    this.ctx = {
+      layout: options.layout,
+      fonts: options.fonts,
+      textScale: 1,
+      invalidate: () => {},
+      onError: options.onError,
+    };
     this.#root = createUiRoot(this.ctx);
     this.input = new InputSystem(options.canvas, options.a11y, this.#painter);
   }
@@ -47,8 +59,11 @@ export class UiRuntime {
 
   destroy() {
     this.input.destroy();
-    this.#root.destroy();
-    this.#layout.dispose();
+    try {
+      this.#root.destroy();
+    } finally {
+      this.#layout.dispose();
+    }
   }
 
   setTextScale(scale: number) {
@@ -66,7 +81,7 @@ export class UiRuntime {
     batch: UiBatch,
     textures: TextureStore,
     fonts: FontBook,
-    size: { width: number; height: number; dpr: number },
+    size: { width: number; height: number; dpr: number; cssWidth?: number; cssHeight?: number },
     now: number,
     dt: number,
   ) {
@@ -75,8 +90,8 @@ export class UiRuntime {
       this.#scale = dpr;
       this.#layout.setPointScale(dpr);
     }
-    const cssW = width / dpr;
-    const cssH = height / dpr;
+    const cssW = size.cssWidth ?? width / dpr;
+    const cssH = size.cssHeight ?? height / dpr;
     if (this.#size[0] !== cssW || this.#size[1] !== cssH) this.#size = [cssW, cssH];
     const root = this.#root.root;
     this.#layout.calculate(root.yoga, cssW, cssH);
@@ -110,29 +125,43 @@ export class UiRuntime {
     if (changed.length) {
       queueMicrotask(() => {
         for (const n of changed)
-          if (!n.destroyed) n.props.onLayout?.({ x: n.box.x, y: n.box.y, width: n.box.w, height: n.box.h });
+          if (!n.destroyed) {
+            try {
+              n.props.onLayout?.({ x: n.box.x, y: n.box.y, width: n.box.w, height: n.box.h });
+            } catch (error) {
+              if (this.ctx.onError) this.ctx.onError(error);
+              else console.error(error);
+            }
+          }
       });
     }
 
-    batch.begin(width, height, now / 1000);
-    this.#painter.paint(root, {
-      batch,
-      textures,
-      fonts,
-      dpr,
-      now,
-      time: now / 1000,
-      dt,
-      ...this.theme,
-      reducedMotion: this.reducedMotion,
-    });
-    batch.end();
+    batch.begin(cssW * dpr, cssH * dpr, now / 1000, width, height);
+    try {
+      this.#painter.paint(root, {
+        batch,
+        textures,
+        fonts,
+        dpr,
+        now,
+        time: now / 1000,
+        dt,
+        ...this.theme,
+        reducedMotion: this.reducedMotion,
+      });
+    } finally {
+      batch.end();
+    }
     this.input.afterPaint();
 
     // Live region: the newest announced text.
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      const n = nodes[i]!;
-      if (n.type === 'text' && n.props.announce) {
+    for (let i = this.#painter.visible.length - 1; i >= 0; i--) {
+      const n = this.#painter.visible[i]!;
+      if (
+        n.type === 'text' &&
+        n.props.announce &&
+        (!n.clip || (n.abs.y < n.clip.y + n.clip.h && n.abs.y + n.abs.h > n.clip.y))
+      ) {
         this.input.announce(n.text.replace(/\*\*/g, ''));
         break;
       }

@@ -22,6 +22,7 @@ interface LayoutExports {
   lcl_set_length(n: number, prop: number, slot: number, v: number, unit: number): void;
   lcl_calculate(root: number, w: number, h: number): void;
   lcl_has_new_layout(n: number): number;
+  lcl_padding_bottom(n: number): number;
   lcl_read_layouts(handles: number, count: number, out: number): void;
   lcl_alloc(bytes: number): number;
   lcl_free(p: number): void;
@@ -44,17 +45,26 @@ export class YogaLayout {
 
   private constructor(x: LayoutExports) {
     this.#x = x;
-    if (x.lcl_abi_version() !== LAYOUT_ABI_VERSION) throw new Error('lc_layout ABI mismatch');
+    if (x.lcl_abi_version() !== LAYOUT_ABI_VERSION)
+      throw new Error(
+        `lc_layout ABI mismatch: expected ${LAYOUT_ABI_VERSION}; use the layout module shipped with this package`,
+      );
   }
 
-  static async load(source: string | ArrayBuffer | Uint8Array): Promise<YogaLayout> {
+  static async load(
+    source: string | ArrayBuffer | Uint8Array,
+    options: { signal?: AbortSignal; maxBytes?: number } = {},
+  ): Promise<YogaLayout> {
     let self: YogaLayout | undefined;
-    const { instance } = await instantiate(source, (mem) =>
-      hostImports('lc_layout', mem, {
-        lcl_measure(ctx: number, w: number, wm: number, h: number, hm: number) {
-          self!.#measure(ctx, w, wm, h, hm);
-        },
-      }),
+    const { instance } = await instantiate(
+      source,
+      (mem) =>
+        hostImports('lc_layout', mem, {
+          lcl_measure(ctx: number, w: number, wm: number, h: number, hm: number) {
+            self!.#measure(ctx, w, wm, h, hm);
+          },
+        }),
+      options,
     );
     self = new YogaLayout(instance.exports as unknown as LayoutExports);
     return self;
@@ -128,6 +138,9 @@ export class YogaLayout {
   }
   hasNewLayout(node: number) {
     return this.#x.lcl_has_new_layout(node) === 1;
+  }
+  paddingBottom(node: number) {
+    return this.#x.lcl_padding_bottom(node);
   }
 
   /** Reads [left, top, width, height] for many nodes in one boundary crossing. */

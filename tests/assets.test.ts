@@ -39,6 +39,7 @@ describe('application-owned assets', () => {
     const report = vi.fn();
     const cache = new TextureStore({} as WebGLRenderingContext, createAssetResolver(), undefined, report);
     const pending = cache.preload(['/icon.png']);
+    await vi.waitFor(() => expect(signal).toBeDefined());
     cache.dispose();
     expect(signal?.aborted).toBe(true);
     await expect(pending).rejects.toThrow('Aborted');

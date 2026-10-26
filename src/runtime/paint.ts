@@ -9,17 +9,6 @@ import type { FontBook } from '../gfx/font.ts';
 import { HostNode, type Box } from './nodes.ts';
 import type { ImageStyleProp, TextStyleProp, ViewStyle } from './types.ts';
 
-const colorCache = new Map<string, Rgba>();
-function color(input: string | undefined): Rgba {
-  if (!input) return [0, 0, 0, 0];
-  let c = colorCache.get(input);
-  if (!c) {
-    c = parseColor(input);
-    colorCache.set(input, c);
-  }
-  return c;
-}
-
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 const mixN = (a: readonly number[], b: readonly number[], t: number) => a.map((v, i) => v + (b[i]! - v) * t);
 const evaluate = (t: { from: number[]; to: number[]; start: number; duration: number }, now: number) =>
@@ -44,12 +33,25 @@ export interface PaintFrame {
 export class Painter {
   /** Interactive nodes in paint order, for hit-testing (last = topmost). */
   hitList: HostNode[] = [];
+  visible: HostNode[] = [];
+  readonly #colors = new Map<string, Rgba>();
+  #color(input: string | undefined): Rgba {
+    if (!input) return [0, 0, 0, 0];
+    let result = this.#colors.get(input);
+    if (!result) {
+      result = parseColor(input);
+      if (this.#colors.size >= 512) this.#colors.delete(this.#colors.keys().next().value!);
+      this.#colors.set(input, result);
+    }
+    return result;
+  }
   #f!: PaintFrame;
 
   paint(root: HostNode, frame: PaintFrame) {
     this.#f = frame;
     this.hitList = [];
-    this.#node(root, 0, 0, 1, undefined);
+    this.visible = [];
+    this.#node(root, 0, 0, 1, undefined, 1, true);
   }
 
   // ── Animation ──────────────────────────────────────────────────────────────
@@ -96,7 +98,15 @@ export class Painter {
 
   // ── Traversal ──────────────────────────────────────────────────────────────
 
-  #node(node: HostNode, px: number, py: number, parentOpacity: number, clip: Box | undefined) {
+  #node(
+    node: HostNode,
+    px: number,
+    py: number,
+    parentOpacity: number,
+    clip: Box | undefined,
+    parentScale: number,
+    inputEnabled: boolean,
+  ) {
     if (node.hidden || node.destroyed) return;
     const style = (node.props.style ?? {}) as ViewStyle & TextStyleProp & ImageStyleProp;
     if (style.display === 'none') return;
@@ -122,19 +132,32 @@ export class Painter {
     if (style.breathe && !this.#f.reducedMotion)
       opacity *= 1 - style.breathe * (0.5 + 0.5 * Math.sin(this.#f.time * 1.3 + node.id));
     if (node.props.disabled) opacity *= 0.45;
-    const scale = this.#enter(node, 'scale', pick('scale', sc!));
-    const x = px + node.box.x + this.#enter(node, 'translateX', pick('translateX', tx!));
-    const y = py + node.box.y + this.#enter(node, 'translateY', pick('translateY', ty!));
+    const localScale = Math.max(0, this.#enter(node, 'scale', pick('scale', sc!)));
+    const scale = parentScale * localScale;
+    const x = px + (node.box.x + this.#enter(node, 'translateX', pick('translateX', tx!))) * parentScale;
+    const y = py + (node.box.y + this.#enter(node, 'translateY', pick('translateY', ty!))) * parentScale;
     const w = node.box.w * scale;
     const h = node.box.h * scale;
-    const ax = x + (node.box.w - w) / 2;
-    const ay = y + (node.box.h - h) / 2;
+    const ax = x + (node.box.w * parentScale - w) / 2;
+    const ay = y + (node.box.h * parentScale - h) / 2;
     node.abs = { x: ax, y: ay, w, h };
     node.clip = clip;
 
-    if (opacity <= 0.003) return;
+    if (opacity <= 0.003 || scale <= 0) return;
+    this.visible.push(node);
     const pe = node.props.pointerEvents ?? 'auto';
-    if (pe === 'auto' && (node.props.onPress || node.props.onHover || node.props.block || style.overflow === 'scroll'))
+    if (
+      inputEnabled &&
+      pe === 'auto' &&
+      (node.props.onPress ||
+        node.props.focusable ||
+        node.props.onPointerDown ||
+        node.props.onPointerMove ||
+        node.props.onPointerUp ||
+        node.props.onHover ||
+        node.props.block ||
+        style.overflow === 'scroll')
+    )
       this.hitList.push(node);
 
     const f = this.#f;
@@ -142,9 +165,9 @@ export class Painter {
     const b = f.batch;
     const radius = (style.borderRadius ?? 0) * d * scale;
     const hoverColor = (key: 'background' | 'borderColor' | 'color' | 'tint', base: string | undefined): Rgba => {
-      let c = color(base);
+      let c = this.#color(base);
       const h = hover?.[key];
-      if (typeof h === 'string' && node.hoverT > 0.001) c = mixN(c, color(h), node.hoverT) as unknown as Rgba;
+      if (typeof h === 'string' && node.hoverT > 0.001) c = mixN(c, this.#color(h), node.hoverT) as unknown as Rgba;
       return this.#value(node, `c:${key}`, [...c], duration) as unknown as Rgba;
     };
     const fade = (c: Rgba, a = opacity): Rgba => [c[0] * a, c[1] * a, c[2] * a, c[3] * a];
@@ -152,8 +175,8 @@ export class Painter {
     // Glow sits behind everything else of this node.
     const glow = style.glow ?? (node.hoverT > 0.01 ? hover?.glow : undefined);
     if (glow) {
-      const spread = (glow.spread ?? 24) * d;
-      const g = color(glow.color);
+      const spread = (glow.spread ?? 24) * d * scale;
+      const g = this.#color(glow.color);
       const strength = style.glow ? 1 : node.hoverT;
       b.glow(
         (ax + w / 2) * d,
@@ -174,8 +197,8 @@ export class Painter {
         ay * d,
         w * d,
         h * d,
-        fade(color(style.background[0])),
-        fade(color(style.background[1])),
+        fade(this.#color(style.background[0])),
+        fade(this.#color(style.background[1])),
         radius,
       );
     } else if (style.background || hover?.background) {
@@ -191,11 +214,11 @@ export class Painter {
     if (node.props.fill !== undefined) {
       const [fill] = this.#value(node, 'fill', [Math.max(0, Math.min(1, node.props.fill))], duration || 350);
       if (fill! > 0.001)
-        b.rect(ax * d, ay * d, w * fill! * d, h * d, fade(color(node.props.fillColor ?? '#3be3c6')), radius);
+        b.rect(ax * d, ay * d, w * fill! * d, h * d, fade(this.#color(node.props.fillColor ?? '#3be3c6')), radius);
     }
     const bw = style.borderWidth ?? (style.borderColor ? 1 : 0);
     if (bw > 0 && (style.borderColor || hover?.borderColor)) {
-      b.ring(ax * d, ay * d, w * d, h * d, fade(hoverColor('borderColor', style.borderColor)), radius, bw * d);
+      b.ring(ax * d, ay * d, w * d, h * d, fade(hoverColor('borderColor', style.borderColor)), radius, bw * d * scale);
     }
     if (node.focusT > 0.01) {
       const pad = 3 * d;
@@ -204,16 +227,11 @@ export class Painter {
         ay * d - pad,
         w * d + pad * 2,
         h * d + pad * 2,
-        fade(color(f.focusRing), opacity * node.focusT),
+        fade(this.#color(f.focusRing), opacity * node.focusT),
         radius + pad,
         1.5 * d,
       );
     }
-
-    // Content.
-    if (node.type === 'text') this.#text(node, style, ax, ay, scale, opacity, hoverColor);
-    else if (node.type === 'image') this.#image(node, style, ax, ay, w, h, radius, opacity, hoverColor);
-    else if (node.type === 'line') this.#line(node, px, py, opacity, node.parent?.box);
 
     // Children, clipped and scrolled if needed.
     const clips = style.overflow === 'hidden' || style.overflow === 'scroll';
@@ -225,15 +243,20 @@ export class Painter {
     if (style.overflow === 'scroll') {
       let bottom = 0;
       for (const c of node.children) if (c instanceof HostNode) bottom = Math.max(bottom, c.box.y + c.box.h);
-      node.contentHeight = bottom + ((style.paddingBottom ?? style.paddingY ?? style.padding ?? 0) as number);
+      node.contentHeight = bottom + node.ctx.layout.paddingBottom(node.yoga);
       node.scrollY = Math.max(0, Math.min(node.scrollY, node.contentHeight - node.box.h));
     }
     const children = node.paintOrder();
-    if (children.length === 0) return;
     if (childClip !== clip)
       b.setClip(childClip ? [childClip.x * d, childClip.y * d, childClip.w * d, childClip.h * d] : undefined);
+    // Content.
+    if (node.type === 'text') this.#text(node, style, ax, ay, scale, opacity, hoverColor);
+    else if (node.type === 'image') this.#image(node, style, ax, ay, w, h, radius, opacity, hoverColor);
+    else if (node.type === 'line') this.#line(node, px, py, opacity, node.parent?.box, parentScale);
+
     const oy = style.overflow === 'scroll' ? -node.scrollY : 0;
-    for (const child of children) this.#node(child, x, y + oy, opacity, childClip);
+    for (const child of children)
+      this.#node(child, ax, ay + oy * scale, opacity, childClip, scale, inputEnabled && pe !== 'none');
     if (childClip !== clip) b.setClip(clip ? [clip.x * d, clip.y * d, clip.w * d, clip.h * d] : undefined);
 
     // Scroll affordance: a thin teal thumb when content overflows.
@@ -241,7 +264,7 @@ export class Painter {
       const ratio = node.box.h / node.contentHeight;
       const th = Math.max(24, h * ratio);
       const tyy = ay + (h - th) * (node.scrollY / (node.contentHeight - node.box.h));
-      b.rect((ax + w - 3) * d, tyy * d, 2 * d, th * d, fade(color('#3be3c655')), d);
+      b.rect((ax + w - 3) * d, tyy * d, 2 * d, th * d, fade(this.#color('#3be3c655')), d);
     }
   }
 
@@ -257,12 +280,12 @@ export class Painter {
     const f = this.#f;
     const d = f.dpr;
     const ts = node.textStyle();
-    const shaped = f.fonts.shape(node.text, ts, node.box.w + 0.5);
+    const shaped = f.fonts.shape(node.text, ts, node.box.w);
     const font = f.fonts.get(ts.font);
     const size = ts.size * scale;
     const pxRange = Math.max(1, font.distanceRange * ((size * d) / font.atlasEm));
     const base = hoverColor('color', style.color ?? f.textColor);
-    const emph = color(style.emphasisColor ?? f.emphasisColor);
+    const emph = this.#color(style.emphasisColor ?? f.emphasisColor);
     const weight = style.weight ?? 0;
     const oy = 0;
     if (style.shadow) {
@@ -365,7 +388,7 @@ export class Painter {
     if (props.src2) draw(props.src2, mix!);
   }
 
-  #line(node: HostNode, px: number, py: number, opacity: number, parent: Box | undefined) {
+  #line(node: HostNode, px: number, py: number, opacity: number, parent: Box | undefined, scale: number) {
     const f = this.#f;
     const d = f.dpr;
     const p = node.props;
@@ -374,15 +397,15 @@ export class Painter {
     const sy = p.relative && parent ? parent.h : 1;
     const from = [p.from[0] * sx, p.from[1] * sy];
     const to = [p.to[0] * sx, p.to[1] * sy];
-    const c = color(p.color ?? f.emphasisColor);
+    const c = this.#color(p.color ?? f.emphasisColor);
     f.batch.line(
-      (px + from[0]!) * d,
-      (py + from[1]!) * d,
-      (px + to[0]!) * d,
-      (py + to[1]!) * d,
-      (p.width ?? 1.5) * d,
+      (px + from[0]! * scale) * d,
+      (py + from[1]! * scale) * d,
+      (px + to[0]! * scale) * d,
+      (py + to[1]! * scale) * d,
+      (p.width ?? 1.5) * d * scale,
       [c[0] * opacity, c[1] * opacity, c[2] * opacity, c[3] * opacity],
-      (p.dash ?? 0) * d,
+      (p.dash ?? 0) * d * scale,
       (f.reducedMotion ? 0 : (p.speed ?? 0)) * d,
     );
   }

@@ -116,6 +116,8 @@ npm ci
 npm run dev           # documentation and interactive examples
 npm run check         # types, real WASM/React tests, docs, distribution audit
 npm run format:check
+npx playwright install --with-deps
+npm run test:browser  # Chromium, Firefox, WebKit and mobile emulation
 npm pack              # installable release tarball
 ```
 
@@ -144,11 +146,11 @@ publisher setup. No npm token is stored in GitHub secrets.
 
 ## Compatibility and scope
 
-Version 0.1 targets browser games. React 19.3.1 is the tested peer version; react-reconciler 0.34.0 is pinned because its host API is unstable. The browser needs WebGL 1, WebAssembly SIMD/bulk-memory, createImageBitmap and Pointer Events.
+Ludic Canvas targets desktop and mobile browser games. React 19.3.1 is the tested peer version; react-reconciler 0.34.0 is pinned because its host API is unstable. The browser needs WebGL 1, WebAssembly SIMD/bulk-memory, createImageBitmap and Pointer Events.
 
-The first release supports pointer input, vertical wheel/touch scrolling, scoped hotkeys, DOM button mirrors for keyboard access, polite live announcements, text scaling and reduced motion. The mirror is a limited accessibility aid rather than a complete semantic document.
+The runtime supports captured pointer/key events, vertical wheel/touch scrolling, scoped hotkeys, modal focus scopes, spatial focus navigation, DOM control semantics, polite live announcements, text scaling and reduced motion. The mirror is a limited accessibility aid rather than a complete semantic document.
 
-Text uses pre-baked glyphs and greedy wrapping. Complex-script shaping, kerning, editable text, controller navigation, shared WebGL 2 contexts and native engine bindings are not implemented. Up to four font atlases are supported per root. See the guide for clipping, transform and shared-context limitations.
+Text uses pre-baked glyphs and greedy wrapping. Complex-script shaping, kerning, editable canvas text, shared WebGL 2 contexts and native engine bindings are not implemented. Up to four font atlases are supported per root. See the [production review](PRODUCTION.md) and [support matrix](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#production) for tested scope, release gates and remaining limits.
 
 ## License
 
