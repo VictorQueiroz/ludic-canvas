@@ -1,0 +1,243 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>API reference · Ludic Canvas</title><meta name="description" content="Build React interfaces for browser games with Yoga WebAssembly layout and WebGL rendering. Guides, interactive examples and a generated TypeScript API reference."><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="canonical" href="https://libraries.ludic-canvas.victorqueiroz.dev/api/"><link rel="stylesheet" href="/style.css"></head><body><a class="skip" href="#main">Skip to content</a><header><a class="brand" href="/"><span class="mark">lc</span> Ludic Canvas<span class="version">0.1.0</span></a><nav aria-label="Main navigation"><a  href="/">Overview</a><a  href="/guide/">Guide</a><a aria-current="page" href="/api/">API reference</a><a href="https://github.com/VictorQueiroz/ludic-canvas">GitHub <span aria-hidden="true">↗</span></a></nav></header><div class="document-layout"><aside aria-label="On this page"><span class="aside-title">PUBLIC EXPORTS</span><a href="#FontSource">FontSource</a><a href="#UITheme">UITheme</a><a href="#FrameInfo">FrameInfo</a><a href="#UIOptions">UIOptions</a><a href="#UIRoot">UIRoot</a><a href="#createUI">createUI</a><a href="#View">View</a><a href="#Text">Text</a><a href="#Image">Image</a><a href="#Line">Line</a><a href="#ImageAsset">ImageAsset</a><a href="#AssetResolver">AssetResolver</a><a href="#ImageAssets">ImageAssets</a><a href="#createAssetResolver">createAssetResolver</a><a href="#defaultAssets">defaultAssets</a><a href="#Dim">Dim</a><a href="#LayoutStyle">LayoutStyle</a><a href="#GlowStyle">GlowStyle</a><a href="#VisualStyle">VisualStyle</a><a href="#TextVisualStyle">TextVisualStyle</a><a href="#ImageVisualStyle">ImageVisualStyle</a><a href="#ViewStyle">ViewStyle</a><a href="#TextStyleProp">TextStyleProp</a><a href="#ImageStyleProp">ImageStyleProp</a><a href="#Enter">Enter</a><a href="#Interactive">Interactive</a><a href="#CommonProps">CommonProps</a><a href="#ViewProps">ViewProps</a><a href="#TextProps">TextProps</a><a href="#ImageProps">ImageProps</a><a href="#LineProps">LineProps</a><a href="#AtlasJson">AtlasJson</a></aside><main id="main" class="document"><p class="eyebrow">REFERENCE / GENERATED FROM TYPESCRIPT</p><h1>The public API.</h1><p class="lead">Exact signatures, types and property documentation for version 0.1.0.</p><p>Generated from package declarations. Optional properties use <code>?</code>. Dimensions use CSS pixels unless stated otherwise. Import these symbols from <code>ludic-canvas</code>. Internal renderer, layout and GPU classes are intentionally private.</p><section id="FontSource" class="api-entry"><h2>FontSource<a class="anchor" href="#FontSource" aria-label="Link to FontSource">#</a></h2><pre><code>/** An MTSDF atlas and its metrics, produced by msdf-atlas-gen. Maximum: four faces per root. */
+export interface FontSource {
+    name: string;
+    atlas: string;
+    metrics: string | AtlasJson;
+}</code></pre></section><section id="UITheme" class="api-entry"><h2>UITheme<a class="anchor" href="#UITheme" aria-label="Link to UITheme">#</a></h2><pre><code>/** Visual defaults. Individual primitive styles take precedence. */
+export interface UITheme {
+    textColor: string;
+    emphasisColor: string;
+    focusRing: string;
+}</code></pre></section><section id="FrameInfo" class="api-entry"><h2>FrameInfo<a class="anchor" href="#FrameInfo" aria-label="Link to FrameInfo">#</a></h2><pre><code>/** CSS and device-pixel dimensions of the latest frame. */
+export interface FrameInfo {
+    width: number;
+    height: number;
+    dpr: number;
+    cssWidth: number;
+    cssHeight: number;
+    drawCalls: number;
+}</code></pre></section><section id="UIOptions" class="api-entry"><h2>UIOptions<a class="anchor" href="#UIOptions" aria-label="Link to UIOptions">#</a></h2><pre><code>/** Browser root configuration. Game state and image content stay application-owned. */
+export interface UIOptions {
+    canvas: HTMLCanvasElement;
+    /** Existing WebGL 1 context. Draw UI last and restore engine state before its next pass. */
+    context?: WebGLRenderingContext;
+    /** WebAssembly URL or bytes. Defaults to the bundled Yoga reactor. */
+    layout?: string | ArrayBuffer | Uint8Array;
+    /** First face is the default. Omit to use bundled Barlow Condensed. */
+    fonts?: readonly FontSource[];
+    assets?: ImageAssets | AssetResolver;
+    theme?: Partial&lt;UITheme&gt;;
+    /** Defaults to true. Set false and call frame() from the game's loop. */
+    autoStart?: boolean;
+    /** Resize backing canvas to CSS dimensions. Defaults to false for a supplied context. */
+    manageCanvasSize?: boolean;
+    /** Device-pixel ratio cap when managing canvas size. Default: 2. */
+    maxDpr?: number;
+    /** Clear before drawing. Omit for transparent overlay or shared-context rendering. */
+    clearColor?: string;
+    /** Existing overlay aligned with the canvas. Otherwise created inside its parent. */
+    accessibilityContainer?: HTMLElement;
+    /** Positive text measurement multiplier. Default: 1. */
+    textScale?: number;
+    /** Defaults to the browser's prefers-reduced-motion setting. */
+    reducedMotion?: boolean;
+    /** Soft cache budget in bytes. Currently visible textures may exceed it. */
+    textureBudgetBytes?: number;
+    onError?: (error: unknown) =&gt; void;
+}</code></pre></section><section id="UIRoot" class="api-entry"><h2>UIRoot<a class="anchor" href="#UIRoot" aria-label="Link to UIRoot">#</a></h2><pre><code>/** A mounted React interface and its layout, input and GPU resources. */
+export interface UIRoot {
+    /** Schedule an update. State, context and ordinary React hooks work inside the tree. */
+    render(element: ReactNode): void;
+    /** Draw a frame; now is a requestAnimationFrame timestamp in milliseconds. */
+    frame(now?: number): FrameInfo;
+    /** Start or resume automatic drawing. Idempotent. */
+    start(): void;
+    /** Pause automatic drawing; the React tree stays mounted. */
+    stop(): void;
+    /** Unmount React, cancel frames, remove listeners and free resources. Idempotent. */
+    destroy(): void;
+    setTextScale(scale: number): void;
+    setReducedMotion(enabled: boolean): void;
+    setTheme(theme: Partial&lt;UITheme&gt;): void;
+    /** Preload image identifiers. Rejects on unknown assets or failed requests. */
+    preloadImages(ids: readonly string[]): Promise&lt;void&gt;;
+    /** Host tree with computed boxes for development tools. */
+    inspect(): unknown;
+}</code></pre></section><section id="createUI" class="api-entry"><h2>createUI<a class="anchor" href="#createUI" aria-label="Link to createUI">#</a></h2><pre><code>/** Create a React → Yoga WebAssembly → WebGL interface on a browser canvas. */
+export declare function createUI(options: UIOptions): Promise&lt;UIRoot&gt;;</code></pre></section><section id="View" class="api-entry"><h2>View<a class="anchor" href="#View" aria-label="Link to View">#</a></h2><pre><code>export declare const View: ComponentType&lt;ViewProps&gt;;</code></pre></section><section id="Text" class="api-entry"><h2>Text<a class="anchor" href="#Text" aria-label="Link to Text">#</a></h2><pre><code>export declare const Text: ComponentType&lt;TextProps&gt;;</code></pre></section><section id="Image" class="api-entry"><h2>Image<a class="anchor" href="#Image" aria-label="Link to Image">#</a></h2><pre><code>export declare const Image: ComponentType&lt;ImageProps&gt;;</code></pre></section><section id="Line" class="api-entry"><h2>Line<a class="anchor" href="#Line" aria-label="Link to Line">#</a></h2><pre><code>export declare const Line: ComponentType&lt;LineProps&gt;;
+export type { ImageProps, LineProps, TextProps, ViewProps } from './runtime/types.ts';</code></pre></section><section id="ImageAsset" class="api-entry"><h2>ImageAsset<a class="anchor" href="#ImageAsset" aria-label="Link to ImageAsset">#</a></h2><pre><code>/** An image URL and optional rasterization metadata. SVGs use `kind: 'vector'`. */
+export interface ImageAsset {
+    url: string;
+    width?: number;
+    height?: number;
+    kind?: 'raster' | 'vector';
+}</code></pre></section><section id="AssetResolver" class="api-entry"><h2>AssetResolver<a class="anchor" href="#AssetResolver" aria-label="Link to AssetResolver">#</a></h2><pre><code>/** Resolves application image identifiers. Return undefined for an unknown identifier. */
+export type AssetResolver = (id: string) =&gt; ImageAsset | undefined;</code></pre></section><section id="ImageAssets" class="api-entry"><h2>ImageAssets<a class="anchor" href="#ImageAssets" aria-label="Link to ImageAssets">#</a></h2><pre><code>/** A catalog of application-owned images. Keys are used by the Image primitive. */
+export type ImageAssets = Readonly&lt;Record&lt;string, ImageAsset&gt;&gt;;</code></pre></section><section id="createAssetResolver" class="api-entry"><h2>createAssetResolver<a class="anchor" href="#createAssetResolver" aria-label="Link to createAssetResolver">#</a></h2><pre><code>/** Builds a resolver from a catalog. Omitting the catalog treats `src` as a URL. */
+export declare function createAssetResolver(assets?: ImageAssets | AssetResolver): AssetResolver;</code></pre></section><section id="defaultAssets" class="api-entry"><h2>defaultAssets<a class="anchor" href="#defaultAssets" aria-label="Link to defaultAssets">#</a></h2><pre><code>/** Bundler-resolved URLs for the included layout reactor and OFL font atlas. */
+export declare const defaultAssets: {
+    layout: string;
+    fontAtlas: string;
+    fontMetrics: string;
+};</code></pre></section><section id="Dim" class="api-entry"><h2>Dim<a class="anchor" href="#Dim" aria-label="Link to Dim">#</a></h2><pre><code>export type Dim = number | `${number}%` | 'auto';</code></pre></section><section id="LayoutStyle" class="api-entry"><h2>LayoutStyle<a class="anchor" href="#LayoutStyle" aria-label="Link to LayoutStyle">#</a></h2><pre><code>export interface LayoutStyle {
+    display?: 'flex' | 'none';
+    position?: 'relative' | 'absolute';
+    flexDirection?: 'row' | 'column' | 'row-reverse' | 'column-reverse';
+    justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly';
+    alignItems?: 'flex-start' | 'center' | 'flex-end' | 'stretch' | 'baseline';
+    alignSelf?: 'auto' | 'flex-start' | 'center' | 'flex-end' | 'stretch' | 'baseline';
+    alignContent?: 'flex-start' | 'center' | 'flex-end' | 'stretch' | 'space-between' | 'space-around';
+    flexWrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
+    overflow?: 'visible' | 'hidden' | 'scroll';
+    flex?: number;
+    flexGrow?: number;
+    flexShrink?: number;
+    flexBasis?: Dim;
+    aspectRatio?: number;
+    width?: Dim;
+    height?: Dim;
+    minWidth?: Dim;
+    minHeight?: Dim;
+    maxWidth?: Dim;
+    maxHeight?: Dim;
+    top?: Dim;
+    left?: Dim;
+    right?: Dim;
+    bottom?: Dim;
+    margin?: Dim;
+    marginX?: Dim;
+    marginY?: Dim;
+    marginTop?: Dim;
+    marginBottom?: Dim;
+    marginLeft?: Dim;
+    marginRight?: Dim;
+    padding?: Dim;
+    paddingX?: Dim;
+    paddingY?: Dim;
+    paddingTop?: Dim;
+    paddingBottom?: Dim;
+    paddingLeft?: Dim;
+    paddingRight?: Dim;
+    gap?: number;
+    rowGap?: number;
+    columnGap?: number;
+}</code></pre></section><section id="GlowStyle" class="api-entry"><h2>GlowStyle<a class="anchor" href="#GlowStyle" aria-label="Link to GlowStyle">#</a></h2><pre><code>export interface GlowStyle {
+    color: string;
+    spread?: number;
+    falloff?: number;
+    pulse?: number;
+}</code></pre></section><section id="VisualStyle" class="api-entry"><h2>VisualStyle<a class="anchor" href="#VisualStyle" aria-label="Link to VisualStyle">#</a></h2><pre><code>export interface VisualStyle {
+    opacity?: number;
+    translateX?: number;
+    translateY?: number;
+    scale?: number;
+    background?: string | [string, string];
+    borderColor?: string;
+    borderWidth?: number;
+    borderRadius?: number;
+    glow?: GlowStyle;
+    breathe?: number;
+}</code></pre></section><section id="TextVisualStyle" class="api-entry"><h2>TextVisualStyle<a class="anchor" href="#TextVisualStyle" aria-label="Link to TextVisualStyle">#</a></h2><pre><code>export interface TextVisualStyle {
+    color?: string;
+    emphasisColor?: string;
+    fontFamily?: FontName;
+    fontSize?: number;
+    lineHeight?: number;
+    letterSpacing?: number;
+    textAlign?: 'left' | 'center' | 'right';
+    textTransform?: 'none' | 'uppercase';
+    weight?: number;
+    shadow?: boolean;
+    maxLines?: number;
+}</code></pre></section><section id="ImageVisualStyle" class="api-entry"><h2>ImageVisualStyle<a class="anchor" href="#ImageVisualStyle" aria-label="Link to ImageVisualStyle">#</a></h2><pre><code>export interface ImageVisualStyle {
+    tint?: string;
+    fit?: 'cover' | 'contain' | 'fill';
+    flipX?: boolean;
+    flipY?: boolean;
+    focusX?: number;
+    focusY?: number;
+    desaturate?: number;
+    darken?: number;
+}</code></pre></section><section id="ViewStyle" class="api-entry"><h2>ViewStyle<a class="anchor" href="#ViewStyle" aria-label="Link to ViewStyle">#</a></h2><pre><code>export type ViewStyle = LayoutStyle &amp; VisualStyle;</code></pre></section><section id="TextStyleProp" class="api-entry"><h2>TextStyleProp<a class="anchor" href="#TextStyleProp" aria-label="Link to TextStyleProp">#</a></h2><pre><code>export type TextStyleProp = LayoutStyle &amp; VisualStyle &amp; TextVisualStyle;</code></pre></section><section id="ImageStyleProp" class="api-entry"><h2>ImageStyleProp<a class="anchor" href="#ImageStyleProp" aria-label="Link to ImageStyleProp">#</a></h2><pre><code>export type ImageStyleProp = LayoutStyle &amp; VisualStyle &amp; ImageVisualStyle;</code></pre></section><section id="Enter" class="api-entry"><h2>Enter<a class="anchor" href="#Enter" aria-label="Link to Enter">#</a></h2><pre><code>export interface Enter {
+    opacity?: number;
+    translateX?: number;
+    translateY?: number;
+    scale?: number;
+    delay?: number;
+    duration?: number;
+}</code></pre></section><section id="Interactive" class="api-entry"><h2>Interactive<a class="anchor" href="#Interactive" aria-label="Link to Interactive">#</a></h2><pre><code>export interface Interactive {
+    onPress?: () =&gt; void;
+    onHover?: (hovered: boolean) =&gt; void;
+    /** Style overrides blended in while hovered / pressed / focused. */
+    hoverStyle?: Partial&lt;VisualStyle &amp; TextVisualStyle &amp; ImageVisualStyle&gt;;
+    pressStyle?: Partial&lt;VisualStyle&gt;;
+    disabled?: boolean;
+    /** Accessible name; pressable nodes get an invisible DOM button mirror. */
+    label?: string;
+    hotkey?: string;
+    pointerEvents?: 'auto' | 'none' | 'box-none';
+    /** Swallow presses/hover over this box (modal panels above a scrim). */
+    block?: boolean;
+    cursor?: 'pointer' | 'default';
+}</code></pre></section><section id="CommonProps" class="api-entry"><h2>CommonProps<a class="anchor" href="#CommonProps" aria-label="Link to CommonProps">#</a></h2><pre><code>export interface CommonProps extends Interactive {
+    /** Called (asynchronously) when the node's laid-out size or position changes. */
+    onLayout?: (box: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    }) =&gt; void;
+    /** Milliseconds; animates opacity/transform/colour changes. */
+    transition?: number;
+    enter?: Enter;
+    /** Draw order among siblings (higher on top). */
+    zIndex?: number;
+    children?: ReactNode;
+}</code></pre></section><section id="ViewProps" class="api-entry"><h2>ViewProps<a class="anchor" href="#ViewProps" aria-label="Link to ViewProps">#</a></h2><pre><code>export interface ViewProps extends CommonProps {
+    style?: ViewStyle;
+    /** 0..1 horizontal fill drawn inside the box (bars). Animated with `transition`. */
+    fill?: number;
+    fillColor?: string;
+}</code></pre></section><section id="TextProps" class="api-entry"><h2>TextProps<a class="anchor" href="#TextProps" aria-label="Link to TextProps">#</a></h2><pre><code>export interface TextProps extends CommonProps {
+    style?: TextStyleProp;
+    /** Parse **emphasis** markup. */
+    rich?: boolean;
+    /** Announce changes to screen readers (aria-live). */
+    announce?: boolean;
+}</code></pre></section><section id="ImageProps" class="api-entry"><h2>ImageProps<a class="anchor" href="#ImageProps" aria-label="Link to ImageProps">#</a></h2><pre><code>export interface ImageProps extends CommonProps {
+    src: string | undefined;
+    /** Optional second image cross-faded on top by `mix` (0..1). */
+    src2?: string | undefined;
+    mix?: number;
+    style?: ImageStyleProp;
+}</code></pre></section><section id="LineProps" class="api-entry"><h2>LineProps<a class="anchor" href="#LineProps" aria-label="Link to LineProps">#</a></h2><pre><code>export interface LineProps extends CommonProps {
+    from: [number, number];
+    to: [number, number];
+    /** Interpret from/to as fractions of the parent's box instead of pixels. */
+    relative?: boolean;
+    width?: number;
+    color?: string;
+    dash?: number;
+    speed?: number;
+}</code></pre></section><section id="AtlasJson" class="api-entry"><h2>AtlasJson<a class="anchor" href="#AtlasJson" aria-label="Link to AtlasJson">#</a></h2><pre><code>interface Bounds { left: number; top: number; right: number; bottom: number; }
+
+export interface AtlasJson {
+    atlas: {
+        distanceRange: number;
+        size: number;
+        width: number;
+        height: number;
+    };
+    metrics: {
+        emSize: number;
+        lineHeight: number;
+        ascender: number;
+        descender: number;
+    };
+    glyphs: {
+        unicode: number;
+        advance: number;
+        planeBounds?: Bounds;
+        atlasBounds?: Bounds;
+    }[];
+}</code></pre></section></main></div><footer><span>Made by <a href="https://github.com/VictorQueiroz">Victor Queiroz</a></span><span>MIT licensed · React 19 · WebGL 1 · Yoga WASM</span></footer></body></html>

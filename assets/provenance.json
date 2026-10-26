@@ -1,0 +1,34 @@
+{
+  "layout": {
+    "source": "native/layout/yoga_bridge.cpp",
+    "yogaVersion": "3.2.1",
+    "yogaArchiveSha256": "86b399ac31fd820d8ffa823c3fae31bb690b6fc45301b2a8a966c09b5a088b55",
+    "compiler": "Homebrew clang version 22.1.8",
+    "wasiSdk": "wasi-sdk-34",
+    "abiVersion": 1
+  },
+  "font": {
+    "family": "Barlow Condensed",
+    "style": "SemiBold",
+    "sourceCommit": "e7db6ca603fd4862010383ff17ffd6cc4ffac1c0",
+    "license": "SIL OFL 1.1"
+  },
+  "artifacts": {
+    "assets/layout.wasm": {
+      "sha256": "12380f5f33811ae52be91b7906ee6a59a1a3c578464d5f0dcf06aee08477c4ec",
+      "bytes": 103575
+    },
+    "assets/default-font.png": {
+      "sha256": "0171440b170166963d88a823ad3f0a10b6c9a3a0a274ae7810074afbab777b9f",
+      "bytes": 204425
+    },
+    "assets/default-font.json": {
+      "sha256": "e56bdafbae6109f9359c17f2ea5f959256a6e1501dc1588927842e6a3b76d608",
+      "bytes": 47986
+    },
+    "tools/fontgen/fonts/BarlowCondensed-SemiBold.ttf": {
+      "sha256": "7b619d14bc2327509a9ef32b0890f709626f7ecc9ff61191c2a4314c5499d2d9",
+      "bytes": 109428
+    }
+  }
+}

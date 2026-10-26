@@ -1,0 +1,141 @@
+#!/usr/bin/env node
+// Prepares a project-local WebAssembly toolchain for raw Clang/LLVM builds
+// (no Emscripten). It downloads only the WASI sysroot (wasi-libc + libc++)
+// and the compiler-rt builtins, then assembles a clang resource directory
+// that pairs the host LLVM's builtin headers with the wasm32 builtins.
+//
+//   node tools/toolchain/bootstrap.mjs [--llvm /path/to/llvm]
+//
+// Output: .toolchain/{wasi-sysroot-<v>, resource-dir, toolchain.json}
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync, cpSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const OUT = join(ROOT, '.toolchain');
+
+const WASI_SDK = {
+  release: 'wasi-sdk-34',
+  version: '34.0',
+  sysroot: {
+    file: 'wasi-sysroot-34.0.tar.gz',
+    sha256: '9d813544eeebe38b7b8f2244ed591de46b6db812c6dd1a257ff9f0d2a905a2be',
+  },
+  builtins: {
+    file: 'libclang_rt-34.0.tar.gz',
+    sha256: 'eee3e634dcf71aa22b1333391623cf5c9965a637dc428a27b1a858c026c587f1',
+  },
+};
+
+function findLlvmRoot() {
+  const flag = process.argv.indexOf('--llvm');
+  const candidates = [
+    flag > 0 ? process.argv[flag + 1] : undefined,
+    process.env.LC_LLVM_ROOT,
+    tryExec('brew', ['--prefix', 'llvm']),
+    '/opt/homebrew/opt/llvm',
+    '/usr/local/opt/llvm',
+    '/usr/lib/llvm-23',
+    '/usr/lib/llvm-22',
+    '/usr/lib/llvm-21',
+  ].filter(Boolean);
+  for (const root of candidates) {
+    const clang = join(root, 'bin', 'clang');
+    if (!existsSync(clang)) continue;
+    const targets = tryExec(join(root, 'bin', 'llc'), ['--version']) ?? '';
+    if (!targets.includes('wasm32')) continue;
+    return root;
+  }
+  throw new Error('No LLVM with the wasm32 backend found. Install `brew install llvm lld` or pass --llvm <root>.');
+}
+
+function findWasmLd(llvmRoot) {
+  const candidates = [
+    join(llvmRoot, 'bin', 'wasm-ld'),
+    tryExec('brew', ['--prefix', 'lld']) && join(tryExec('brew', ['--prefix', 'lld']), 'bin', 'wasm-ld'),
+    '/opt/homebrew/bin/wasm-ld',
+    '/usr/local/bin/wasm-ld',
+    '/usr/bin/wasm-ld',
+  ].filter(Boolean);
+  const found = candidates.find((p) => existsSync(p));
+  if (!found) throw new Error('wasm-ld not found. Install lld (`brew install lld`).');
+  return found;
+}
+
+function tryExec(cmd, args) {
+  try {
+    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+async function download(file, sha256) {
+  const cache = join(OUT, 'downloads');
+  mkdirSync(cache, { recursive: true });
+  const dest = join(cache, file);
+  if (!existsSync(dest)) {
+    const url = `https://github.com/WebAssembly/wasi-sdk/releases/download/${WASI_SDK.release}/${file}`;
+    console.log(`↓ ${url}`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Download failed (${res.status}) for ${url}`);
+    writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+  }
+  const digest = createHash('sha256').update(readFileSync(dest)).digest('hex');
+  if (digest !== sha256) {
+    rmSync(dest);
+    throw new Error(`Checksum mismatch for ${file}: ${digest}`);
+  }
+  return dest;
+}
+
+async function main() {
+  mkdirSync(OUT, { recursive: true });
+  const llvmRoot = findLlvmRoot();
+  const wasmLd = findWasmLd(llvmRoot);
+  const clang = join(llvmRoot, 'bin', 'clang');
+  const hostResourceDir = tryExec(clang, ['-print-resource-dir']);
+  const clangVersion = tryExec(clang, ['--version'])?.split('\n')[0];
+
+  const sysrootTar = await download(WASI_SDK.sysroot.file, WASI_SDK.sysroot.sha256);
+  const builtinsTar = await download(WASI_SDK.builtins.file, WASI_SDK.builtins.sha256);
+
+  const sysroot = join(OUT, `wasi-sysroot-${WASI_SDK.version}`);
+  if (!existsSync(sysroot)) execFileSync('tar', ['xzf', sysrootTar, '-C', OUT]);
+  const builtins = join(OUT, `libclang_rt-${WASI_SDK.version}`);
+  if (!existsSync(builtins)) execFileSync('tar', ['xzf', builtinsTar, '-C', OUT]);
+
+  // clang looks for <resource-dir>/lib/<triple>/libclang_rt.builtins.a; the
+  // host LLVM ships no wasm builtins, so we build a resource dir that reuses
+  // its intrinsic headers and adds the wasm32 archives.
+  const resourceDir = join(OUT, 'resource-dir');
+  rmSync(resourceDir, { recursive: true, force: true });
+  mkdirSync(join(resourceDir, 'lib'), { recursive: true });
+  symlinkSync(join(hostResourceDir, 'include'), join(resourceDir, 'include'));
+  cpSync(builtins, join(resourceDir, 'lib'), { recursive: true });
+
+  const config = { llvmRoot, clang, wasmLd, clangVersion, sysroot, resourceDir, wasiSdk: WASI_SDK.release };
+  writeFileSync(join(OUT, 'toolchain.json'), JSON.stringify(config, null, 2) + '\n');
+  writeFileSync(
+    join(OUT, 'toolchain.cmake'),
+    [
+      '# Generated by tools/toolchain/bootstrap.mjs — do not edit.',
+      `set(LC_LLVM_ROOT "${llvmRoot}" CACHE PATH "")`,
+      `set(LC_WASM_LD "${wasmLd}" CACHE FILEPATH "")`,
+      `set(LC_WASI_SYSROOT "${sysroot}" CACHE PATH "")`,
+      `set(LC_CLANG_RESOURCE_DIR "${resourceDir}" CACHE PATH "")`,
+      '',
+    ].join('\n'),
+  );
+  console.log(`✓ toolchain ready (${clangVersion})`);
+  console.log(`  sysroot:      ${sysroot}`);
+  console.log(`  resource-dir: ${resourceDir}`);
+  console.log(`  wasm-ld:      ${wasmLd}`);
+}
+
+main().catch((err) => {
+  console.error(`✗ ${err.message}`);
+  process.exit(1);
+});

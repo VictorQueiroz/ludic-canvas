@@ -1,0 +1,79 @@
+{
+  "name": "ludic-canvas",
+  "version": "0.1.0",
+  "description": "React interfaces for browser games, powered by Yoga WebAssembly and WebGL.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Victor Queiroz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VictorQueiroz/ludic-canvas.git"
+  },
+  "homepage": "https://libraries.ludic-canvas.victorqueiroz.dev",
+  "bugs": "https://github.com/VictorQueiroz/ludic-canvas/issues",
+  "keywords": [
+    "react",
+    "game",
+    "ui",
+    "webgl",
+    "yoga",
+    "wasm",
+    "canvas"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./layout.wasm": "./assets/layout.wasm",
+    "./default-font.png": "./assets/default-font.png",
+    "./default-font.json": "./assets/default-font.json"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "licenses"
+  ],
+  "scripts": {
+    "dev": "npm run build && npm run docs:generate && vite --config vite.docs.config.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "docs:generate": "node tools/docs.mjs",
+    "docs:build": "npm run build && npm run docs:generate && vite build --config vite.docs.config.ts",
+    "docs:preview": "vite preview --config vite.docs.config.ts",
+    "test": "vitest run",
+    "check": "npm run build && npm run typecheck && npm test && npm run docs:build && npm run audit:public",
+    "audit:public": "node tools/audit-public.mjs",
+    "toolchain": "node tools/toolchain/bootstrap.mjs",
+    "wasm": "cmake --preset wasm-release && cmake --build --preset wasm-release -j 4",
+    "fonts": "node tools/fontgen/build.mjs",
+    "prepack": "npm run build",
+    "format": "prettier --write src tests tools docs/main.tsx docs/style.css *.json *.ts *.md .github",
+    "format:check": "prettier --check src tests tools docs/main.tsx docs/style.css *.json *.ts *.md .github",
+    "prepare": "npm run build"
+  },
+  "peerDependencies": {
+    "react": "19.3.1"
+  },
+  "dependencies": {
+    "react-reconciler": "0.34.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-reconciler": "0.34.1",
+    "prettier": "3.9.10",
+    "react": "19.3.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}

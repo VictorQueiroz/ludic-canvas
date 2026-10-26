@@ -1,0 +1,12 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "wasm-release",
+      "binaryDir": "${sourceDir}/build/wasm-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/wasm32-wasip1.cmake",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [{ "name": "wasm-release", "configurePreset": "wasm-release" }]
+}
