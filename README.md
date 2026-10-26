@@ -8,17 +8,17 @@ Compose HUDs, menus and inventories with four typed primitives: **View**, **Text
 
 ## Install
 
-The GitHub release includes JavaScript, TypeScript declarations, a precompiled Yoga reactor, a default OFL font atlas and license notices.
+The npm package includes JavaScript, TypeScript declarations, a precompiled Yoga reactor, a default OFL font atlas, the portable font atlas compiler and license notices.
 
 ```sh
-npm install https://github.com/VictorQueiroz/ludic-canvas/releases/download/v0.1.0/ludic-canvas-0.1.0.tgz react@19.3.1
+npm install ludic-canvas@^0.2.0 react@19.3.1
 ```
 
-The original 0.1.0 package is available through GitHub Releases. npm releases use the Changesets version-PR workflow described in [docs/RELEASING.md](docs/RELEASING.md); the initial owner-authenticated npm setup must finish before automated publication can succeed. After the 0.2.0 version PR is merged and published, install with `npm install ludic-canvas@^0.2.0 react@19.3.1`.
+Releases use the Changesets version-PR workflow described in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Font atlas CLI (0.2.0+)
 
-The next minor Changesets release includes a portable CLI:
+The package includes a portable CLI:
 
 ```sh
 npx ludic-canvas fonts --init
@@ -51,9 +51,6 @@ Add the CLI command to your project's `predev` and `prebuild` scripts to generat
 only when inputs change. Use `--force` to rebuild. See the
 [font CLI guide](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#font-cli)
 for character coverage, variable fonts and diagnostics.
-
-The original GitHub 0.1.0 tarball does not contain the CLI. Before 0.2.0 is
-published, install a tarball built from the repository with `npm ci && npm pack`.
 
 ## First interface
 
