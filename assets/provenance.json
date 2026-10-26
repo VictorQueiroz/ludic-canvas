@@ -3,9 +3,9 @@
     "source": "native/layout/yoga_bridge.cpp",
     "yogaVersion": "3.2.1",
     "yogaArchiveSha256": "86b399ac31fd820d8ffa823c3fae31bb690b6fc45301b2a8a966c09b5a088b55",
-    "compiler": "Homebrew clang version 22.1.8",
+    "compiler": "Homebrew clang version 23.1.4",
     "wasiSdk": "wasi-sdk-34",
-    "abiVersion": 1
+    "abiVersion": 2
   },
   "font": {
     "family": "Barlow Condensed",
@@ -15,8 +15,8 @@
   },
   "artifacts": {
     "assets/layout.wasm": {
-      "sha256": "12380f5f33811ae52be91b7906ee6a59a1a3c578464d5f0dcf06aee08477c4ec",
-      "bytes": 103575
+      "sha256": "0ec4dff86cf72d01b175f3db73a03522a82e9c237e57626c2c2dce7402660de8",
+      "bytes": 102000
     },
     "assets/default-font.png": {
       "sha256": "0171440b170166963d88a823ad3f0a10b6c9a3a0a274ae7810074afbab777b9f",

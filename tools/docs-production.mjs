@@ -8,7 +8,7 @@ export function productionGuide(code) {
 <tr><td>3D engines and WebGL 2</td><td>A transparent WebGL 1 overlay canvas is the portable integration. Shared WebGL 1 contexts are supported when the engine resets its state before its next pass. WebGL 2 contexts and native engine bindings are not supported.</td></tr>
 <tr><td>Large collections and advanced visual effects</td><td>Paginate or virtualize lists in application components. The retained tree is traversed each frame. Rotation, skew, stencil masks, rounded child clipping, arbitrary shaders and 3D world-space UI are outside the current renderer.</td></tr>
 </tbody></table>
-<h3>Recovery and ownership</h3><p>Every root owns its Yoga instance, fonts, textures, input listeners, focus scope, caches and animation state. Destroy roots when scenes leave; use an AbortSignal for asynchronous setup and teardown. Two roots can coexist without a game singleton. A canvas accepts one root at a time, including across bundled copies.</p>${code(
+<h3>Recovery and ownership</h3><p>The layout reactor uses ABI 2; custom layout URLs/bytes must match this package version. Prefer the bundled default, or update your deployed reactor when upgrading. Every root owns its Yoga instance, fonts, textures, input listeners, focus scope, caches and animation state. Destroy roots when scenes leave; use an AbortSignal for asynchronous setup and teardown. Two roots can coexist without a game singleton. A canvas accepts one root at a time, including across bundled copies.</p>${code(
     `const lifetime = new AbortController();
 const ui = await createUI({
   canvas,

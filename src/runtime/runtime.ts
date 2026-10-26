@@ -59,8 +59,11 @@ export class UiRuntime {
 
   destroy() {
     this.input.destroy();
-    this.#root.destroy();
-    this.#layout.dispose();
+    try {
+      this.#root.destroy();
+    } finally {
+      this.#layout.dispose();
+    }
   }
 
   setTextScale(scale: number) {

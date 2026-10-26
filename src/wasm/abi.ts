@@ -1,5 +1,5 @@
 // Layout ABI shared with native/layout/yoga_bridge.cpp.
-export const LAYOUT_ABI_VERSION = 1;
+export const LAYOUT_ABI_VERSION = 2;
 
 export const EnumProp = {
   Direction: 0,

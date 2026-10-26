@@ -92,7 +92,7 @@ void setLength(Unit unit, float value, SetPt pt, SetPct pct, SetAuto autoFn) {
 
 extern "C" {
 
-LC_EXPORT(lcl_abi_version) std::uint32_t lcl_abi_version() { return 1; }
+LC_EXPORT(lcl_abi_version) std::uint32_t lcl_abi_version() { return 2; }
 LC_EXPORT(lcl_measure_slot) float* lcl_measure_slot() { return g_measureSlot; }
 LC_EXPORT(lcl_set_point_scale) void lcl_set_point_scale(float scale) { YGConfigSetPointScaleFactor(config(), scale); }
 
@@ -220,6 +220,10 @@ LC_EXPORT(lcl_calculate) void lcl_calculate(std::uint32_t root, float width, flo
 
 LC_EXPORT(lcl_has_new_layout) std::uint32_t lcl_has_new_layout(std::uint32_t n) {
   return YGNodeGetHasNewLayout(node(n)) ? 1u : 0u;
+}
+
+LC_EXPORT(lcl_padding_bottom) float lcl_padding_bottom(std::uint32_t n) {
+  return YGNodeLayoutGetPadding(node(n), YGEdgeBottom);
 }
 
 // Batch read: for each handle writes [left, top, width, height] (relative to

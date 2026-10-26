@@ -243,15 +243,7 @@ export class Painter {
     if (style.overflow === 'scroll') {
       let bottom = 0;
       for (const c of node.children) if (c instanceof HostNode) bottom = Math.max(bottom, c.box.y + c.box.h);
-      const padding = style.paddingBottom ?? style.paddingY ?? style.padding ?? 0;
-      // Yoga resolves percentage padding against the containing block's width.
-      const paddingPx =
-        typeof padding === 'number'
-          ? padding
-          : padding.endsWith('%')
-            ? (parseFloat(padding) / 100) * (node.parent?.box.w ?? node.box.w)
-            : 0;
-      node.contentHeight = bottom + paddingPx;
+      node.contentHeight = bottom + node.ctx.layout.paddingBottom(node.yoga);
       node.scrollY = Math.max(0, Math.min(node.scrollY, node.contentHeight - node.box.h));
     }
     const children = node.paintOrder();

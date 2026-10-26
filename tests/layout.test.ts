@@ -1,9 +1,23 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { YogaLayout } from '../src/wasm/layout.ts';
-import { EnumProp, LengthProp, NumberProp, FLEX_DIRECTION, Unit } from '../src/wasm/abi.ts';
+import { EnumProp, LengthProp, NumberProp, FLEX_DIRECTION, Unit, Edge } from '../src/wasm/abi.ts';
 const bytes = readFileSync(new URL('../assets/layout.wasm', import.meta.url));
 describe('committed Yoga reactor', () => {
+  it('reads resolved percentage padding inside padded containing blocks', async () => {
+    const layout = await YogaLayout.load(bytes),
+      root = layout.create(),
+      scroller = layout.create();
+    layout.setLength(root, LengthProp.Padding, Edge.All, 20, Unit.Point);
+    layout.setLength(scroller, LengthProp.Padding, Edge.Bottom, 10, Unit.Percent);
+    layout.insert(root, scroller, 0);
+    layout.calculate(root, 300, 200);
+    expect(layout.paddingBottom(scroller)).toBeCloseTo(26);
+    layout.remove(root, scroller);
+    layout.free(scroller);
+    layout.free(root);
+    layout.dispose();
+  });
   it('exposes only the neutral layout ABI and expected imports', async () => {
     const module = await WebAssembly.compile(bytes);
     expect(WebAssembly.Module.exports(module).map((x) => x.name)).toContain('lcl_abi_version');
