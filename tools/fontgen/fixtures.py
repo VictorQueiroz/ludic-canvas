@@ -1,9 +1,11 @@
 """Regenerate our MIT-licensed outline fixtures with fonttools==4.60.2, brotli==1.2.1."""
 from pathlib import Path
+from copy import deepcopy
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.t2CharStringPen import T2CharStringPen
-from fontTools.ttLib import TTFont
+from fontTools.ttLib import TTFont, newTable
+from fontTools.ttLib.tables._k_e_r_n import KernTable_format_0
 from fontTools.designspaceLib import DesignSpaceDocument, AxisDescriptor, SourceDescriptor
 from fontTools.varLib import build
 
@@ -79,3 +81,20 @@ variable.save(out / 'fixture-variable.ttf')
 for path in masters.iterdir():
     path.unlink()
 masters.rmdir()
+
+# A known legacy kern-table pair, with unique Unicode-to-glyph mappings.
+kerning = TTFont(out / 'fixture.ttf', recalcTimestamp=False)
+kerning.setGlyphOrder(kerning.getGlyphOrder() + ['V'])
+kerning['glyf']['V'] = deepcopy(kerning['glyf']['question'])
+kerning['hmtx']['V'] = (600, 0)
+for table in kerning['cmap'].tables:
+    if table.isUnicode():
+        table.cmap = {32: 'space', 63: 'question', 65: 'A', 86: 'V'}
+pair = KernTable_format_0()
+pair.version = 0
+pair.coverage = 1
+pair.kernTable = {('A', 'V'): -100}
+kerning['kern'] = newTable('kern')
+kerning['kern'].version = 0
+kerning['kern'].kernTables = [pair]
+kerning.save(out / 'fixture-kerning.ttf')

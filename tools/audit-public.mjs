@@ -33,6 +33,7 @@ for (const file of [
   'site/guide/index.html',
   'site/api/index.html',
   'site/components/index.html',
+  'site/performance/index.html',
   'site/play/index.html',
   'site/play/orbital-relay/index.html',
   'site/examples/orbital-relay.png',

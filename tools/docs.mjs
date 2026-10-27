@@ -1,3 +1,5 @@
+import { typographyGuide } from './docs-typography.mjs';
+import { performancePage } from './docs-performance.mjs';
 import { surveyPage } from './docs-3d.mjs';
 import { playPage } from './docs-play.mjs';
 import { componentsPage } from './docs-components.mjs';
@@ -12,7 +14,7 @@ const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
 mkdirSync('docs/public', { recursive: true });
 writeFileSync('docs/public/font-atlas.schema.json', readFileSync('font-atlas.schema.json'));
 const nav = (active) =>
-  `<a class="brand" href="/"><span class="mark">lc</span> Ludic Canvas<span class="version">${version}</span></a><nav aria-label="Main navigation"><a ${active === 'home' ? 'aria-current="page"' : ''} href="/">Overview</a><a ${active === 'guide' ? 'aria-current="page"' : ''} href="/guide/">Guide</a><a ${active === 'components' ? 'aria-current="page"' : ''} href="/components/">Components</a><a ${active === 'api' ? 'aria-current="page"' : ''} href="/api/">API reference</a><a ${active === 'play' ? 'aria-current="page"' : ''} href="/play/">Play</a><a href="https://github.com/VictorQueiroz/ludic-canvas">GitHub <span aria-hidden="true">↗</span></a></nav>`;
+  `<a class="brand" href="/"><span class="mark">lc</span> Ludic Canvas<span class="version">${version}</span></a><nav aria-label="Main navigation"><a ${active === 'home' ? 'aria-current="page"' : ''} href="/">Overview</a><a ${active === 'guide' ? 'aria-current="page"' : ''} href="/guide/">Guide</a><a ${active === 'components' ? 'aria-current="page"' : ''} href="/components/">Components</a><a ${active === 'api' ? 'aria-current="page"' : ''} href="/api/">API reference</a><a ${active === 'play' ? 'aria-current="page"' : ''} href="/play/">Play</a><a ${active === 'performance' ? 'aria-current="page"' : ''} href="/performance/">Performance</a><a href="https://github.com/VictorQueiroz/ludic-canvas">GitHub <span aria-hidden="true">↗</span></a></nav>`;
 const routes = {
   home: { path: '', main: 'home', script: '/main.tsx' },
   guide: { path: 'guide/' },
@@ -22,6 +24,12 @@ const routes = {
     main: 'components-document',
     styles: ['/components/style.css'],
     script: '/components/main.tsx',
+  },
+  performance: {
+    path: 'performance/',
+    main: 'performance-document',
+    styles: ['/performance/style.css'],
+    script: '/performance/main.ts',
   },
   play: { path: 'play/', main: 'play-document', styles: ['/play/gallery.css'], script: '/play/gallery.ts' },
   orbital: {
@@ -102,7 +110,7 @@ const guideSections = [
     { name: 'interface', atlas: '/fonts/interface.png', metrics: '/fonts/interface.json' },
   ],
 });
-await ui.preloadImages(['portrait', 'emblem']);`)}<p>Omit <code>assets</code> to use image URLs directly. Alternatively pass a resolver function that maps an identifier to image metadata. Unknown catalog identifiers render no image; explicit preloading rejects unknown identifiers. Failed requests call <code>onError</code> and cause preloads to reject. Clear failed or changed entries with <code>invalidateImages(ids)</code> before retrying or loading replacement content. Fetches and decoded uploads are root-owned and disposed when it is destroyed.</p><p>Register one to four MSDF/MTSDF font faces; the first face is the default. Choose a face with <code>fontFamily</code>. Each atlas needs a fallback question-mark glyph. Atlas JSON must use top-origin coordinates and the msdf-atlas-gen metrics schema. Glyphs absent from the atlas fall back to <code>?</code>. The included face covers Latin-1 and selected punctuation. There is no kerning, bidi, ligature shaping or emoji fallback in this release.</p><p>Generate custom atlases with the <a href="#font-cli">packaged font CLI</a>. It uses the bundled WASI compiler and works without CMake, FreeType installation, native executables or network access. Font licenses remain with their fonts. Native tools are needed only to rebuild the compiler itself.</p><p>The texture budget is a soft LRU budget. Recently visible textures remain resident even if they exceed it. SVGs are quantized and rasterized at the requested pixel size. Cross-origin image and font URLs require CORS headers.</p>`,
+await ui.preloadImages(['portrait', 'emblem']);`)}<p>Omit <code>assets</code> to use image URLs directly. Alternatively pass a resolver function that maps an identifier to image metadata. Unknown catalog identifiers render no image; explicit preloading rejects unknown identifiers. Failed requests call <code>onError</code> and cause preloads to reject. Clear failed or changed entries with <code>invalidateImages(ids)</code> before retrying or loading replacement content. Fetches and decoded uploads are root-owned and disposed when it is destroyed.</p>${typographyGuide(code)}<p>Generate custom atlases with the <a href="#font-cli">packaged font CLI</a>. It uses the bundled WASI compiler and works without CMake, FreeType installation, native executables or network access. Font licenses remain with their fonts. Native tools are needed only to rebuild the compiler itself.</p><p>The texture budget is a soft LRU budget. Recently visible textures remain resident even if they exceed it. SVGs are quantized and rasterized at the requested pixel size. Cross-origin image and font URLs require CORS headers.</p>`,
   ],
   [
     'font-cli',
@@ -264,6 +272,7 @@ for (const [path, html] of [
   ['docs/play/index.html', layout('Play', 'play', playPage(code))],
   ['docs/play/orbital-relay/index.html', layout('Orbital Relay', 'orbital', play)],
   ['docs/3d/index.html', layout('Kestrel Survey', '3d', surveyPage(code))],
+  ['docs/performance/index.html', layout('Performance', 'performance', performancePage())],
   ['docs/index.html', layout('React interfaces for browser games', 'home', home)],
   [
     'docs/guide/index.html',
@@ -296,14 +305,14 @@ writeFileSync(
 writeFileSync(
   'docs/public/sitemap.xml',
   '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
-    ['', 'guide/', 'components/', 'api/', 'play/', 'play/orbital-relay/', '3d/']
+    ['', 'guide/', 'components/', 'api/', 'performance/', 'play/', 'play/orbital-relay/', '3d/']
       .map((path) => `<url><loc>https://libraries.ludic-canvas.victorqueiroz.dev/${path}</loc></url>`)
       .join('') +
     '</urlset>\n',
 );
 writeFileSync(
   'docs/public/llms.txt',
-  `# Ludic Canvas\n\nReact UI for browser games, using Yoga WASM and WebGL 1.\n\n- [Guide](https://libraries.ludic-canvas.victorqueiroz.dev/guide/)\n- [Components](https://libraries.ludic-canvas.victorqueiroz.dev/components/)\n- [API](https://libraries.ludic-canvas.victorqueiroz.dev/api/)\n- [Playable example](https://libraries.ludic-canvas.victorqueiroz.dev/play/)\n- [Source](https://github.com/VictorQueiroz/ludic-canvas)\n`,
+  `# Ludic Canvas\n\nReact UI for browser games, using Yoga WASM and WebGL 1.\n\n- [Guide](https://libraries.ludic-canvas.victorqueiroz.dev/guide/)\n- [Components](https://libraries.ludic-canvas.victorqueiroz.dev/components/)\n- [API](https://libraries.ludic-canvas.victorqueiroz.dev/api/)\n- [Performance](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)\n- [Playable example](https://libraries.ludic-canvas.victorqueiroz.dev/play/)\n- [Source](https://github.com/VictorQueiroz/ludic-canvas)\n`,
 );
 dispose();
 console.log(`Generated documentation for ${entries.length} public exports`);

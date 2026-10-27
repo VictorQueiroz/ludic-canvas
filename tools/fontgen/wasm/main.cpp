@@ -60,7 +60,8 @@ int main(int argc, char** argv) {
     return fail("Invalid charset, or more than 16384 requested codepoints");
   std::vector<msdf_atlas::GlyphGeometry> glyphs;
   msdf_atlas::FontGeometry geometry(&glyphs);
-  const int loaded = geometry.loadCharset(owner.handle, 1.0, charset, false, false);
+  // FreeType exposes legacy kern-table pairs. GPOS positioning needs a shaping engine.
+  const int loaded = geometry.loadCharset(owner.handle, 1.0, charset, false, FT_HAS_KERNING(owner.face));
   if (loaded <= 0 || !geometry.getGlyph(msdf_atlas::unicode_t(63))) return fail("Font must provide outline glyphs and a '?' fallback");
   if (static_cast<std::size_t>(loaded) != charset.size()) {
     std::fprintf(stderr, "Missing codepoints:");
@@ -68,6 +69,7 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "\n");
     return 2;
   }
+  if (geometry.getKerning().size() > 262144) return fail("More than 262144 kerning pairs");
   for (auto& glyph : glyphs) glyph.edgeColoring(msdfgen::edgeColoringInkTrap, 3.0, 0);
   msdf_atlas::TightAtlasPacker packer;
   packer.setDimensionsConstraint(msdf_atlas::DimensionsConstraint::POWER_OF_TWO_SQUARE);
@@ -99,7 +101,7 @@ int main(int argc, char** argv) {
   metrics.distanceRange = packer.getPixelRange();
   metrics.size = packer.getScale(); metrics.width = width; metrics.height = height;
   metrics.yDirection = msdfgen::Y_DOWNWARD;
-  if (!msdf_atlas::exportJSON(&geometry, 1, msdf_atlas::ImageType::MTSDF, metrics, argv[4], false))
+  if (!msdf_atlas::exportJSON(&geometry, 1, msdf_atlas::ImageType::MTSDF, metrics, argv[4], true))
     return fail("Could not write font metrics");
   return 0;
 }

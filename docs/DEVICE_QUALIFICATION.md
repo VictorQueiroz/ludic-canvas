@@ -5,6 +5,11 @@ technology qualification campaign has not been completed. Do not interpret
 automated browser results or the component catalogue's draw counters as device
 certification or GPU timing measurements.
 
+Start reproducible acquisition at [/performance/](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
+using [PERFORMANCE.md](PERFORMANCE.md). Retain its downloaded JSON alongside this
+protocol's game, long-session and assistive-technology evidence. The lab does not
+acquire heap/GPU memory or complete any absent physical-phone qualification.
+
 ## Targets
 
 | Target                      | Required evidence                                                                   |

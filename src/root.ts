@@ -3,7 +3,7 @@ import { UIRootContext } from './context.ts';
 import { createAssetResolver, type AssetResolver, type ImageAssets } from './assets.ts';
 import { defaultAssets } from './defaults.ts';
 import { UiBatch } from './gfx/batch.ts';
-import { Font, FontBook, loadFontJson, validateFontMetrics, type AtlasJson } from './gfx/font.ts';
+import { Font, FontBook, loadFontJson, validateFontMetrics, type AtlasJson, type FontDiagnostic } from './gfx/font.ts';
 import { createTexture, parseColor } from './gfx/gl.ts';
 import { TextureStore } from './gfx/textures.ts';
 import { UiRuntime } from './runtime/runtime.ts';
@@ -69,6 +69,8 @@ export interface UIOptions {
   onContextLost?: () => void;
   onContextRestored?: () => void;
   onError?: (error: unknown) => void;
+  /** Opt-in missing-glyph diagnostics, queued after layout. At most 1024 unique codepoint/chain reports per root. */
+  onFontDiagnostic?: (diagnostic: FontDiagnostic) => void;
 }
 
 /** A mounted React interface and its layout, input and GPU resources. */
@@ -158,7 +160,20 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
       report(error);
     }
   };
-  const fonts = new FontBook();
+  const fonts = new FontBook(
+    options.onFontDiagnostic
+      ? (diagnostic) => {
+          queueMicrotask(() => {
+            if (destroyed) return;
+            try {
+              options.onFontDiagnostic?.(diagnostic);
+            } catch (error) {
+              report(error);
+            }
+          });
+        }
+      : undefined,
+  );
   const loaded: { name: string; metrics: AtlasJson; blob: Blob }[] = [];
   let layout: YogaLayout | undefined,
     batch: UiBatch | undefined,

@@ -26,6 +26,9 @@ writeFileSync(
   JSON.stringify(
     {
       source: 'tools/fontgen/wasm',
+      sourceSha256: createHash('sha256')
+        .update(readFileSync(resolve(root, 'tools/fontgen/wasm/main.cpp')))
+        .digest('hex'),
       target: 'wasm32-wasip1 command, SIMD, bulk memory, exception handling',
       compiler: toolchain.clangVersion,
       wasiSdk: toolchain.wasiSdk,

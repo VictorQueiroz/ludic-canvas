@@ -41,6 +41,17 @@ function pixels(png) {
 }
 
 describe('packaged font atlas compiler', () => {
+  it('extracts a known kern-table pair into usable normalized runtime metrics', async () => {
+    const { path, output } = await fixture('fixture-kerning.ttf', { charset: '0x20, 0x3F, 0x41, 0x56' });
+    await generateFontAtlases(path, silent);
+    const metrics = JSON.parse(await readFile(join(output, 'interface.json'), 'utf8'));
+    expect(metrics.kerning).toContainEqual({ unicode1: 65, unicode2: 86, advance: -0.1 });
+    const fonts = new FontBook();
+    fonts.add(
+      new Font('ui', 0, metrics, { handle: {}, width: metrics.atlas.width, height: metrics.atlas.height, bytes: 0 }),
+    );
+    expect(fonts.shape('AV', { font: 'ui', size: 20 }).width).toBe(22);
+  });
   it.each(['font-atlas-manifest', 'FONT-ATLAS-MANIFEST', 'Font-Atlas-Manifest'])(
     'rejects the reserved stem %s before changing existing outputs',
     async (name) => {
