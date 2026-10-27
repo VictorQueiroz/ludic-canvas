@@ -45,6 +45,9 @@ if (query.get('embed') === '1') {
       // A fresh frame loads its declared URL as its initial document. This
       // avoids blank-frame restoration on reload and extra child history.
       const next = player.cloneNode(false) as HTMLIFrameElement;
+      // A fresh browsing-context name prevents an old blank history entry
+      // from being matched to this newly created scene on a parent reload.
+      next.name = `ludic-${game}-${crypto.randomUUID()}`;
       next.src = card.dataset.src!;
       player.replaceWith(next);
       player = next;
