@@ -2,7 +2,7 @@ import { useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { ScrollAreaProps } from './controls.tsx';
 import { useUIRoot } from './context.ts';
 import { View } from './primitives.ts';
-import { createScrollHandle, observeScrollFrames, type ScrollHandle } from './scroll.ts';
+import { createScrollHandle, observeScrollFrames, hasPendingScroll, type ScrollHandle } from './scroll.ts';
 import { fixedRange, offsetForIndex, type ScrollAlignment } from './virtual/range.ts';
 import type { Interactive, UIKeyEvent, ViewStyle } from './runtime/types.ts';
 
@@ -219,8 +219,10 @@ export function VirtualList<T>({
     if (
       state.connected &&
       !store.pending &&
+      !hasPendingScroll(handle.scroll) &&
       previous.keys.length &&
-      (previous.keys !== data.keys ||
+      ((previous.keys !== data.keys &&
+        (previous.keys.length !== data.keys.length || previous.keys.some((key, index) => key !== data.keys[index]))) ||
         previous.itemHeight !== itemHeight ||
         previous.gap !== gap ||
         previous.padding !== contentPadding)
@@ -441,6 +443,18 @@ export function VirtualList<T>({
             right: contentPadding,
             top: contentPadding + index * (itemHeight + gap),
             height: itemHeight,
+            minHeight: itemHeight,
+            maxHeight: itemHeight,
+            width: undefined,
+            minWidth: 0,
+            maxWidth: undefined,
+            margin: 0,
+            marginX: 0,
+            marginY: 0,
+            marginTop: 0,
+            marginBottom: 0,
+            marginLeft: 0,
+            marginRight: 0,
             flexShrink: 0,
           }}
         >

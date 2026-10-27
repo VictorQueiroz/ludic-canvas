@@ -149,6 +149,10 @@ export function observeScrollFrames(handle: ScrollHandle, listener: () => void):
     state.frameListeners.delete(listener);
   };
 }
+/** @internal Explicit application commands take precedence over collection anchoring. */
+export function hasPendingScroll(handle: ScrollHandle): boolean {
+  return stores.get(handle)?.pending !== undefined;
+}
 /** @internal Called only by the owning application's frame; never starts a loop. */
 export function finishScrollFrame(node: HostNode) {
   const state = node.props.scrollHandle && stores.get(node.props.scrollHandle);

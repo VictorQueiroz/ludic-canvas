@@ -4,6 +4,8 @@ const canvas = document.querySelector('canvas')!;
 const handle = createVirtualListHandle();
 const errors: string[] = [];
 let renders = 0;
+let commits = 0;
+let paused = false;
 let changeCount: (count: number) => void = () => {};
 let reverse = () => {};
 let remove = (_key: number) => {};
@@ -19,6 +21,9 @@ const root = await createUI({
   reducedMotion: true,
   onError: (error) => errors.push(String(error)),
 });
+const outside = document.createElement('button');
+outside.textContent = 'Outside action';
+document.body.appendChild(outside);
 const getItemKey = (value: number) => value;
 function App() {
   const [items, setItems] = useState(() => Array.from({ length: 40000 }, (_, i) => i));
@@ -26,6 +31,9 @@ function App() {
   const [selected, setSelected] = useState<number>();
   const [height, setHeight] = useState(40);
   const [replaced, setReplaced] = useState(false);
+  useLayoutEffect(() => {
+    commits++;
+  });
   useLayoutEffect(() => {
     changeCount = (count) => setItems(Array.from({ length: count }, (_, i) => i));
     reverse = () => setItems((items) => [...items].reverse());
@@ -50,7 +58,10 @@ function App() {
         handle={handle}
         label="Inventory"
         style={{ flex: 1 }}
-        rowStyle={{ background: '#204060' }}
+        rowStyle={{
+          background: '#204060',
+          ...(new URLSearchParams(location.search).has('conflict') ? { minHeight: 80, marginTop: 20 } : {}),
+        }}
         renderItem={(value) => {
           renders++;
           return <Text>{`Row ${value}`}</Text>;
@@ -102,6 +113,12 @@ Object.assign(window, {
     get renders() {
       return renders;
     },
+    get commits() {
+      return commits;
+    },
+    pause: (value: boolean) => {
+      paused = value;
+    },
     changeCount: (count: number) => changeCount(count),
     reverse: () => reverse(),
     remove: (key: number) => remove(key),
@@ -112,7 +129,7 @@ Object.assign(window, {
 });
 function tick() {
   try {
-    frame();
+    if (!paused) frame();
     requestAnimationFrame(tick);
   } catch {}
 }

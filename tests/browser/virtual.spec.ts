@@ -256,3 +256,54 @@ test('replacing focused contents inside the same modal restores an available con
   await expect(page.getByRole('button', { name: 'Replacement action', exact: true })).toBeAttached();
   await expect(page.getByRole('button', { name: 'Close dialog', exact: true })).toBeFocused();
 });
+
+test('data commits preserve explicit queued scroll commands', async ({ page }) => {
+  const before = await page.evaluate(() => {
+    const c = (window as any).virtual;
+    c.pause(true);
+    c.handle.scroll.scrollTo(4000);
+    const before = c.commits;
+    c.changeCount(40000);
+    return before;
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).virtual.commits)).toBeGreaterThan(before);
+  expect(
+    await page.evaluate(() => {
+      const c = (window as any).virtual;
+      c.frame();
+      return c.handle.scroll.getSnapshot().offset;
+    }),
+  ).toBe(4000);
+});
+
+test('row skins cannot override fixed collection placement or height', async ({ page }) => {
+  await page.goto('/tests/browser/virtual/?conflict');
+  const first = page.getByRole('option', { name: 'Row 0', exact: true });
+  await expect(first).toBeAttached();
+  const canvas = await page.locator('canvas').boundingBox();
+  const row = await first.boundingBox();
+  expect(row!.height).toBe(40);
+  expect(row!.y).toBe(canvas!.y);
+});
+
+test('native Tab return reveals a retained option without scrolling the accessibility surface', async ({ page }) => {
+  await page.evaluate(async () => {
+    const c = (window as any).virtual;
+    const pending = c.handle.focusIndex(39999);
+    c.frame();
+    await pending;
+    c.handle.scroll.scrollTo(0);
+    c.frame();
+  });
+  await page.getByRole('button', { name: 'Outside action', exact: true }).press('Shift+Tab');
+  const last = page.getByRole('option', { name: 'Row 39999', exact: true });
+  await expect(last).toBeFocused();
+  await expect
+    .poll(async () => {
+      const row = await last.boundingBox(),
+        canvas = await page.locator('canvas').boundingBox();
+      return row !== null && canvas !== null && row.y >= canvas.y && row.y + row.height <= canvas.y + canvas.height + 1;
+    })
+    .toBe(true);
+  expect(await page.locator('[data-ludic-canvas="accessibility"]').evaluate((node) => node.scrollTop)).toBe(0);
+});
