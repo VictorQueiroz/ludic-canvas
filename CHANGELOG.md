@@ -1,5 +1,14 @@
 # ludic-canvas
 
+## 0.6.0
+
+### Minor Changes
+
+- 3f20481: Add opt-in per-root frame profiling with stage timings and mounted, painted and submitted geometry counts. The performance lab can retain raw profiles without changing the default measurement mode.
+- 1d8cce4: Add independent typed scroll handles, cached immutable viewport/offset snapshots, subscriptions and coalesced onScroll notifications. Wheel, touch, focus reveal and programmatic commands use the same laid-out extent.
+- ce0609f: Add fixed-height VirtualList collections with stable keys, overscan, padding, bounded mounted rows and typed scrolling. Settle scroll-driven React window commits before painting in the existing application frame, with separate profiling for this work.
+- 5fdcab0: Add logical virtual-list focus, keyboard/gamepad navigation, controlled selection, prefix search and listbox position semantics. Preserve focus and viewport anchors across data changes, retain pointer targets through scrolling, cancel pending work on teardown and preserve focus when accessibility mirrors reorder.
+
 ## 0.5.0
 
 ### Minor Changes
