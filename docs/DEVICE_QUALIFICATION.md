@@ -74,3 +74,15 @@ For each acquired result, save:
 The current accessibility mirror describes controls, named groups and live
 announcements. It does not expose a complete static-text document or provide text
 editing. Record these boundaries explicitly during assistive-technology testing.
+
+## Virtualized collection cases
+
+Exercise the 4,000-record regional archive in the 3D example and the collection
+benchmark with both motion settings and increased text scale/explicit row heights.
+Verify fast scrolling and distant jumps, disabled-item skipping, Home/End and
+paging, controlled selection, modal focus return, item reorder/deletion and
+viewport anchors. Confirm that screen readers announce logical position/size
+while only a bounded set of options exists. Test native touch scrolling, rotation
+and background/resume on physical phones. Record a 30-minute session and actual
+heap/process/GPU observations separately; a zero-mirror teardown check proves none
+of those memory properties.
