@@ -21,6 +21,7 @@ import {
 import type { YogaLayout } from '../wasm/layout.ts';
 import type { FontBook, TextStyle } from '../gfx/font.ts';
 import type { AnyProps, Dim, HostType, LayoutStyle, TextStyleProp } from './types.ts';
+import { detachScroll, type ScrollSnapshot } from '../scroll.ts';
 
 export interface Box {
   x: number;
@@ -72,6 +73,8 @@ export class HostNode {
   focused = false;
   scrollY = 0;
   contentHeight = 0;
+  scrollSnapshot?: ScrollSnapshot;
+  scrollEventQueued = false;
   mountedAt = performance.now();
   tweens = new Map<string, { from: number[]; to: number[]; start: number; duration: number }>();
   hoverT = 0;
@@ -165,6 +168,8 @@ export class HostNode {
 
   update(next: AnyProps) {
     const prev = this.props;
+    if (prev.scrollHandle !== next.scrollHandle || next.style?.overflow !== 'scroll')
+      detachScroll(prev.scrollHandle, this);
     this.props = next;
     applyLayout(this.ctx.layout, this.yoga, layoutOf(prev), layoutOf(next));
     if (this.type === 'text') {
@@ -185,6 +190,7 @@ export class HostNode {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    detachScroll(this.props.scrollHandle, this);
     for (const c of this.children) if (c instanceof HostNode) c.destroy();
     if (this.#measureId) this.ctx.layout.releaseMeasure(this.#measureId);
     this.ctx.layout.free(this.yoga);

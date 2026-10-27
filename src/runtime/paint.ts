@@ -243,12 +243,6 @@ export class Painter {
       const box = { x: ax, y: ay, w, h };
       childClip = clip ? intersect(clip, box) : box;
     }
-    if (style.overflow === 'scroll') {
-      let bottom = 0;
-      for (const c of node.children) if (c instanceof HostNode) bottom = Math.max(bottom, c.box.y + c.box.h);
-      node.contentHeight = bottom + node.ctx.layout.paddingBottom(node.yoga);
-      node.scrollY = Math.max(0, Math.min(node.scrollY, node.contentHeight - node.box.h));
-    }
     const children = node.paintOrder();
     if (childClip !== clip)
       b.setClip(childClip ? [childClip.x * d, childClip.y * d, childClip.w * d, childClip.h * d] : undefined);

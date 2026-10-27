@@ -3,6 +3,7 @@
 
 import type { ReactNode } from 'react';
 import type { FontFamily } from '../gfx/font.ts';
+import type { ScrollHandle, ScrollSnapshot } from '../scroll.ts';
 
 export type Dim = number | `${number}%` | 'auto';
 
@@ -188,6 +189,10 @@ export interface CommonProps extends Interactive {
 
 export interface ViewProps extends CommonProps {
   style?: ViewStyle;
+  /** Attach a root-local scroll store to a view with overflow: scroll. */
+  scrollHandle?: ScrollHandle;
+  /** Coalesced layout/offset notification after the frame. */
+  onScroll?: (snapshot: ScrollSnapshot) => void;
   /** 0..1 horizontal fill drawn inside the box (bars). Animated with `transition`. */
   fill?: number;
   fillColor?: string;

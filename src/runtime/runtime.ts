@@ -10,6 +10,7 @@ import { HostNode, type RuntimeContext } from './nodes.ts';
 import { Painter } from './paint.ts';
 import { createUiRoot, type UiRoot } from './reconciler.ts';
 import type { FrameProfile } from './profile.ts';
+import { updateScroll } from '../scroll.ts';
 
 export class UiRuntime {
   readonly ctx: RuntimeContext;
@@ -140,6 +141,7 @@ export class UiRuntime {
       });
     }
 
+    for (const n of nodes) updateScroll(n);
     const readAt = profile ? performance.now() : 0;
     batch.begin(cssW * dpr, cssH * dpr, now / 1000, width, height);
     try {

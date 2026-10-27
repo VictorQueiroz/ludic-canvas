@@ -1,6 +1,8 @@
 export { createUI } from './root.ts';
 export type { UIRoot, UIOptions, UITheme, FontSource, FrameInfo } from './root.ts';
 export type { FrameProfile } from './runtime/profile.ts';
+export { createScrollHandle } from './scroll.ts';
+export type { ScrollHandle, ScrollSnapshot } from './scroll.ts';
 export { View, Text, Image, Line } from './primitives.ts';
 export type {
   ViewProps,

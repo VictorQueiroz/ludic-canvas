@@ -237,6 +237,7 @@ for (const file of [
   'defaults',
   'runtime/types',
   'runtime/profile',
+  'scroll',
   'gfx/font',
   'resources',
 ]) {
