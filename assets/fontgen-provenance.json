@@ -1,6 +1,6 @@
 {
   "source": "tools/fontgen/wasm",
-  "sourceSha256": "b19cfb838c0308eab2013be79ab2d7009dafc366b43158a24cbcce09000e1062",
+  "sourceSha256": "9fc3ac8a6afe4861c1f8ddd7bb586a89ae1a29ef52647dcc714d34db807eafa6",
   "target": "wasm32-wasip1 command, SIMD, bulk memory, exception handling",
   "compiler": "Homebrew clang version 23.1.4",
   "wasiSdk": "wasi-sdk-34",
@@ -10,6 +10,6 @@
     "msdfgen": "1874bcf7d9624ccc85b4bc9a85d78116f690f35b",
     "msdf-atlas-gen": "1.4"
   },
-  "sha256": "6c0315da67fa7c957c8025838fc91056f6f7d50c6993f5999378b8b6a74b3df9",
-  "bytes": 1023973
+  "sha256": "9bdd2603eb77ad3d116e82e624622c7b389a87fc3b6d86696483297e7c7e3015",
+  "bytes": 1026237
 }
