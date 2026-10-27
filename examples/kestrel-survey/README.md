@@ -17,7 +17,7 @@ npm run build
 npm run preview
 ```
 
-Node 24+ is required. The browser must support WebGL 2 for Three.js and WebGL 1 for Ludic Canvas. The project installs the published `ludic-canvas@0.3.0` package. The repository's documentation build uses the current library checkout instead; CI also copies this project into a temporary directory and builds it against the packed library.
+Node 24+ is required. The browser must support WebGL 2 for Three.js and WebGL 1 for Ludic Canvas. The project installs the published `ludic-canvas@0.4.0` package. The repository's documentation build uses the current library checkout instead; CI also copies this project into a temporary directory and builds it against the packed library.
 
 ## Play
 
@@ -62,3 +62,8 @@ npm run fonts
 The bundled font compiler runs during development. Runtime text uses the generated PNG/JSON files; source fonts and native build tools are unnecessary in the browser.
 
 License notices for the standalone production build are included in `public/third-party-notices.txt`.
+
+The visual design remains in this example. Its styled buttons, camera slider,
+switches, site tabs and modal panels compose the library's controlled components;
+the game owns every value and action. See the [component catalogue](https://libraries.ludic-canvas.victorqueiroz.dev/components/)
+for the shared interaction contracts.
