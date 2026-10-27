@@ -243,3 +243,14 @@ cd examples/kestrel-survey
 npm install
 npm run dev
 ```
+
+## Large collections
+
+`VirtualList` provides fixed-height single-select collections with stable keys,
+overscan, controlled selection and logical keyboard/gamepad focus. Ordinary
+`ScrollArea` regions can expose independent typed scroll handles. See the
+[collection guide](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#virtualization),
+[full contract](docs/VIRTUALIZATION.md), and the 4,000-record archive inside
+[Kestrel Survey](https://libraries.ludic-canvas.victorqueiroz.dev/play/?example=kestrel-survey).
+The [performance lab](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
+compares matched retained/windowed workloads and preserves raw measurements.

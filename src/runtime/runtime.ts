@@ -9,6 +9,8 @@ import { InputSystem } from './input.ts';
 import { HostNode, type RuntimeContext } from './nodes.ts';
 import { Painter } from './paint.ts';
 import { createUiRoot, type UiRoot } from './reconciler.ts';
+import type { FrameProfile } from './profile.ts';
+import { updateScroll, finishScrollFrame } from '../scroll.ts';
 
 export class UiRuntime {
   readonly ctx: RuntimeContext;
@@ -20,6 +22,7 @@ export class UiRuntime {
   #boxes = new Float32Array(1024);
   #size = [0, 0];
   #scale = 0;
+  #revision = 0;
   theme = { focusRing: '#90b4ff', textColor: '#edf2ff', emphasisColor: '#90b4ff' };
   reducedMotion = false;
 
@@ -35,7 +38,9 @@ export class UiRuntime {
       layout: options.layout,
       fonts: options.fonts,
       textScale: 1,
-      invalidate: () => {},
+      invalidate: () => {
+        this.#revision++;
+      },
       onError: options.onError,
     };
     this.#root = createUiRoot(this.ctx);
@@ -84,7 +89,9 @@ export class UiRuntime {
     size: { width: number; height: number; dpr: number; cssWidth?: number; cssHeight?: number },
     now: number,
     dt: number,
-  ) {
+    profile = false,
+  ): FrameProfile | undefined {
+    const startedAt = profile ? performance.now() : 0;
     const { width, height, dpr } = size;
     if (this.#scale !== dpr) {
       this.#scale = dpr;
@@ -94,35 +101,60 @@ export class UiRuntime {
     const cssH = size.cssHeight ?? height / dpr;
     if (this.#size[0] !== cssW || this.#size[1] !== cssH) this.#size = [cssW, cssH];
     const root = this.#root.root;
-    this.#layout.calculate(root.yoga, cssW, cssH);
-
-    // Read every box in one boundary crossing.
-    const nodes: HostNode[] = [];
-    const collect = (n: HostNode) => {
-      nodes.push(n);
-      for (const c of n.children) if (c instanceof HostNode) collect(c);
-    };
-    collect(root);
-    if (this.#handles.length < nodes.length) {
-      this.#handles = new Uint32Array(nodes.length * 2);
-      this.#boxes = new Float32Array(nodes.length * 8);
+    let nodes: HostNode[] = [];
+    const changed = new Set<HostNode>();
+    let layoutMs = 0,
+      readLayoutMs = 0,
+      scrollCommitMs = 0,
+      layoutPasses = 0;
+    // A scroll-window commit changes the mounted tree. Settle it before painting,
+    // including when the application calls frame() immediately after scrollTo().
+    for (let pass = 0; pass < 3; pass++) {
+      layoutPasses++;
+      const layoutAt = profile ? performance.now() : 0;
+      this.#layout.calculate(root.yoga, cssW, cssH);
+      const readAt = profile ? performance.now() : 0;
+      nodes = [];
+      const collect = (n: HostNode) => {
+        nodes.push(n);
+        for (const c of n.children) if (c instanceof HostNode) collect(c);
+      };
+      collect(root);
+      if (this.#handles.length < nodes.length) {
+        this.#handles = new Uint32Array(nodes.length * 2);
+        this.#boxes = new Float32Array(nodes.length * 8);
+      }
+      for (let i = 0; i < nodes.length; i++) this.#handles[i] = nodes[i]!.yoga;
+      this.#layout.readLayouts(this.#handles.subarray(0, nodes.length), this.#boxes.subarray(0, nodes.length * 4));
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i]!;
+        const x = this.#boxes[i * 4]!,
+          y = this.#boxes[i * 4 + 1]!,
+          w = this.#boxes[i * 4 + 2]!,
+          h = this.#boxes[i * 4 + 3]!;
+        if (n.props.onLayout && (n.box.x !== x || n.box.y !== y || n.box.w !== w || n.box.h !== h)) changed.add(n);
+        n.box.x = x;
+        n.box.y = y;
+        n.box.w = w;
+        n.box.h = h;
+      }
+      const commitAt = profile ? performance.now() : 0;
+      const notifications: (() => void)[] = [];
+      for (const n of nodes) updateScroll(n, notifications);
+      const revision = this.#revision;
+      if (notifications.length)
+        this.#root.flushSync(() => {
+          for (const notify of notifications) notify();
+        });
+      if (profile) {
+        layoutMs += readAt - layoutAt;
+        readLayoutMs += commitAt - readAt;
+        scrollCommitMs += performance.now() - commitAt;
+      }
+      if (revision === this.#revision) break;
+      if (pass === 2) throw new Error('Scroll subscriptions did not settle within three layout passes');
     }
-    for (let i = 0; i < nodes.length; i++) this.#handles[i] = nodes[i]!.yoga;
-    this.#layout.readLayouts(this.#handles.subarray(0, nodes.length), this.#boxes.subarray(0, nodes.length * 4));
-    const changed: HostNode[] = [];
-    for (let i = 0; i < nodes.length; i++) {
-      const n = nodes[i]!;
-      const x = this.#boxes[i * 4]!;
-      const y = this.#boxes[i * 4 + 1]!;
-      const w = this.#boxes[i * 4 + 2]!;
-      const h = this.#boxes[i * 4 + 3]!;
-      if (n.props.onLayout && (n.box.x !== x || n.box.y !== y || n.box.w !== w || n.box.h !== h)) changed.push(n);
-      n.box.x = x;
-      n.box.y = y;
-      n.box.w = w;
-      n.box.h = h;
-    }
-    if (changed.length) {
+    if (changed.size) {
       queueMicrotask(() => {
         for (const n of changed)
           if (!n.destroyed) {
@@ -136,6 +168,7 @@ export class UiRuntime {
       });
     }
 
+    const readAt = profile ? performance.now() : 0;
     batch.begin(cssW * dpr, cssH * dpr, now / 1000, width, height);
     try {
       this.#painter.paint(root, {
@@ -152,7 +185,9 @@ export class UiRuntime {
     } finally {
       batch.end();
     }
+    const paintedAt = profile ? performance.now() : 0;
     this.input.afterPaint();
+    for (const node of nodes) finishScrollFrame(node);
 
     // Live region: the newest announced text.
     for (let i = this.#painter.visible.length - 1; i >= 0; i--) {
@@ -165,6 +200,21 @@ export class UiRuntime {
         this.input.announce(n.text.replace(/\*\*/g, ''));
         break;
       }
+    }
+    if (profile) {
+      const endedAt = performance.now();
+      return {
+        layoutMs,
+        readLayoutMs,
+        scrollCommitMs,
+        paintMs: paintedAt - readAt,
+        inputMs: endedAt - paintedAt,
+        totalMs: endedAt - startedAt,
+        mountedNodes: nodes.length,
+        layoutPasses,
+        paintedNodes: this.#painter.visible.length,
+        submittedQuads: batch.submittedQuads,
+      };
     }
   }
 }

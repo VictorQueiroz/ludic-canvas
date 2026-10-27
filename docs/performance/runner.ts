@@ -1,7 +1,14 @@
-import { createUI, defaultAssets, type AtlasJson, type UIRoot } from 'ludic-canvas';
+import { createUI, defaultAssets, type AtlasJson, type UIRoot, type FrameProfile } from 'ludic-canvas';
 import { version } from '../../package.json';
 import { evaluateBudgets, summarize, type PerformanceBudgets } from './report.ts';
 import { renderCommitted, workloadElement, workloads, workloadSizes, workloadVersion } from './workloads.tsx';
+import {
+  collectionWorkloads,
+  createCollectionWorkload,
+  collectionOffset,
+  type CollectionWorkload,
+} from './collections.tsx';
+import type { Workload } from './workloads.tsx';
 
 declare const __LUDIC_REVISION__: string;
 export interface BenchmarkOptions {
@@ -12,6 +19,10 @@ export interface BenchmarkOptions {
   warmupFrames?: number;
   lifecycleCycles?: number;
   budgets?: PerformanceBudgets;
+  /** Optional stage measurements. Compare only runs with the same setting. */
+  profile?: boolean;
+  suite?: 'hud-v1' | 'collections-v1';
+  order?: 'forward' | 'reverse';
   onProgress?: (message: string) => void;
 }
 function countNodes(value: unknown): number {
@@ -47,6 +58,12 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
   const warmupFrames = integer(options.warmupFrames ?? 20, 1, 300);
   const lifecycleCycles = integer(options.lifecycleCycles ?? 5, 1, 50);
   const budgets = options.budgets ?? {};
+  const suite = options.suite ?? 'hud-v1';
+  if (suite !== 'hud-v1' && suite !== 'collections-v1') throw new Error('Unknown workload suite');
+  const order = options.order ?? 'forward';
+  if (order !== 'forward' && order !== 'reverse') throw new Error('Unknown workload order');
+  const selectedWorkloads = [...(suite === 'collections-v1' ? collectionWorkloads : workloads)];
+  if (order === 'reverse') selectedWorkloads.reverse();
   evaluateBudgets([0], [0], budgets);
   const signal = options.signal;
   signal.throwIfAborted();
@@ -70,6 +87,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
       canvas,
       fonts,
       autoStart: false,
+      profile: options.profile ?? false,
       signal,
       maxDpr: 2,
       reducedMotion: true,
@@ -108,15 +126,21 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
       viewport: { width: innerWidth, height: innerHeight },
     };
     const results = [];
-    for (const workload of workloads) {
+    for (const workload of selectedWorkloads) {
       check();
       options.onProgress?.(`Running ${workload}`);
       canvas.style.width = '960px';
-      const commitMs = [await renderCommitted(root, workloadElement(workload), signal)];
+      const collection =
+        suite === 'collections-v1' ? createCollectionWorkload(workload as CollectionWorkload) : undefined;
+      const commitMs = [
+        await renderCommitted(root, collection?.element ?? workloadElement(workload as Workload), signal),
+      ];
       const cpuFrameMs: number[] = [],
         frameIntervalMs: number[] = [],
         drawCalls: number[] = [];
       const dimensions: { width: number; height: number; dpr: number }[] = [];
+      const profiles: FrameProfile[] = [];
+      const offsets: { requested: number; actual: number; jump: boolean }[] = [];
       let previous = 0;
       const startedAt = performance.now();
       for (let i = -warmupFrames; i < sampleFrames; i++) {
@@ -129,6 +153,13 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
           canvas.style.width = Math.floor((i + warmupFrames) / 6) % 2 ? '360px' : '960px';
         const now = await nextFrame(signal);
         check();
+        const requestedOffset = collection
+          ? collectionOffset(
+              i + warmupFrames,
+              Math.max(0, collection.totalHeight - canvas.getBoundingClientRect().height),
+            )
+          : 0;
+        if (collection) collection.scroll.scrollTo(requestedOffset);
         const start = performance.now();
         const frame = root.frame(now);
         const elapsed = performance.now() - start;
@@ -141,13 +172,20 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
           cpuFrameMs.push(elapsed);
           drawCalls.push(frame.drawCalls);
           dimensions.push({ width: frame.cssWidth, height: frame.cssHeight, dpr: frame.dpr });
+          if (frame.profile) profiles.push(frame.profile);
+          if (collection) {
+            const actual = collection.scroll.getSnapshot().offset;
+            if (Math.abs(actual - requestedOffset) > 0.1)
+              throw new Error('Collection scroll trace did not settle in the measured frame');
+            offsets.push({ requested: requestedOffset, actual, jump: (i + warmupFrames) % 30 === 0 });
+          }
           if (previous) frameIntervalMs.push(now - previous);
           previous = now;
         }
       }
       results.push({
         workload,
-        items: workloadSizes[workload],
+        items: collection?.count ?? workloadSizes[workload as Workload],
         nodes: countNodes(root.inspect()),
         durationMs: performance.now() - startedAt,
         cpuFrameMs: { summary: summarize(cpuFrameMs), samples: cpuFrameMs },
@@ -155,6 +193,8 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
         renderToCommitMs: { summary: summarize(commitMs), samples: commitMs },
         maxDrawCalls: Math.max(...drawCalls),
         dimensions,
+        ...(options.profile ? { profiles } : {}),
+        ...(collection ? { offsets, mode: collection.virtual ? 'virtual' : 'retained' } : {}),
         budget: evaluateBudgets(cpuFrameMs, frameIntervalMs, budgets),
       });
     }
@@ -179,7 +219,8 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
     check();
     return {
       schemaVersion: 1,
-      workloadVersion,
+      workloadVersion: suite === 'collections-v1' ? 'collections-1' : workloadVersion,
+      suite,
       libraryVersion: version,
       distribution: 'repository-source',
       revision: __LUDIC_REVISION__,
@@ -191,6 +232,12 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
         lifecycleCycles,
         maxDpr: 2,
         budgets,
+        profile: options.profile ?? false,
+        order,
+        scrollTrace:
+          suite === 'collections-v1'
+            ? '12 CSS pixels/frame; distant jumps every 30 requested frames; commands before frame timer'
+            : 'legacy focus reveal after frame timer',
         fonts: 'Two copies of bundled Barlow: ASCII primary and Latin-1 fallback',
         worldRenderer: 'none',
         cacheState: 'uncontrolled-browser-cache',
@@ -198,7 +245,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
       },
       measurementNotes: {
         cpuFrameMs:
-          'CPU elapsed around ui.frame(); includes Yoga, paint, input mirror and GL submission, excludes GPU execution and React commit.',
+          'Elapsed around ui.frame(); includes Yoga, paint, input mirror, GL submission and synchronous virtual-window React commits. Excludes GPU execution and React commits scheduled outside frame().',
         renderToCommitMs: 'Wall-clock scheduling latency through useLayoutEffect; not isolated React CPU time.',
         frameIntervalMs:
           'requestAnimationFrame timestamp intervals; includes browser scheduling and intervening work, not GPU timings or presentation confirmation.',

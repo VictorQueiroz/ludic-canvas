@@ -3,6 +3,7 @@
 
 import type { ReactNode } from 'react';
 import type { FontFamily } from '../gfx/font.ts';
+import type { ScrollHandle, ScrollSnapshot } from '../scroll.ts';
 
 export type Dim = number | `${number}%` | 'auto';
 
@@ -119,13 +120,31 @@ export interface Interactive {
   /** Restrict this root's keyboard and focus navigation to the topmost modal subtree. */
   modal?: boolean;
   focusable?: boolean;
-  role?: 'button' | 'checkbox' | 'radio' | 'slider' | 'switch' | 'tab' | 'tablist' | 'dialog' | 'region';
+  role?:
+    | 'button'
+    | 'checkbox'
+    | 'radio'
+    | 'slider'
+    | 'switch'
+    | 'tab'
+    | 'tablist'
+    | 'dialog'
+    | 'region'
+    | 'listbox'
+    | 'option';
   /** Controls remain programmatically focusable with -1. Default: 0. */
   tabIndex?: 0 | -1;
   orientation?: 'horizontal' | 'vertical';
   checked?: boolean;
   expanded?: boolean;
   selected?: boolean;
+  /** Logical collection position and size when only a window is mounted. */
+  positionInSet?: number;
+  setSize?: number;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  /** Return true when logical navigation was accepted; focus may settle in the next frame. */
+  onNavigate?: (direction: 'up' | 'down' | 'left' | 'right') => boolean;
   valueMin?: number;
   valueMax?: number;
   valueNow?: number;
@@ -188,6 +207,10 @@ export interface CommonProps extends Interactive {
 
 export interface ViewProps extends CommonProps {
   style?: ViewStyle;
+  /** Attach a root-local scroll store to a view with overflow: scroll. */
+  scrollHandle?: ScrollHandle;
+  /** Coalesced layout/offset notification after the frame. */
+  onScroll?: (snapshot: ScrollSnapshot) => void;
   /** 0..1 horizontal fill drawn inside the box (bars). Animated with `transition`. */
   fill?: number;
   fillColor?: string;

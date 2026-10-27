@@ -43,6 +43,9 @@ async function run(overrides: Omit<Partial<BenchmarkOptions>, 'signal'> = {}) {
     report = await runBenchmark(canvas, {
       hardwareLabel: (form.elements.namedItem('hardware') as HTMLInputElement).value,
       sampleFrames: Number((form.elements.namedItem('frames') as HTMLInputElement).value),
+      suite: (form.elements.namedItem('suite') as HTMLSelectElement).value as BenchmarkOptions['suite'],
+      order: (form.elements.namedItem('order') as HTMLSelectElement).value as BenchmarkOptions['order'],
+      profile: (form.elements.namedItem('profile') as HTMLInputElement).checked,
       budgets,
       ...overrides,
       signal: lifetime.signal,

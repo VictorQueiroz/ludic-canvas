@@ -7,6 +7,7 @@ import { Font, FontBook, loadFontJson, validateFontMetrics, type AtlasJson, type
 import { createTexture, parseColor } from './gfx/gl.ts';
 import { TextureStore } from './gfx/textures.ts';
 import { UiRuntime } from './runtime/runtime.ts';
+import type { FrameProfile } from './runtime/profile.ts';
 import { YogaLayout } from './wasm/layout.ts';
 import { defaultResourceLimits, fetchBytes, throwIfAborted, type ResourceLimits } from './resources.ts';
 
@@ -34,6 +35,8 @@ export interface FrameInfo {
   drawCalls: number;
   contextLost: boolean;
   textureBytes: number;
+  /** Present only when profiling is enabled and a frame is drawn. */
+  profile?: FrameProfile;
 }
 
 /** Browser root configuration. Game state and image content stay application-owned. */
@@ -49,6 +52,8 @@ export interface UIOptions {
   theme?: Partial<UITheme>;
   /** Defaults to true. Set false and call frame() from the game's loop. */
   autoStart?: boolean;
+  /** Collect runtime stage timings and counts. Default: false. Adds measurement overhead. */
+  profile?: boolean;
   /** Resize backing canvas to CSS dimensions. Defaults to false for a supplied context. */
   manageCanvasSize?: boolean;
   /** Device-pixel ratio cap when managing canvas size. Default: 2. */
@@ -94,6 +99,7 @@ export interface UIRoot {
   invalidateImages(ids?: readonly string[]): void;
   /** Focus a named pressable, or navigate spatially from a gamepad adapter. */
   focus(id: string): boolean;
+  /** Navigate mounted geometry or an owning collection's logical items. Accepted collection focus settles in a frame. */
   navigate(direction: 'up' | 'down' | 'left' | 'right'): boolean;
   activateFocused(): boolean;
   inspect(): unknown;
@@ -404,8 +410,16 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
         cache.tick();
         const dt = last ? Math.max(0, Math.min(0.1, (now - last) / 1000)) : 1 / 60;
         last = now;
-        ui.frame(batch!, cache, fonts, { width, height, dpr, cssWidth: rect.width, cssHeight: rect.height }, now, dt);
-        return { ...info, drawCalls: batch!.drawCalls, textureBytes: cache.bytes };
+        const profile = ui.frame(
+          batch!,
+          cache,
+          fonts,
+          { width, height, dpr, cssWidth: rect.width, cssHeight: rect.height },
+          now,
+          dt,
+          options.profile,
+        );
+        return { ...info, drawCalls: batch!.drawCalls, textureBytes: cache.bytes, ...(profile ? { profile } : {}) };
       },
       start() {
         ensureAlive();

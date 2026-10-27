@@ -6,5 +6,10 @@
 *.woff binary
 *.woff2 binary
 
+# Acquired evidence keeps its original bytes and stays collapsed in code reviews.
+docs/public/performance/**/*.json -text linguist-generated=true
+docs/public/performance/**/*.sha256 -text linguist-generated=true
+docs/public/performance/**/*.gz binary linguist-generated=true
+
 # Preserve the upstream font license verbatim, including its original whitespace.
 cli/templates/shared/fonts/OFL.txt -whitespace

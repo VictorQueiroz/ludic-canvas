@@ -140,6 +140,7 @@ const reconciler = Reconciler(hostConfig as unknown as Parameters<typeof Reconci
 export interface UiRoot {
   readonly root: HostNode;
   render(element: ReactNode): void;
+  flushSync(callback: () => void): void;
   destroy(): void;
 }
 
@@ -170,6 +171,9 @@ export function createUiRoot(ctx: RuntimeContext): UiRoot {
   );
   return {
     root,
+    flushSync(callback) {
+      reconciler.flushSyncFromReconciler(callback);
+    },
     destroy() {
       reconciler.updateContainerSync(null, fiberRoot, null, null);
       reconciler.flushSyncWork();
