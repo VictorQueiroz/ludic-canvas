@@ -32,3 +32,17 @@ test('font atlas recovery retains fallback selection and layout', async ({ page 
   await expect(page.locator('#status')).toContainText('"diagnostics":[]');
   await expect(page.locator('#status')).toContainText('"errors":[]');
 });
+
+test('a throwing diagnostic callback reaches onError and leaves rendering usable', async ({ page }) => {
+  const uncaught: string[] = [];
+  page.on('pageerror', (error) => uncaught.push(error.message));
+  await page.evaluate(() => {
+    (window as any).typography.failDiagnosticCallback();
+    (window as any).typography.render(false);
+  });
+  await expect(page.locator('#status')).toContainText('"errors":["Error: Diagnostic callback failed"]');
+  await expect(page.locator('#status')).toContainText('"textWidth":36');
+  await page.evaluate(() => (window as any).typography.render(true));
+  await expect(page.locator('#status')).toContainText('"textWidth":40');
+  expect(uncaught).toEqual([]);
+});

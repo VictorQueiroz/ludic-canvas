@@ -33,6 +33,7 @@ function atlas(fallback: boolean) {
 }
 const diagnostics: FontDiagnostic[] = [];
 const errors: string[] = [];
+let failDiagnostic = false;
 let restored = 0,
   width = 0,
   committed = false;
@@ -46,7 +47,10 @@ const root = await createUI({
     { name: 'primary', atlas: atlas(false), metrics: metrics([32, 63, 65, 86]) },
     { name: 'symbols', atlas: atlas(true), metrics: metrics([32, 63, 0x3a9], true) },
   ],
-  onFontDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+  onFontDiagnostic: (diagnostic) => {
+    diagnostics.push(diagnostic);
+    if (failDiagnostic) throw new Error('Diagnostic callback failed');
+  },
   onError: (error) => errors.push(String(error)),
   onContextRestored: () => restored++,
 });
@@ -101,4 +105,15 @@ addEventListener(
   },
   { once: true },
 );
-Object.assign(window, { typography: { root, canvas, gl, contextLoss, render } });
+Object.assign(window, {
+  typography: {
+    root,
+    canvas,
+    gl,
+    contextLoss,
+    render,
+    failDiagnosticCallback: () => {
+      failDiagnostic = true;
+    },
+  },
+});

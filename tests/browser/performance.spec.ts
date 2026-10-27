@@ -44,6 +44,7 @@ test('fixed workloads export raw measurements and tear down every scene', async 
   expect(report.errors).toEqual([]);
   expect(report.diagnostics).toEqual([]);
   await expect(page.locator('[data-ludic-canvas]')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('#performance-download')).toBeVisible();
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#performance-download').click();
