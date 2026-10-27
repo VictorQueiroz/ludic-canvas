@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { traceStartup } from './startup-trace.ts';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (error) => console.error('Browser page error:', error.message));
@@ -180,6 +181,7 @@ test('UI frames preserve the engine VAO and its element buffer', async ({ page }
 });
 
 test('separate roots own cancellation, parent styles and duplicate-mount guards', async ({ page }) => {
+  await traceStartup(page);
   const result = await page.evaluate(async () => {
     const api = (window as any).contract,
       parent = document.querySelector('#stage')! as HTMLElement;

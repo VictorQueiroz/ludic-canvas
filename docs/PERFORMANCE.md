@@ -61,9 +61,12 @@ the acquired file's hash. Compare traces before attributing stalls to a subsyste
 
 Pass `profile: true` to `createUI` to obtain `frame.profile` on drawn frames. It
 reports wall-clock layout calculation, layout reading/tree traversal, painting/GL
-submission and input/accessibility synchronization in milliseconds, plus mounted
+submission, scroll synchronization/React window commits and input/accessibility synchronization in milliseconds, plus mounted
 nodes, nodes visited for painting and submitted quads. These stages do not isolate
-GPU execution, browser rendering or React commits. Suspended frames have no profile.
+GPU execution or browser rendering. React commits scheduled outside `frame()` are
+excluded; synchronous virtual-window commits inside `frame()` are included in
+`scrollCommitMs`. `layoutPasses` records any repeated layout needed before painting.
+Suspended frames have no profile.
 The feature is root-local and disabled by default; disabled frames do not acquire
 stage timestamps or allocate a profile object.
 
@@ -73,6 +76,37 @@ instrumentation introduces overhead. Use a browser Performance trace alongside
 these coarse stages before selecting a renderer optimization.
 
 ## Automated and physical qualification
+
+The page also offers `collections-v1`: matched retained and virtualized lists at
+400 and 4,000 items, followed by a 40,000-item virtualized scalability probe. The
+last probe has no retained comparator. Matching pairs share content, fonts, row
+geometry, padding, dimensions and scroll commands. Offsets advance 12 CSS pixels
+per requested frame and jump to distant regions every 30 frames. Commands precede
+the frame timer, so synchronous window commits are included. Actual offsets are
+checked and saved. This suite has `workloadVersion: collections-1`; do not compare
+its timings directly with the original focus-driven workload version 1.
+
+Repeat timing acquisition with profiling disabled, alternating forward/reverse
+order. A separate profiled run can identify expensive stages. The proposed 4 ms
+CPU frame-call p95 allocation is an operator-supplied reference-device budget;
+it is not a universal device guarantee or a statement that frames were presented.
+
+For an isolated installed-Chrome acquisition with three unprofiled repetitions
+and a separate diagnostic profile/Chrome trace, use:
+
+```sh
+LUDIC_BENCHMARK_LABEL='verified hardware / OS model' \
+LUDIC_BENCHMARK_TRACE=1 npm run test:performance
+```
+
+The acquisition configuration runs one headed browser, uses no software-GPU flags,
+requires a clean source revision and rejects reported software rendering. It saves
+raw JSON, checksums, a screenshot and a gzip Chrome trace under `build/benchmarks/`.
+Tracing/profile overhead makes the diagnostic run unsuitable for budget acceptance.
+The browser gets an isolated profile; it does not attach to a user's authenticated
+session. Keep its tab visible. A failure is incomplete evidence; inspect retained
+artifacts before repeating. `LUDIC_BENCHMARK_RUNS` and `LUDIC_BENCHMARK_FRAMES` can
+override the repetition/sample counts; record those changes with the results.
 
 `npm run test:browser` runs a short, eight-sample structural smoke test per browser
 configuration, checks report completeness/cleanup and attaches the JSON to the
