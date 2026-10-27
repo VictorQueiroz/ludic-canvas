@@ -1,5 +1,26 @@
 # ludic-canvas
 
+## 0.5.0
+
+### Minor Changes
+
+- 7bac124: Add ordered `fontFamily` fallback chains, atlas pair kerning and `fontKerning: 'none'`.
+  Measurement, wrapping, ellipsis and glyph painting share the selected face and
+  baseline metrics. Opt into bounded root-local missing-glyph reports with
+  `onFontDiagnostic`. The offline font compiler now extracts legacy kern-table pairs;
+  GPOS, bidi and complex-script shaping remain outside this release.
+
+  Add documented browser performance workloads with raw JSON evidence, explicit
+  budgets, source/environment metadata and separate CPU submission, commit latency
+  and frame-interval measurements. Physical mobile and assistive-technology
+  qualification remain separate from automated correctness tests.
+
+### Patch Changes
+
+- 15c3722: Preserve legacy kerning for all requested Unicode aliases of each source glyph,
+  including space and non-breaking space. Bound the expanded pair count before
+  writing output, and merge complete pairs into the generated atlas metrics.
+
 ## 0.4.0
 
 ### Minor Changes
