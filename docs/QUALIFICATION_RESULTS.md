@@ -10,7 +10,9 @@
 ## Automated browser coverage and platform limits
 
 Release CI runs Chromium and Firefox on Linux, and desktop/mobile-emulated WebKit
-on macOS. Playwright documents the native macOS port as its
+on macOS. Linux browser jobs use the version-matched official Playwright Noble
+image, pinned by digest, with software rendering; CI timing is not hardware
+performance evidence. Playwright documents the native macOS port as its
 [closest target to Safari](https://playwright.dev/docs/browsers#webkit); its patched
 WebKit is still not branded Safari or a physical iPhone.
 
