@@ -23,6 +23,15 @@ jobs:
       - run: npm run format:check
       - run: npm pack --dry-run
   browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: chromium, engine: chromium }
+          - { project: firefox, engine: firefox }
+          - { project: webkit, engine: webkit }
+          - { project: mobile-chromium, engine: chromium }
+          - { project: mobile-webkit, engine: webkit }
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,15 +40,17 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox webkit
-      - run: xvfb-run --auto-servernum npm run test:browser
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      # Headed focus, blur and pointer-capture contracts share one native display.
+      # Isolate projects in separate jobs and run one foreground test at a time.
+      - run: xvfb-run --auto-servernum npm run test:browser -- --project=${{ matrix.project }} --workers=1
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LUDIC_HEADED: '1'
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: browser-report
+          name: browser-report-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/
