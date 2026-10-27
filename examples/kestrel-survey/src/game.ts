@@ -25,7 +25,7 @@ export const sites = [
     description: 'A quiet outcrop carrying an unusually clear resonance.',
   },
 ] as const;
-export type Dialog = 'none' | 'pause' | 'settings' | 'help' | 'sites' | 'samples';
+export type Dialog = 'none' | 'pause' | 'settings' | 'help' | 'sites' | 'samples' | 'archive';
 export interface Marker {
   index: number;
   x: number;

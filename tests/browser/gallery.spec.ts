@@ -1,5 +1,8 @@
 import { test, expect, type Locator } from '@playwright/test';
 
+// Gallery contracts test scene switching; animated entrance has dedicated runtime coverage.
+test.use({ reducedMotion: 'reduce' });
+
 async function expectPlayerVisible(player: Locator) {
   const box = await player.boundingBox();
   expect(box).not.toBeNull();
@@ -16,7 +19,9 @@ test('the Play gallery switches one game viewport and its integration notes', as
   const kestrel = page.getByRole('button', { name: /Kestrel Survey/ });
   const player = page.locator('#example-player');
   const game = page.frameLocator('#example-player');
+  await expect(player).toHaveAttribute('src', '/play/orbital-relay/?embed=1');
   await player.scrollIntoViewIfNeeded();
+  await expectPlayerVisible(player);
   await expect(orbital).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('iframe')).toHaveCount(1);
   await expect(game.getByRole('button', { name: 'Launch courier', exact: true })).toBeAttached();

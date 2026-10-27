@@ -68,3 +68,25 @@ test('the mobile HUD fits 320 pixels and offers a modal site selector', async ({
   await page.getByRole('button', { name: 'Toggle overview camera', exact: true }).press('Enter');
   await expect(page.locator('#survey-stage')).toHaveAttribute('data-camera', 'overview');
 });
+
+test('the regional archive virtualizes real game UI with modal focus and controlled selection', async ({ page }) => {
+  test.setTimeout(60000);
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.getByRole('button', { name: 'Open field collection', exact: true }).press('Enter');
+  await page.getByRole('button', { name: 'Browse regional archive', exact: true }).press('Enter');
+  await expect(page.getByRole('listbox', { name: 'Regional specimen archive' })).toBeAttached();
+  await expect(page.getByRole('button', { name: 'Close panel', exact: true })).toBeFocused();
+  expect(await page.getByRole('option').count()).toBeLessThan(20);
+  await page.getByRole('button', { name: 'Focus latest archive record', exact: true }).press('Enter');
+  const last = page.getByRole('option', { name: 'Archive record KS-4000: Ironstone', exact: true });
+  await expect(last).toBeFocused();
+  await expect(last).toHaveAttribute('aria-setsize', '4000');
+  await page.keyboard.press('Enter');
+  await expect(last).toHaveAttribute('aria-selected', 'true');
+  const canvas = await page.locator('#survey-ui').boundingBox();
+  const row = await last.boundingBox();
+  expect(row!.x).toBeGreaterThanOrEqual(canvas!.x);
+  expect(row!.x + row!.width).toBeLessThanOrEqual(canvas!.x + canvas!.width + 1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#survey-stage')).toHaveAttribute('data-phase', 'playing');
+});

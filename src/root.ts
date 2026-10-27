@@ -99,6 +99,7 @@ export interface UIRoot {
   invalidateImages(ids?: readonly string[]): void;
   /** Focus a named pressable, or navigate spatially from a gamepad adapter. */
   focus(id: string): boolean;
+  /** Navigate mounted geometry or an owning collection's logical items. Accepted collection focus settles in a frame. */
   navigate(direction: 'up' | 'down' | 'left' | 'right'): boolean;
   activateFocused(): boolean;
   inspect(): unknown;
