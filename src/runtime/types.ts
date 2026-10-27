@@ -120,13 +120,31 @@ export interface Interactive {
   /** Restrict this root's keyboard and focus navigation to the topmost modal subtree. */
   modal?: boolean;
   focusable?: boolean;
-  role?: 'button' | 'checkbox' | 'radio' | 'slider' | 'switch' | 'tab' | 'tablist' | 'dialog' | 'region';
+  role?:
+    | 'button'
+    | 'checkbox'
+    | 'radio'
+    | 'slider'
+    | 'switch'
+    | 'tab'
+    | 'tablist'
+    | 'dialog'
+    | 'region'
+    | 'listbox'
+    | 'option';
   /** Controls remain programmatically focusable with -1. Default: 0. */
   tabIndex?: 0 | -1;
   orientation?: 'horizontal' | 'vertical';
   checked?: boolean;
   expanded?: boolean;
   selected?: boolean;
+  /** Logical collection position and size when only a window is mounted. */
+  positionInSet?: number;
+  setSize?: number;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  /** Return true when logical navigation was accepted; focus may settle in the next frame. */
+  onNavigate?: (direction: 'up' | 'down' | 'left' | 'right') => boolean;
   valueMin?: number;
   valueMax?: number;
   valueNow?: number;

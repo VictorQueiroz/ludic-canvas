@@ -159,6 +159,7 @@ export class Painter {
         node.props.role === 'tablist' ||
         node.props.role === 'dialog' ||
         node.props.role === 'region' ||
+        node.props.role === 'listbox' ||
         style.overflow === 'scroll')
     )
       this.hitList.push(node);

@@ -10,7 +10,7 @@ import { HostNode, type RuntimeContext } from './nodes.ts';
 import { Painter } from './paint.ts';
 import { createUiRoot, type UiRoot } from './reconciler.ts';
 import type { FrameProfile } from './profile.ts';
-import { updateScroll } from '../scroll.ts';
+import { updateScroll, finishScrollFrame } from '../scroll.ts';
 
 export class UiRuntime {
   readonly ctx: RuntimeContext;
@@ -187,6 +187,7 @@ export class UiRuntime {
     }
     const paintedAt = profile ? performance.now() : 0;
     this.input.afterPaint();
+    for (const node of nodes) finishScrollFrame(node);
 
     // Live region: the newest announced text.
     for (let i = this.#painter.visible.length - 1; i >= 0; i--) {

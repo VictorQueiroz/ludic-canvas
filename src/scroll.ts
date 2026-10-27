@@ -22,6 +22,7 @@ export interface ScrollHandle {
 interface Store {
   snapshot: ScrollSnapshot;
   listeners: Set<() => void>;
+  frameListeners: Set<() => void>;
   node?: HostNode;
   pending?: number;
 }
@@ -34,7 +35,7 @@ const finite = (value: number) => {
 
 /** Create an independent scroll store. No active-root singleton or browser listeners. */
 export function createScrollHandle(): ScrollHandle {
-  const state: Store = { snapshot: empty(), listeners: new Set() };
+  const state: Store = { snapshot: empty(), listeners: new Set(), frameListeners: new Set() };
   const handle: ScrollHandle = Object.freeze({
     getSnapshot: () => state.snapshot,
     subscribe(listener: () => void) {
@@ -138,4 +139,26 @@ export function detachScroll(handle: ScrollHandle | undefined, node: HostNode) {
   state.pending = undefined;
   state.snapshot = empty();
   emit(state, node);
+}
+
+/** @internal Collection focus settles after painted geometry and mirrors exist. */
+export function observeScrollFrames(handle: ScrollHandle, listener: () => void): () => void {
+  const state = stores.get(handle)!;
+  state.frameListeners.add(listener);
+  return () => {
+    state.frameListeners.delete(listener);
+  };
+}
+/** @internal Called only by the owning application's frame; never starts a loop. */
+export function finishScrollFrame(node: HostNode) {
+  const state = node.props.scrollHandle && stores.get(node.props.scrollHandle);
+  if (state?.node === node)
+    for (const listener of [...state.frameListeners]) {
+      try {
+        listener();
+      } catch (error) {
+        if (node.ctx.onError) node.ctx.onError(error);
+        else console.error(error);
+      }
+    }
 }
