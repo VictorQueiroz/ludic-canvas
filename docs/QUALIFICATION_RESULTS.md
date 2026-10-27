@@ -7,6 +7,22 @@
 | Physical Android / Chrome                    | Not run | None                                                                                        | Complete device protocol                                       |
 | VoiceOver / TalkBack / desktop screen reader | Not run | None                                                                                        | Assistive-technology protocol                                  |
 
+## Automated browser coverage and platform limits
+
+Release CI runs Chromium and Firefox on Linux, and desktop/mobile-emulated WebKit
+on macOS. Playwright documents the native macOS port as its
+[closest target to Safari](https://playwright.dev/docs/browsers#webkit); its patched
+WebKit is still not branded Safari or a physical iPhone.
+
+The Linux WPE WebKit port is **not qualified** by this release. In
+[run 40540120683](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/40540120683),
+the multi-root test stalled inside the second asynchronous
+`WebAssembly.instantiate()` call on both attempts. Context acquisition and module
+fetch completed; font decoding and texture upload had not started. Another
+multi-root case completed in the same job. The underlying cause is unresolved;
+moving Safari-oriented coverage to native macOS does not establish a fix for
+Linux WPE. No SDK fallback or relaxed startup deadline was added for this result.
+
 ## Desktop microbenchmark, 2026-10-27
 
 - Source: [865feaa5d5a32bcf6d71902e03b08456692025ea](https://github.com/VictorQueiroz/ludic-canvas/commit/865feaa5d5a32bcf6d71902e03b08456692025ea), clean repository-source build carrying 0.4.0 metadata before the release version bump.
