@@ -50,11 +50,13 @@ test('gallery selection supports deep links and browser history', async ({ page 
     page.frameLocator('#example-player').getByRole('button', { name: 'Pause survey', exact: true }),
   ).toBeAttached();
   await expect(page.getByRole('button', { name: /Kestrel Survey/ })).toHaveAttribute('aria-pressed', 'true');
-  await page.reload();
-  await expect(player).toHaveAttribute('src', '/3d/?embed=1');
-  await expect(
-    page.frameLocator('#example-player').getByRole('button', { name: 'Pause survey', exact: true }),
-  ).toBeAttached();
+  for (let reload = 0; reload < 3; reload++) {
+    await page.reload();
+    await expect(player).toHaveAttribute('src', '/3d/?embed=1');
+    await expect(
+      page.frameLocator('#example-player').getByRole('button', { name: 'Pause survey', exact: true }),
+    ).toBeAttached();
+  }
   await page.goForward();
   await expect(player).toHaveAttribute('data-example', 'orbital-relay');
   await expect(
