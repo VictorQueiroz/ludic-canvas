@@ -83,6 +83,12 @@ Apple M3 / 8 GB machine ran macOS 26.6.2 and installed Chrome 156 with ANGLE Met
 in an isolated headed browser profile. Viewport: 1710 × 930; workload canvas:
 960 × 540 CSS pixels at DPR 2.
 
+The SDK files under `src/` in released
+[v0.6.0](https://github.com/VictorQueiroz/ludic-canvas/tree/v0.6.0/src) are identical
+to that measured source revision (`git diff 802b0d7 v0.6.0 -- src` is empty).
+Release metadata and documentation changed after acquisition; the published npm
+artifact was not separately benchmarked.
+
 Three unprofiled acquisitions used collections-1, 20 warmup frames, 120 acquired
 frames per workload, 119 RAF intervals and five teardown cycles. Workload order
 alternated forward/reverse/forward. Each supplied a 4 ms CPU frame-call p95 budget.
