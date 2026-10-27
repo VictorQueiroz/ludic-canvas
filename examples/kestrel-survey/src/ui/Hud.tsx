@@ -15,6 +15,7 @@ import {
   type ViewStyle,
 } from 'ludic-canvas';
 import { sites, type SurveyGame, type SurveyState, type Dialog } from '../game.ts';
+import { FieldArchive } from './Archive.tsx';
 
 const c = {
   paper: '#f4efd9',
@@ -340,8 +341,11 @@ function Overlay({
     dialog = state.dialog;
   if (!complete && dialog === 'none') return null;
   const compact = width < 700,
-    cardWidth = Math.min(440, width - 32),
-    cardHeight = Math.min(height - 36, dialog === 'sites' ? 520 : dialog === 'settings' ? 490 : 440);
+    cardWidth = Math.min(dialog === 'archive' ? 680 : 440, width - 32),
+    cardHeight = Math.min(
+      height - 36,
+      dialog === 'archive' ? 620 : dialog === 'sites' ? 520 : dialog === 'settings' ? 490 : 440,
+    );
   const title = complete
     ? 'A world, documented.'
     : dialog === 'pause'
@@ -350,9 +354,11 @@ function Overlay({
         ? 'Make it yours.'
         : dialog === 'sites'
           ? 'Survey sites.'
-          : dialog === 'samples'
-            ? 'Field collection.'
-            : 'Your field manual.';
+          : dialog === 'archive'
+            ? 'Regional archive.'
+            : dialog === 'samples'
+              ? 'Field collection.'
+              : 'Your field manual.';
   return (
     <Modal
       open
@@ -375,9 +381,10 @@ function Overlay({
         style={{
           width: cardWidth,
           maxHeight: cardHeight,
+          height: dialog === 'archive' ? cardHeight : undefined,
           padding: compact ? 20 : 28,
           gap: 15,
-          overflow: 'scroll',
+          overflow: dialog === 'archive' ? 'hidden' : 'scroll',
           borderColor: '#aebc8255',
         }}
       >
@@ -415,6 +422,8 @@ function Overlay({
               Begin a new survey
             </Button>
           </>
+        ) : dialog === 'archive' ? (
+          <FieldArchive compact={compact} colors={c} />
         ) : dialog === 'sites' ? (
           <SiteList game={game} state={state} dismiss />
         ) : dialog === 'settings' ? (
@@ -431,6 +440,9 @@ function Overlay({
           </>
         ) : dialog === 'samples' ? (
           <View style={{ gap: 15 }}>
+            <Button label="Browse regional archive" onPress={() => game.dialog('archive')}>
+              Regional archive / 4,000 records
+            </Button>
             {sites.map((site, i) => (
               <View key={site.name} style={{ gap: 5 }}>
                 <Kicker>{state.samples[i] ? 'SECURED' : 'AWAITING COLLECTION'}</Kicker>
@@ -774,18 +786,23 @@ export function SurveyHud({
           </Button>
         </Panel>
         {compact && (
-          <View style={{ flexDirection: 'row', gap: 7 }}>
-            <Button label="Open survey sites" onPress={() => show('sites')} style={{ flex: 1 }}>
-              Sites
-            </Button>
-            <Button label="Toggle overview camera" onPress={game.overview} style={{ flex: 1 }}>
-              {state.overview ? 'Follow' : 'View'}
-            </Button>
-            <Button label="Open survey settings" onPress={() => show('settings')} style={{ flex: 1 }}>
-              Prefs
-            </Button>
-            <Button label="Open field manual" onPress={() => show('help')} style={{ width: 38, paddingX: 4 }}>
-              ?
+          <View style={{ gap: 7 }}>
+            <View style={{ flexDirection: 'row', gap: 7 }}>
+              <Button label="Open survey sites" onPress={() => show('sites')} style={{ flex: 1 }}>
+                Sites
+              </Button>
+              <Button label="Toggle overview camera" onPress={game.overview} style={{ flex: 1 }}>
+                {state.overview ? 'Follow' : 'View'}
+              </Button>
+              <Button label="Open survey settings" onPress={() => show('settings')} style={{ flex: 1 }}>
+                Prefs
+              </Button>
+              <Button label="Open field manual" onPress={() => show('help')} style={{ width: 38, paddingX: 4 }}>
+                ?
+              </Button>
+            </View>
+            <Button label="Open field collection" onPress={() => show('samples')}>
+              Collection / archive
             </Button>
           </View>
         )}

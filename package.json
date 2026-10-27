@@ -71,7 +71,8 @@
     "release:bootstrap": "node tools/release/bootstrap.mjs",
     "test:package": "node tools/test-package.mjs",
     "test:browser": "playwright test",
-    "test:browser:serve": "vite --config vite.browser.config.ts"
+    "test:browser:serve": "vite --config vite.browser.config.ts",
+    "test:performance": "playwright test --config playwright.performance.config.ts"
   },
   "peerDependencies": {
     "react": "19.3.1"

@@ -1,4 +1,5 @@
 import { typographyGuide } from './docs-typography.mjs';
+import { virtualizationGuide } from './docs-virtualization.mjs';
 import { performancePage } from './docs-performance.mjs';
 import { surveyPage } from './docs-3d.mjs';
 import { playPage } from './docs-play.mjs';
@@ -197,6 +198,7 @@ requestAnimationFrame(tick);`,
     `<p>Use <code>onPress</code>, <code>onHover</code>, <code>hoverStyle</code>, <code>pressStyle</code>, <code>disabled</code> and <code>hotkey</code> on primitives. Give every pressable a meaningful <code>label</code>; descendant text supplies a fallback. Pointer input, vertical wheel scrolling and touch drags are supported. Canvas hotkeys activate only while that canvas or one of its mirrored controls has focus, so roots do not steal each other's keys.</p><p>Each painted pressable is mirrored by an invisible DOM button in paint order. Tab moves between buttons and Enter/Space activates them; focus is drawn in the canvas. Canvas focus itself enables scoped hotkeys. Set <code>announce</code> on Text to publish its changed content to a polite live region.</p><p>This is a limited control mirror, not complete accessibility semantics. It does not expose all static canvas text as a document or support editable text. Modal focus scopes and controller action methods are described in <a href="#controls">Controls, modals &amp; controllers</a>. Validate the complete interface with keyboard users and assistive technology. Provide a separate DOM interface where richer semantics are needed.</p><p>Reduced motion initially follows the browser preference; <code>setReducedMotion(true)</code> disables enter transitions, tweens, hover interpolation, glow pulses, breathing and marching-line motion. <code>setTextScale()</code> changes both text measurement and drawing. Dynamic system preference changes require the application to call the setter.</p>`,
   ],
   ['controls', 'Controls, modals & controllers', controlRecipes(code)],
+  ['virtualization', 'Large collections & performance', virtualizationGuide(code)],
   ['production', 'Production support & limits', productionGuide(code)],
   ['troubleshooting', 'Troubleshooting', troubleshooting],
   [
