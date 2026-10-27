@@ -116,7 +116,10 @@ export interface Interactive {
   /** Restrict this root's keyboard and focus navigation to the topmost modal subtree. */
   modal?: boolean;
   focusable?: boolean;
-  role?: 'button' | 'checkbox' | 'radio' | 'slider' | 'switch' | 'tab';
+  role?: 'button' | 'checkbox' | 'radio' | 'slider' | 'switch' | 'tab' | 'tablist' | 'dialog' | 'region';
+  /** Controls remain programmatically focusable with -1. Default: 0. */
+  tabIndex?: 0 | -1;
+  orientation?: 'horizontal' | 'vertical';
   checked?: boolean;
   expanded?: boolean;
   selected?: boolean;

@@ -1,7 +1,2 @@
-* text=auto eol=lf
-*.png binary
-*.wasm binary
-*.ttf binary
-*.otf binary
-*.woff binary
-*.woff2 binary
+# Preserve the upstream font license verbatim, including its original whitespace.
+cli/templates/shared/fonts/OFL.txt -whitespace

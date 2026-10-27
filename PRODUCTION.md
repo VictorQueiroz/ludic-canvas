@@ -38,6 +38,20 @@ The reference workload included four-face typography, responsive nested panels, 
 - React 19.3.1, WebGL 1 and browser WebAssembly are the supported runtime contract. Use a separate overlay canvas with WebGL 2 engines.
 - At most four font atlases per root. No kerning, bidi, complex-script/ligature shaping, editable canvas text, emoji fallback or full static-text accessibility tree. Use native DOM text/editing for those requirements.
 - Axis-aligned positive scale/translation and rectangular clips. No rotation/skew, arbitrary shaders, stencil masks or rounded clipping of child content.
-- No built-in virtualized lists, engine adapters, widget catalogue or controller polling. Applications can compose controls and route their own input/state.
+- The optional controlled components cover buttons, switches, horizontal sliders, tabs, dialogs and vertical scroll areas. The interactive catalogue demonstrates independent roots and custom skins. No built-in virtualized lists, engine adapters or controller polling are included. Applications own control values and can route controller input through root focus/navigation methods.
 - GPU image budgets are soft, browser decoding can temporarily allocate additional memory, and the font compiler's individually renamed outputs are not a filesystem-wide transaction.
 - Mobile viewport/touch emulation is not physical iOS/Android certification. No universal FPS, memory, accessibility or all-games readiness guarantee is implied by the automated suite.
+
+## Adoption milestone
+
+The 0.4 work adds reusable controlled components, a root-scoped React hook,
+semantic dialog/tab-list/scroll groups and a project initializer. Both games use
+the shared components while retaining their visual designs. Nested dialogs keep
+a return-focus target for each scope. Regression coverage includes independent
+root state/focus, keyboard navigation, disabled pointer activation and mobile
+layout. The package-consumer gate generates both Canvas2D and Three.js projects,
+installs their own dependencies and builds them against the packed library.
+
+Typography and hardware qualification remain separate work, with explicit
+acceptance criteria in [ROADMAP.md](ROADMAP.md) and
+[the device protocol](docs/DEVICE_QUALIFICATION.md).

@@ -3,7 +3,7 @@ export function productionGuide(code) {
 <h3>Choose the right boundary</h3><table><thead><tr><th>Use case</th><th>Support and integration</th></tr></thead><tbody>
 <tr><td>HUDs, menus, cards, meters, dialogue and maps</td><td>React composition, nested Yoga flex layouts, absolute positioning, four font faces, images, lines, transitions and rectangular scroll clipping.</td></tr>
 <tr><td>Mouse, touch, keyboard and controllers</td><td>Pointer capture and bubbling events; press actions, hotkeys, modal focus scopes, DOM control semantics and spatial focus navigation. Your game polls its controller and maps actions to the root.</td></tr>
-<tr><td>Sliders, toggles, tabs and drag interactions</td><td>Build controlled React components with pointer/key events and semantic props. The game owns validation, selection, inventory rules and persistence.</td></tr>
+<tr><td>Sliders, toggles, tabs and drag interactions</td><td>Use the unstyled controlled components in the <a href="/components/">catalogue</a>, or compose custom pointer/key behavior from primitives. The game owns values, selection, inventory rules and persistence.</td></tr>
 <tr><td>Chat entry, player names, IME and rich documents</td><td>Use native DOM inputs/dialogs alongside the canvas. Editable canvas text, bidi, kerning, ligature shaping, complex-script shaping and emoji fallback are not implemented.</td></tr>
 <tr><td>3D engines and WebGL 2</td><td>A transparent WebGL 1 overlay canvas is the portable integration. Shared WebGL 1 contexts are supported when the engine resets its state before its next pass. WebGL 2 contexts and native engine bindings are not supported.</td></tr>
 <tr><td>Large collections and advanced visual effects</td><td>Paginate or virtualize lists in application components. The retained tree is traversed each frame. Rotation, skew, stencil masks, rounded child clipping, arbitrary shaders and 3D world-space UI are outside the current renderer.</td></tr>
@@ -28,14 +28,15 @@ lifetime.abort();`,
 }
 
 export function controlRecipes(code) {
-  return `<p>Use a modal subtree for pause menus, confirmations and inventory inspectors. The topmost modal restricts this root's hotkeys, Tab order and spatial navigation, focuses its first control, and restores focus when it closes. <code>block</code> only controls pointer occlusion. Your game must separately pause simulation or suppress its own global input bindings.</p>${code(
-    `<View modal style={{ position: 'absolute', top: 0, left: 0,
+  return `<p>The <a href="/components/">shared controlled components</a> provide common interaction mechanics without a visual theme. Use Dialog for pause menus, confirmations and inventory inspectors. The topmost dialog restricts this root's hotkeys, Tab order and spatial navigation, focuses its first control, and restores each scope's trigger when it closes. Your game separately controls simulation and its own global input bindings.</p>${code(
+    `<Dialog label="Pause menu" open={paused} onOpenChange={setPaused}
+  style={{ position: 'absolute', top: 0, left: 0,
   right: 0, bottom: 0, padding: 24, background: '#000000bb' }}>
   <Text style={{ fontSize: 28 }}>Paused</Text>
-  <View id="resume" label="Resume game" hotkey="Escape" onPress={resume}>
+  <Button id="resume" label="Resume game" onPress={resume}>
     <Text>Resume game</Text>
-  </View>
-</View>`,
+  </Button>
+</Dialog>`,
     'tsx',
     'Modal focus scope',
   )}
@@ -46,30 +47,17 @@ ui.focus('resume');`,
     'typescript',
     'Controller adapter actions',
   )}
-<p>Pointer events bubble through the host tree. Coordinates are CSS pixels; local coordinates are measured in the node's unscaled layout space. A primary pointer is captured until release/cancel. <code>preventDefault()</code> disables the built-in press/touch-scroll action for that event; <code>stopPropagation()</code> stops ancestor callbacks and DOM propagation. Keep drag state in your component and clear it on <code>onPointerCancel</code>.</p>${code(
+<p>Slider handles pointer capture/cancellation, step snapping, range clamping and keyboard adjustment. The application owns its value and draws the track/thumb through a render function. For custom drag controls, pointer events bubble in CSS pixels; local coordinates use the node's unscaled layout space. Clear drag state on <code>onPointerCancel</code>. <code>preventDefault()</code> disables built-in press/touch scrolling; <code>stopPropagation()</code> stops ancestor callbacks.</p>${code(
     `function Volume({ value, onChange }: {
   value: number; onChange: (value: number) => void;
 }) {
-  const width = 240;
-  const clamp = (value: number) => Math.max(0, Math.min(1, value));
-  return <View id="volume" focusable role="slider" label="Volume"
-    valueMin={0} valueMax={100} valueNow={Math.round(value * 100)}
+  return <Slider id="volume" label="Volume" value={value}
+    onValueChange={onChange} step={0.05}
     valueText={Math.round(value * 100) + '%'}
-    onPointerDown={event => {
-      event.preventDefault(); onChange(clamp(event.localX / width));
-    }}
-    onPointerMove={event => {
-      if (event.buttons) {
-        event.preventDefault(); onChange(clamp(event.localX / width));
-      }
-    }}
-    onKeyDown={event => {
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-        event.preventDefault();
-        onChange(clamp(value + (event.key === 'ArrowRight' ? 0.05 : -0.05)));
-      }
-    }}
-    fill={value} style={{ width, height: 44, background: '#243247' }} />;
+    style={{ width: 240, height: 44, justifyContent: 'center' }}>
+    {({ ratio }) => <View fill={ratio} fillColor="#a6e5cf"
+      style={{ height: 6, background: '#243247' }} />}
+  </Slider>;
 }`,
     'tsx',
     'A controlled slider',

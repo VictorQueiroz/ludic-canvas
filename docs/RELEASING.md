@@ -28,8 +28,9 @@ npm run release:bootstrap
 The bootstrap verifies and publishes the existing GitHub **v0.1.0** tarball,
 then registers GitHub Actions as an npm trusted publisher. It never publishes
 the unversioned working tree. The pinned SHA-256 is checked before publishing.
-The original 0.1 release does not include the new font CLI; the pending minor
-changeset introduces the CLI in 0.2.0.
+The original 0.1 release predates the font CLI. This bootstrap is a historical
+first-publication path; the existing package already uses the trusted release
+workflow. Routine releases do not need to repeat npm login or bootstrap.
 
 Browser sign-in and two-factor authentication must be completed by the account
 owner. No long-lived npm token is needed in GitHub secrets. The npm CLI must be
@@ -37,14 +38,14 @@ owner. No long-lived npm token is needed in GitHub secrets. The npm CLI must be
 
 The equivalent trusted-publisher settings are:
 
-| Setting | Value |
-| --- | --- |
-| Provider | GitHub Actions |
-| GitHub owner | VictorQueiroz |
-| Repository | ludic-canvas |
-| Workflow filename | release.yml |
-| Environment | Unset |
-| Permission | Direct npm publish |
+| Setting           | Value              |
+| ----------------- | ------------------ |
+| Provider          | GitHub Actions     |
+| GitHub owner      | VictorQueiroz      |
+| Repository        | ludic-canvas       |
+| Workflow filename | release.yml        |
+| Environment       | Unset              |
+| Permission        | Direct npm publish |
 
 The configuration must make its first successful OIDC publication within npm's
 current activation window (two days). Merge the version PR after setup, rather

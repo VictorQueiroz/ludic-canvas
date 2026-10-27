@@ -6,6 +6,7 @@ import type { UIPointerEvent } from './types.ts';
 type Direction = 'up' | 'down' | 'left' | 'right';
 type PointerHandler = 'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel';
 const pressable = (n: HostNode) => Boolean(n.props.onPress || n.props.focusable);
+const semanticGroup = (n: HostNode) => ['tablist', 'dialog', 'region'].includes(n.props.role ?? '');
 const pointerTarget = (n: HostNode) =>
   Boolean(n.props.onPress || n.props.onPointerDown || n.props.onPointerMove || n.props.onPointerUp);
 const inside = (n: HostNode, scope: HostNode | undefined): boolean => {
@@ -21,6 +22,7 @@ export class InputSystem {
   readonly #painter: Painter;
   readonly #events = new AbortController();
   readonly #buttons = new Map<HostNode, HTMLButtonElement>();
+  readonly #groups = new Map<HostNode, HTMLDivElement>();
   #hovered = new Set<HostNode>();
   #pressed: HostNode | undefined;
   #capture: HostNode | undefined;
@@ -32,7 +34,7 @@ export class InputSystem {
   #enabled = true;
   #modal: HostNode | undefined;
   #pendingModalFocus = false;
-  #previousFocus: HTMLElement | undefined;
+  readonly #modalFocus = new Map<HostNode, HTMLElement>();
   onPointer: (nx: number, ny: number) => void = () => {};
   onActivity: () => void = () => {};
 
@@ -109,6 +111,9 @@ export class InputSystem {
     this.#setHovered(new Set());
     for (const button of this.#buttons.values()) button.remove();
     this.#buttons.clear();
+    for (const group of this.#groups.values()) group.remove();
+    this.#groups.clear();
+    this.#modalFocus.clear();
     this.#live.remove();
   }
   setEnabled(enabled: boolean) {
@@ -363,7 +368,9 @@ export class InputSystem {
     }
     if (e.defaultPrevented || stopped) return;
     if (e.key === 'Tab' && this.#modal) {
-      const controls = this.#eligible().map(([, button]) => button);
+      const controls = this.#eligible()
+        .map(([, button]) => button)
+        .filter((button) => button.tabIndex >= 0);
       const index = controls.indexOf(document.activeElement as HTMLButtonElement);
       e.preventDefault();
       controls[(index + (e.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus({ preventScroll: true });
@@ -402,20 +409,69 @@ export class InputSystem {
   #syncMirror() {
     const modal = this.#painter.visible.findLast((n) => Boolean(n.props.modal));
     const changedModal = modal !== this.#modal;
+    const returning = Boolean(modal && this.#modalFocus.has(modal));
+    const restore: HTMLElement[] = [];
     if (changedModal) {
       this.#cancel();
-      if (!this.#modal && modal)
-        this.#previousFocus =
+      if (modal && !returning) {
+        // A replacement dialog inherits the departing scope's return target.
+        // A nested dialog remembers the control that opened that inner scope.
+        const previous =
+          this.#modal && !this.#painter.visible.includes(this.#modal) ? this.#modalFocus.get(this.#modal) : undefined;
+        const active =
           document.activeElement instanceof HTMLElement &&
           document.activeElement !== document.body &&
           document.activeElement !== document.documentElement
             ? document.activeElement
             : this.#canvas;
+        this.#modalFocus.set(modal, previous ?? active);
+      }
       this.#modal = modal;
     }
+    for (const [scope, target] of [...this.#modalFocus].reverse()) {
+      if (!this.#painter.visible.includes(scope)) {
+        restore.push(target);
+        this.#modalFocus.delete(scope);
+      }
+    }
     const live = new Set<HostNode>();
-    let previous: HTMLButtonElement | undefined;
+    const liveGroups = new Set<HostNode>();
     for (const n of this.#painter.hitList) {
+      if (n.destroyed || !semanticGroup(n)) continue;
+      liveGroups.add(n);
+      let group = this.#groups.get(n);
+      if (!group) {
+        group = document.createElement('div');
+        group.style.cssText = 'position:static;opacity:0;pointer-events:none';
+        this.#groups.set(n, group);
+      }
+      group.setAttribute('role', n.props.role!);
+      group.setAttribute('aria-label', n.props.label ?? labelOf(n));
+      group.setAttribute('aria-hidden', String(Boolean(modal && !inside(n, modal) && !inside(modal, n))));
+      if (n.props.role === 'dialog') group.setAttribute('aria-modal', String(n === modal));
+      else group.removeAttribute('aria-modal');
+      if (n.props.orientation) group.setAttribute('aria-orientation', n.props.orientation);
+      else group.removeAttribute('aria-orientation');
+    }
+    const previous = new Map<HTMLElement, HTMLElement>();
+    const place = (node: HostNode, element: HTMLElement) => {
+      let parent: HTMLElement = this.#a11y;
+      for (let ancestor = node.parent; ancestor; ancestor = ancestor.parent) {
+        const group = this.#groups.get(ancestor);
+        if (group && liveGroups.has(ancestor)) {
+          parent = group;
+          break;
+        }
+      }
+      const before = previous.get(parent);
+      const next = before ? before.nextSibling : parent.firstChild;
+      if (next !== element) parent.insertBefore(element, next);
+      previous.set(parent, element);
+    };
+    for (const n of this.#painter.hitList) {
+      const group = this.#groups.get(n);
+      if (group && liveGroups.has(n)) place(n, group);
+      if (semanticGroup(n)) continue;
       if (!pressable(n) || n.destroyed) continue;
       const label = n.props.label ?? labelOf(n);
       if (!label) continue;
@@ -438,6 +494,7 @@ export class InputSystem {
       }
       button.setAttribute('aria-label', label);
       button.setAttribute('role', n.props.role ?? 'button');
+      button.tabIndex = n.props.tabIndex ?? 0;
       for (const [key, value] of Object.entries({
         checked: n.props.checked,
         expanded: n.props.expanded,
@@ -446,6 +503,7 @@ export class InputSystem {
         valuemax: n.props.valueMax,
         valuenow: n.props.valueNow,
         valuetext: n.props.valueText,
+        orientation: n.props.orientation,
       })) {
         if (value === undefined) button.removeAttribute(`aria-${key}`);
         else button.setAttribute(`aria-${key}`, String(value));
@@ -458,27 +516,36 @@ export class InputSystem {
         button.dataset.box = style;
         button.style.cssText = style;
       }
-      const next = previous ? previous.nextSibling : this.#a11y.firstChild;
-      if (next !== button) this.#a11y.insertBefore(button, next);
-      previous = button;
+      place(n, button);
     }
     for (const [node, button] of this.#buttons)
       if (!live.has(node)) {
         button.remove();
         this.#buttons.delete(node);
       }
+    for (const [node, group] of this.#groups)
+      if (!liveGroups.has(node)) {
+        group.remove();
+        this.#groups.delete(node);
+      }
     if (changedModal) {
       if (modal) {
-        const first = this.#eligible()[0]?.[1];
-        this.#pendingModalFocus = !first;
-        (first ?? this.#canvas).focus({ preventScroll: true });
+        const eligible = this.#eligible();
+        const target = returning
+          ? restore.find((element) => eligible.some(([, button]) => button === element))
+          : undefined;
+        const first = eligible.find(([, button]) => button.tabIndex >= 0)?.[1];
+        this.#pendingModalFocus = !target && !first;
+        (target ?? first ?? this.#canvas).focus({ preventScroll: true });
       } else {
         this.#pendingModalFocus = false;
-        (this.#previousFocus?.isConnected ? this.#previousFocus : this.#canvas).focus({ preventScroll: true });
+        const target = restore.find(
+          (element) => element.isConnected && !(element instanceof HTMLButtonElement && element.disabled),
+        );
+        (target ?? this.#canvas).focus({ preventScroll: true });
       }
-      if (!modal) this.#previousFocus = undefined;
     } else if (modal && this.#pendingModalFocus) {
-      const first = this.#eligible()[0]?.[1];
+      const first = this.#eligible().find(([, button]) => button.tabIndex >= 0)?.[1];
       if (first) {
         // Enter animations may hide all controls during the first modal frame.
         // Honor a deliberate focus move outside this root while waiting.

@@ -1,9 +1,9 @@
 import { useState, useSyncExternalStore } from 'react';
-import { View, Text, Image, Line } from 'ludic-canvas';
+import { View, Text, Image, Line, Dialog, Tabs, ScrollArea } from 'ludic-canvas';
 import { STOPS, WORLD, type Game, type Snapshot } from '../game.ts';
 import { gameLayout } from '../layout.ts';
 import { Manifest, Mono } from '../missions/Manifest.tsx';
-import { Button } from './Button.tsx';
+import { Button, buttonStyle } from './Button.tsx';
 import { colors, panel } from './theme.ts';
 
 function Title({ children, size = 20 }: { children: string; size?: number }) {
@@ -15,9 +15,13 @@ function Overlay({ snapshot, game, compact }: { snapshot: Snapshot; game: Game; 
     paused = snapshot.status === 'paused',
     won = snapshot.status === 'won';
   return (
-    <View
-      block
-      modal
+    <Dialog
+      open
+      label={paused ? 'Flight paused' : ready ? 'Courier briefing' : 'Flight result'}
+      closeOnEscape={paused}
+      onOpenChange={() => {
+        if (paused) game.pause();
+      }}
       zIndex={20}
       style={{
         position: 'absolute',
@@ -87,7 +91,7 @@ function Overlay({ snapshot, game, compact }: { snapshot: Snapshot; game: Game; 
         )}
         <Mono style={{ fontSize: 9, textAlign: 'center' }}>CLICK / TAP TO PLAY | 1-4 COURSE B BOOST ESC PAUSE</Mono>
       </View>
-    </View>
+    </Dialog>
   );
 }
 
@@ -149,7 +153,8 @@ export function Hud({ game, width, height }: { game: Game; width: number; height
         </View>
       </View>
       {!compact && (
-        <View
+        <ScrollArea
+          label="Flight manifest and notes"
           style={{
             position: 'absolute',
             left: padding,
@@ -160,26 +165,39 @@ export function Hud({ game, width, height }: { game: Game; width: number; height
             gap: 13,
           }}
         >
-          <View style={{ flexDirection: 'row', gap: 7 }}>
-            <Button
-              label="Show manifest"
-              disabled={!playing}
-              onPress={() => setCargoTab(false)}
-              primary={!cargoTab}
-              style={{ flex: 1, paddingX: 8, minHeight: 35, paddingY: 7 }}
-            >
-              Manifest
-            </Button>
-            <Button
-              label="Show cargo hold"
-              disabled={!playing}
-              onPress={() => setCargoTab(true)}
-              primary={cargoTab}
-              style={{ flex: 1, paddingX: 8, minHeight: 35, paddingY: 7 }}
-            >
-              Cargo hold
-            </Button>
-          </View>
+          <Tabs
+            label="Manifest sections"
+            value={cargoTab ? 'cargo' : 'manifest'}
+            onValueChange={(value) => setCargoTab(value === 'cargo')}
+            disabled={!playing}
+            items={[
+              { value: 'manifest', label: 'Show manifest' },
+              { value: 'cargo', label: 'Show cargo hold' },
+            ]}
+            style={{ gap: 7 }}
+            tabStyle={({ selected, disabled }) => ({
+              ...buttonStyle(selected, disabled),
+              flex: 1,
+              paddingX: 8,
+              minHeight: 35,
+              paddingY: 7,
+            })}
+            tabHoverStyle={{ borderColor: colors.mint }}
+            tabPressStyle={{ scale: 0.98 }}
+          >
+            {(item, { selected }) => (
+              <Text
+                style={{
+                  fontFamily: 'display',
+                  fontSize: 14,
+                  color: selected ? '#0a1c24' : colors.text,
+                  textAlign: 'center',
+                }}
+              >
+                {item.value === 'manifest' ? 'Manifest' : 'Cargo hold'}
+              </Text>
+            )}
+          </Tabs>
           <Manifest snapshot={snapshot} cargoTab={cargoTab} />
           <View style={{ ...panel, padding: 14, gap: 9 }}>
             <Mono style={{ color: colors.gold }}>FLIGHT NOTES</Mono>
@@ -189,7 +207,7 @@ export function Hud({ game, width, height }: { game: Game; width: number; height
             <Mono style={{ fontSize: 9 }}>1-4 / CHART COURSE</Mono>
             <Mono style={{ fontSize: 9 }}>B / BOOST ESC / PAUSE</Mono>
           </View>
-        </View>
+        </ScrollArea>
       )}
       <View
         style={{
@@ -333,9 +351,13 @@ export function Hud({ game, width, height }: { game: Game; width: number; height
         )}
       </View>
       {manifestOpen && snapshot.status === 'paused' ? (
-        <View
-          block
-          modal
+        <Dialog
+          open
+          label="Cargo manifest"
+          onOpenChange={() => {
+            setManifestOpen(false);
+            game.pause();
+          }}
           zIndex={20}
           style={{
             position: 'absolute',
@@ -363,7 +385,7 @@ export function Hud({ game, width, height }: { game: Game; width: number; height
               Close manifest / Resume
             </Button>
           </View>
-        </View>
+        </Dialog>
       ) : (
         snapshot.status !== 'playing' && <Overlay snapshot={snapshot} game={game} compact={compact} />
       )}
