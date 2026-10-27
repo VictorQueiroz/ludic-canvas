@@ -238,6 +238,8 @@ for (const file of [
   'runtime/types',
   'runtime/profile',
   'scroll',
+  'virtual-list',
+  'virtual/range',
   'gfx/font',
   'resources',
 ]) {

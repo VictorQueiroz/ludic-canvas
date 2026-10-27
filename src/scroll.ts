@@ -68,7 +68,7 @@ function emit(state: Store, node: HostNode) {
   }
 }
 /** @internal Publish after layout, before paint. */
-export function updateScroll(node: HostNode) {
+export function updateScroll(node: HostNode, notifications?: (() => void)[]) {
   if (node.props.style?.overflow !== 'scroll') return;
   let bottom = 0;
   for (const child of node.children) if ('box' in child) bottom = Math.max(bottom, child.box.y + child.box.h);
@@ -97,7 +97,8 @@ export function updateScroll(node: HostNode) {
   ) {
     if (state && state.snapshot !== prev) {
       state.snapshot = prev;
-      emit(state, node);
+      if (notifications && state.listeners.size) notifications.push(() => emit(state, node));
+      else emit(state, node);
     }
     return;
   }
@@ -112,7 +113,8 @@ export function updateScroll(node: HostNode) {
   node.scrollSnapshot = snapshot;
   if (state) {
     state.snapshot = snapshot;
-    emit(state, node);
+    if (notifications && state.listeners.size) notifications.push(() => emit(state, node));
+    else emit(state, node);
   }
   if (node.props.onScroll && !node.scrollEventQueued) {
     node.scrollEventQueued = true;

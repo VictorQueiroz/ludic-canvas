@@ -61,9 +61,12 @@ the acquired file's hash. Compare traces before attributing stalls to a subsyste
 
 Pass `profile: true` to `createUI` to obtain `frame.profile` on drawn frames. It
 reports wall-clock layout calculation, layout reading/tree traversal, painting/GL
-submission and input/accessibility synchronization in milliseconds, plus mounted
+submission, scroll synchronization/React window commits and input/accessibility synchronization in milliseconds, plus mounted
 nodes, nodes visited for painting and submitted quads. These stages do not isolate
-GPU execution, browser rendering or React commits. Suspended frames have no profile.
+GPU execution or browser rendering. React commits scheduled outside `frame()` are
+excluded; synchronous virtual-window commits inside `frame()` are included in
+`scrollCommitMs`. `layoutPasses` records any repeated layout needed before painting.
+Suspended frames have no profile.
 The feature is root-local and disabled by default; disabled frames do not acquire
 stage timestamps or allocate a profile object.
 
