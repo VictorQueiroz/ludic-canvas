@@ -72,6 +72,10 @@ test('the mobile HUD fits 320 pixels and offers a modal site selector', async ({
 test('the regional archive virtualizes real game UI with modal focus and controlled selection', async ({ page }) => {
   test.setTimeout(60000);
   await page.setViewportSize({ width: 320, height: 844 });
+  // ResizeObserver schedules a React update. The collection action exists in
+  // both layouts: wait for the compact controls before pressing its new node.
+  await expect(page.getByRole('button', { name: 'Open survey sites', exact: true })).toBeAttached();
+  await expect(page.getByRole('tablist', { name: 'Survey sites', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Open field collection', exact: true }).press('Enter');
   await page.getByRole('button', { name: 'Browse regional archive', exact: true }).press('Enter');
   await expect(page.getByRole('listbox', { name: 'Regional specimen archive' })).toBeAttached();

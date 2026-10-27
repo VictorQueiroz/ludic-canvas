@@ -23,6 +23,17 @@ multi-root case completed in the same job. The underlying cause is unresolved;
 moving Safari-oriented coverage to native macOS does not establish a fix for
 Linux WPE. No SDK fallback or relaxed startup deadline was added for this result.
 
+The first native macOS candidate run passed with one gameplay retry after the
+Three.js world reported context loss. In
+[run 40545033065](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/40545033065),
+the archive contract failed twice immediately after resizing. The test did not
+wait for the responsive React update before pressing an action shared by both
+layouts. The final snapshot showed the compact HUD with the canvas focused and
+no dialog, consistent with the target being replaced during the press rather
+than a context-loss state. The test now waits for the compact
+site picker and removal of the desktop tabs before pressing Collection. This
+changes the test's readiness contract, not SDK rendering or startup deadlines.
+
 ## Desktop microbenchmark, 2026-10-27
 
 - Source: [865feaa5d5a32bcf6d71902e03b08456692025ea](https://github.com/VictorQueiroz/ludic-canvas/commit/865feaa5d5a32bcf6d71902e03b08456692025ea), clean repository-source build carrying 0.4.0 metadata before the release version bump.
