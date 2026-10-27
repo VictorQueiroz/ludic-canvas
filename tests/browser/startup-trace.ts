@@ -15,7 +15,7 @@ export async function traceStartup(page: Page) {
           const id = ++next;
           console.log(`[UI startup] ${id} ${label} start ${performance.now()}`);
           try {
-            const result = Reflect.apply(target, receiver, args);
+            const result: any = Reflect.apply(target, receiver, args);
             if (result && typeof result.then === 'function')
               result.then(
                 () => console.log(`[UI startup] ${id} ${label} ready ${performance.now()}`),
