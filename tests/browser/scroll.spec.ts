@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { traceStartup } from './startup-trace.ts';
 
 test('scroll handles observe layout, clamp commands, reveal focus and disconnect on teardown', async ({ page }) => {
   await page.goto('/tests/browser/scroll/');
@@ -43,6 +44,7 @@ test('scroll handles observe layout, clamp commands, reveal focus and disconnect
 test('scroll subscriptions clean up and handles isolate roots and enforce ownership', async ({ page }) => {
   await page.goto('/tests/browser/scroll/');
   await expect(page.locator('output')).toContainText('"connected":true');
+  await traceStartup(page);
   await page.evaluate(async () => {
     const c = (window as any).scrolling;
     c.other = await c.second();

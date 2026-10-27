@@ -72,15 +72,17 @@ test('matched collections retain raw stage profiles and bounded virtual windows'
   test.setTimeout(90000);
   await page.goto('http://127.0.0.1:6174/performance/');
   await page.waitForFunction(() => !!(window as any).ludicPerformance);
-  const report = await page.evaluate(async () =>
-    (window as any).ludicPerformance.run({
-      suite: 'collections-v1',
-      profile: true,
-      sampleFrames: 8,
-      warmupFrames: 2,
-      lifecycleCycles: 2,
-      execution: 'automated-browser',
-    }),
+  const report = await page.evaluate(
+    async (execution) =>
+      (window as any).ludicPerformance.run({
+        suite: 'collections-v1',
+        profile: true,
+        sampleFrames: 8,
+        warmupFrames: 2,
+        lifecycleCycles: 2,
+        execution,
+      }),
+    process.env.CI ? 'ci-software-rendering' : 'automated-browser',
   );
   expect(report.workloadVersion).toBe('collections-1');
   expect(report.results.map((result: any) => result.workload)).toEqual([
