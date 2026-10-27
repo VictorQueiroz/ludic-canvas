@@ -34,6 +34,8 @@ for (const file of [
   'site/api/index.html',
   'site/components/index.html',
   'site/performance/index.html',
+  'site/performance/desktop-m3-chrome-2026-10-27.json',
+  'site/performance/desktop-m3-chrome-2026-10-27.sha256',
   'site/play/index.html',
   'site/play/orbital-relay/index.html',
   'site/examples/orbital-relay.png',

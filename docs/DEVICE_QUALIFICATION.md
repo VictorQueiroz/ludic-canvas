@@ -10,6 +10,10 @@ using [PERFORMANCE.md](PERFORMANCE.md). Retain its downloaded JSON alongside thi
 protocol's game, long-session and assistive-technology evidence. The lab does not
 acquire heap/GPU memory or complete any absent physical-phone qualification.
 
+[QUALIFICATION_RESULTS.md](QUALIFICATION_RESULTS.md) records the acquired desktop
+microbenchmark and the physical-phone, long-session and screen-reader work still
+outstanding. A partial result must not be promoted to a full device pass.
+
 ## Targets
 
 | Target                      | Required evidence                                                                   |
