@@ -10,7 +10,9 @@
 ## Automated browser coverage and platform limits
 
 Release CI runs Chromium and Firefox on Linux, and desktop/mobile-emulated WebKit
-on macOS. Playwright documents the native macOS port as its
+on macOS. Linux browser jobs use the version-matched official Playwright Noble
+image, pinned by digest, with software rendering; CI timing is not hardware
+performance evidence. Playwright documents the native macOS port as its
 [closest target to Safari](https://playwright.dev/docs/browsers#webkit); its patched
 WebKit is still not branded Safari or a physical iPhone.
 
@@ -22,6 +24,17 @@ fetch completed; font decoding and texture upload had not started. Another
 multi-root case completed in the same job. The underlying cause is unresolved;
 moving Safari-oriented coverage to native macOS does not establish a fix for
 Linux WPE. No SDK fallback or relaxed startup deadline was added for this result.
+
+The first native macOS candidate run passed with one gameplay retry after the
+Three.js world reported context loss. In
+[run 40545033065](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/40545033065),
+the archive contract failed twice immediately after resizing. The test did not
+wait for the responsive React update before pressing an action shared by both
+layouts. The final snapshot showed the compact HUD with the canvas focused and
+no dialog, consistent with the target being replaced during the press rather
+than a context-loss state. The test now waits for the compact
+site picker and removal of the desktop tabs before pressing Collection. This
+changes the test's readiness contract, not SDK rendering or startup deadlines.
 
 ## Desktop microbenchmark, 2026-10-27
 
