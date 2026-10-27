@@ -1,5 +1,20 @@
 import { readFileSync } from 'node:fs';
 
+export function projectInit(code, version) {
+  const pending = Number(version.split('.')[1]) < 4;
+  return `${pending ? '<p><strong>New in 0.4.0:</strong> publication is pending. Until then, build a package tarball from main to try the initializer.</p>' : ''}<p>Node 24+ and npm are enough. The initializer creates a new Vite + TypeScript project with a world canvas, a transparent Ludic Canvas HUD, controlled buttons and a slider, a licensed font and a configured font pipeline.</p>${code(
+    `npx ludic-canvas@latest init my-game --template canvas2d
+cd my-game
+npm install
+npm run dev`,
+    'bash',
+    'Create a Canvas2D game',
+  )}
+<p>Choose <code>--template three</code> for a Three.js world. Both templates use one application-owned loop and separate world/UI canvases. The default directory is <code>ludic-game</code>; the default template is <code>canvas2d</code>. Existing non-empty directories and symlink destinations are rejected. The initializer generates files; you choose when to install dependencies.</p>
+<div class="table-scroll"><table><thead><tr><th>File</th><th>Responsibility</th></tr></thead><tbody><tr><td><code>src/main.tsx</code></td><td>Root creation, sizing, the frame loop, HMR and teardown.</td></tr><tr><td><code>src/game.ts</code></td><td>Application-owned simulation and immutable UI snapshots.</td></tr><tr><td><code>src/world.ts</code></td><td>Canvas2D or Three.js drawing and resource disposal.</td></tr><tr><td><code>src/Hud.tsx</code></td><td>Styled components using the public controls.</td></tr><tr><td><code>ludic-canvas.fonts.json</code></td><td>Font source, character coverage and generated output paths.</td></tr><tr><td><code>fonts/Interface.ttf</code></td><td>Bundled Barlow Condensed SemiBold; license in <code>fonts/OFL.txt</code>.</td></tr></tbody></table></div>
+<p>Open Vite's local address. A moving world appears behind the HUD. Pause, resume and reset it, and change simulation speed using pointer or keyboard. <code>npm run build</code> generates fonts, checks TypeScript and creates <code>dist/</code>. The production base is relative, and the atlas/metrics use imported asset URLs for deployments under a URL prefix.</p><p>Replace the font with your own licensed TTF/OTF/WOFF/WOFF2 file and edit the configuration. <code>predev</code> and <code>prebuild</code> regenerate only when inputs change. See the <a href="#font-cli">font CLI reference</a> and <a href="/components/">component catalogue</a>. Already have a game? Use the manual canvas setup below.</p>`;
+}
+
 export function gettingStarted(code, version) {
   return `<p>Start with Node 24+, npm, and a browser with WebGL and WebAssembly enabled. The package includes its layout module and a default font; your first interface needs no font generation or native toolchain.</p>
 <h3>1. Create a project</h3><p>Use Vite's React + TypeScript template, then install Ludic Canvas and its supported React version. Keep React DOM on the same version as React in the template.</p>${code(

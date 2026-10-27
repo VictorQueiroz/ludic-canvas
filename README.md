@@ -6,15 +6,61 @@ React interfaces for browser games, powered by Yoga WebAssembly layout and WebGL
 
 Compose HUDs, menus and inventories with four typed primitives: **View**, **Text**, **Image** and **Line**. Use React state, effects and context while the renderer computes flexbox layout in WebAssembly and paints batched GPU primitives with crisp MSDF text.
 
+Controlled **Button**, **Switch**, **Slider**, **Tab**, **Tabs**, **Dialog** and
+**ScrollArea** components share interaction behavior while leaving their layout,
+colors and contents to your game. Explore the [component catalogue](https://libraries.ludic-canvas.victorqueiroz.dev/components/).
+
 ## Install
 
 The npm package includes JavaScript, TypeScript declarations, a precompiled Yoga reactor, a default OFL font atlas, the portable font atlas compiler and license notices.
 
 ```sh
-npm install ludic-canvas@^0.2.0 react@19.3.1
+npm install ludic-canvas react@19.3.1
 ```
 
 Releases use the Changesets version-PR workflow described in [docs/RELEASING.md](docs/RELEASING.md).
+
+## Start a project (0.4.0+)
+
+```sh
+npx ludic-canvas@latest init my-game --template canvas2d
+cd my-game
+npm install
+npm run dev
+```
+
+Choose `--template three` for a Three.js world. Both starters include a transparent
+UI overlay, controlled HUD, application-owned simulation/frame loop, responsive
+canvas sizing, a licensed font, font generation before development/build, and
+resource teardown. The initializer accepts new or empty directories and never
+installs dependencies automatically. Use `npm run build` to generate `dist/`.
+
+Replace `fonts/Interface.ttf` and edit `ludic-canvas.fonts.json` to bring your own
+licensed TTF, OTF, WOFF or WOFF2 font. Imported atlas URLs support deployments
+under a URL prefix. See the [initializer guide](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#project-init).
+
+## Shared controls
+
+```tsx
+import { useState } from 'react';
+import { Switch, Text } from 'ludic-canvas';
+
+function Hints() {
+  const [enabled, setEnabled] = useState(true);
+  return (
+    <Switch label="Navigation hints" checked={enabled} onCheckedChange={setEnabled} style={{ padding: 16 }}>
+      <Text>{enabled ? 'Hints on' : 'Hints off'}</Text>
+    </Switch>
+  );
+}
+```
+
+Values remain controlled by the application. Slider render functions receive a
+normalized ratio for custom tracks/thumbs. Tabs manage one keyboard Tab stop and
+skip disabled entries. Dialogs isolate input and restore focus through nested
+scopes. ScrollArea provides vertical wheel/touch scrolling and focus reveal.
+`useUIRoot()` accesses the owning root inside `ui.render()`; separate roots keep
+their own focus, React state and resources. No global active root is used.
 
 ## Font atlas CLI (0.2.0+)
 
@@ -150,9 +196,13 @@ publisher setup. No npm token is stored in GitHub secrets.
 
 Ludic Canvas targets desktop and mobile browser games. React 19.3.1 is the tested peer version; react-reconciler 0.34.0 is pinned because its host API is unstable. The browser needs WebGL 1, WebAssembly SIMD/bulk-memory, createImageBitmap and Pointer Events.
 
-The runtime supports captured pointer/key events, vertical wheel/touch scrolling, scoped hotkeys, modal focus scopes, spatial focus navigation, DOM control semantics, polite live announcements, text scaling and reduced motion. The mirror is a limited accessibility aid rather than a complete semantic document.
+The runtime supports captured pointer/key events, vertical wheel/touch scrolling, scoped hotkeys, modal focus scopes, spatial focus navigation, DOM control/group semantics, polite live announcements, text scaling and reduced motion. The mirror is a limited accessibility aid rather than a complete semantic document.
 
 Text uses pre-baked glyphs and greedy wrapping. Complex-script shaping, kerning, editable canvas text, shared WebGL 2 contexts and native engine bindings are not implemented. Up to four font atlases are supported per root. See the [production review](PRODUCTION.md) and [support matrix](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#production) for tested scope, release gates and remaining limits.
+
+The [roadmap](ROADMAP.md) defines the dedicated typography milestone and the
+[physical-device qualification protocol](docs/DEVICE_QUALIFICATION.md) separates
+automated correctness checks from hardware and assistive-technology evidence.
 
 ## License
 

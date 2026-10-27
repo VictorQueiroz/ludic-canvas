@@ -1,5 +1,19 @@
 import { useSyncExternalStore, type ReactNode } from 'react';
-import { View, Text, Line, type CommonProps, type TextStyleProp, type ViewStyle } from 'ludic-canvas';
+import {
+  View,
+  Text,
+  Line,
+  Button as ControlButton,
+  Slider,
+  Switch,
+  Tabs,
+  Dialog as Modal,
+  type ButtonProps,
+  type SwitchProps,
+  type CommonProps,
+  type TextStyleProp,
+  type ViewStyle,
+} from 'ludic-canvas';
 import { sites, type SurveyGame, type SurveyState, type Dialog } from '../game.ts';
 
 const c = {
@@ -46,14 +60,9 @@ function Panel({ children, style, ...props }: CommonProps & { style?: ViewStyle 
 function Rule() {
   return <View style={{ height: 1, background: c.line, flexShrink: 0 }} />;
 }
-function Button({
-  children,
-  primary = false,
-  style,
-  ...props
-}: CommonProps & { primary?: boolean; style?: ViewStyle }) {
+function Button({ children, primary = false, style, ...props }: ButtonProps & { primary?: boolean }) {
   return (
-    <View
+    <ControlButton
       {...props}
       hoverStyle={{ background: primary ? '#e6f3b8' : '#3a5145' }}
       pressStyle={{ scale: 0.98 }}
@@ -71,7 +80,30 @@ function Button({
       }}
     >
       <T style={{ fontSize: 13, color: primary ? c.black : c.paper, textAlign: 'center' }}>{children}</T>
-    </View>
+    </ControlButton>
+  );
+}
+function SwitchButton({ children, style, ...props }: Omit<SwitchProps, 'children'> & { children: ReactNode }) {
+  return (
+    <Switch
+      {...props}
+      hoverStyle={{ background: '#3a5145' }}
+      pressStyle={{ scale: 0.98 }}
+      style={{
+        minHeight: 40,
+        paddingX: 12,
+        paddingY: 9,
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: '#304037',
+        borderWidth: 1,
+        borderColor: c.line,
+        borderRadius: 3,
+        ...style,
+      }}
+    >
+      <T style={{ fontSize: 13, color: c.paper, textAlign: 'center' }}>{children}</T>
+    </Switch>
   );
 }
 function Meter({
@@ -105,47 +137,52 @@ const time = (n: number) => `${number(n / 60)}:${number(n % 60)}`;
 
 function SiteList({ game, state, dismiss = false }: { game: SurveyGame; state: SurveyState; dismiss?: boolean }) {
   return (
-    <View style={{ gap: 7 }}>
-      {sites.map((site, index) => (
-        <View
-          key={site.name}
-          label={`Select ${site.name}`}
-          selected={index === state.selected}
-          role="tab"
-          onPress={() => {
-            game.select(index);
-            if (dismiss) game.dialog('none');
-          }}
-          hoverStyle={{ background: '#425644' }}
-          style={{
-            padding: 12,
-            gap: 7,
-            background: index === state.selected ? '#3b4f3b' : '#23342c',
-            borderWidth: 1,
-            borderColor: index === state.selected ? c.acid : c.line,
-            borderRadius: 3,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <T style={{ fontSize: 24, color: state.samples[index] ? c.acid : '#cbd1b5' }}>
-              {state.samples[index] ? 'OK' : number(index + 1)}
-            </T>
-            <View style={{ flex: 1, gap: 3 }}>
-              <T style={{ fontSize: 15 }}>{site.name}</T>
-              <Mono style={{ fontSize: 7, color: site.color }}>
-                {state.samples[index] ? 'SAMPLE SECURED' : site.material}
-              </Mono>
+    <Tabs
+      label="Survey sites"
+      value={String(state.selected)}
+      orientation="vertical"
+      items={sites.map((site, index) => ({ value: String(index), label: `Select ${site.name}` }))}
+      onValueChange={(value) => {
+        game.select(Number(value));
+        if (dismiss) game.dialog('none');
+      }}
+      style={{ gap: 7 }}
+      tabHoverStyle={{ background: '#425644' }}
+      tabStyle={({ selected }) => ({
+        padding: 12,
+        gap: 7,
+        background: selected ? '#3b4f3b' : '#23342c',
+        borderWidth: 1,
+        borderColor: selected ? c.acid : c.line,
+        borderRadius: 3,
+      })}
+    >
+      {(item, { selected }) => {
+        const index = Number(item.value),
+          site = sites[index]!;
+        return (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <T style={{ fontSize: 24, color: state.samples[index] ? c.acid : '#cbd1b5' }}>
+                {state.samples[index] ? 'OK' : number(index + 1)}
+              </T>
+              <View style={{ flex: 1, gap: 3 }}>
+                <T style={{ fontSize: 15 }}>{site.name}</T>
+                <Mono style={{ fontSize: 7, color: site.color }}>
+                  {state.samples[index] ? 'SAMPLE SECURED' : site.material}
+                </Mono>
+              </View>
             </View>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Mono style={{ fontSize: 8 }}>
-              {Math.hypot(state.x - site.x, state.z - site.z).toFixed(1)} m from rover
-            </Mono>
-            <Mono style={{ fontSize: 8, color: c.acid }}>{index === state.selected ? 'TRACKING' : 'SELECT >'}</Mono>
-          </View>
-        </View>
-      ))}
-    </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Mono style={{ fontSize: 8 }}>
+                {Math.hypot(state.x - site.x, state.z - site.z).toFixed(1)} m from rover
+              </Mono>
+              <Mono style={{ fontSize: 8, color: c.acid }}>{selected ? 'TRACKING' : 'SELECT >'}</Mono>
+            </View>
+          </>
+        );
+      }}
+    </Tabs>
   );
 }
 
@@ -256,49 +293,34 @@ function Zoom({ game, value, width = 190 }: { game: SurveyGame; value: number; w
         <Mono>CAMERA DISTANCE</Mono>
         <Mono style={{ color: c.paper }}>{(20 + value * 18).toFixed(0)} m</Mono>
       </View>
-      <View
+      <Slider
         id="camera-zoom"
-        focusable
-        role="slider"
         label="Camera distance"
-        valueMin={20}
-        valueMax={38}
-        valueNow={Math.round(20 + value * 18)}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          game.zoom(event.localX / width);
-        }}
-        onPointerMove={(event) => {
-          if (event.buttons) {
-            event.preventDefault();
-            game.zoom(event.localX / width);
-          }
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-            event.preventDefault();
-            game.zoom(value + (event.key === 'ArrowRight' ? 0.05 : -0.05));
-          }
-          if (event.key === 'Home' || event.key === 'End') {
-            event.preventDefault();
-            game.zoom(event.key === 'Home' ? 0 : 1);
-          }
-        }}
+        value={20 + value * 18}
+        min={20}
+        max={38}
+        step={0.9}
+        valueText={`${Math.round(20 + value * 18)} meters`}
+        onValueChange={(meters) => game.zoom((meters - 20) / 18)}
         style={{ width, height: 24, justifyContent: 'center' }}
       >
-        <View fill={value} fillColor={c.acid} style={{ height: 3, background: '#7d8a6955' }} />
-        <View
-          style={{
-            position: 'absolute',
-            left: Math.max(0, (width - 12) * value),
-            top: 6,
-            width: 12,
-            height: 12,
-            background: c.paper,
-            borderRadius: 2,
-          }}
-        />
-      </View>
+        {({ ratio }) => (
+          <>
+            <View fill={ratio} fillColor={c.acid} style={{ height: 3, background: '#7d8a6955' }} />
+            <View
+              style={{
+                position: 'absolute',
+                left: Math.max(0, (width - 12) * ratio),
+                top: 6,
+                width: 12,
+                height: 12,
+                background: c.paper,
+                borderRadius: 2,
+              }}
+            />
+          </>
+        )}
+      </Slider>
     </View>
   );
 }
@@ -332,9 +354,11 @@ function Overlay({
             ? 'Field collection.'
             : 'Your field manual.';
   return (
-    <View
-      modal
-      block
+    <Modal
+      open
+      label={title}
+      closeOnEscape={!complete}
+      onOpenChange={() => game.dialog('none')}
       zIndex={50}
       style={{
         position: 'absolute',
@@ -397,22 +421,12 @@ function Overlay({
           <>
             <T style={{ color: c.muted }}>The world is Three.js. Every control in this panel is Ludic Canvas.</T>
             <Zoom game={game} value={state.zoom} width={Math.min(300, cardWidth - 56)} />
-            <Button
-              label="Toggle low power rendering"
-              role="switch"
-              checked={state.lowPower}
-              onPress={() => game.quality(!state.lowPower)}
-            >
+            <SwitchButton label="Toggle low power rendering" checked={state.lowPower} onCheckedChange={game.quality}>
               {state.lowPower ? '[ON]' : '[OFF]'} Low power rendering
-            </Button>
-            <Button
-              label="Toggle reduced motion"
-              role="switch"
-              checked={state.reducedMotion}
-              onPress={() => game.motion(!state.reducedMotion)}
-            >
+            </SwitchButton>
+            <SwitchButton label="Toggle reduced motion" checked={state.reducedMotion} onCheckedChange={game.motion}>
               {state.reducedMotion ? '[ON]' : '[OFF]'} Reduced motion
-            </Button>
+            </SwitchButton>
             <Mono>Low power: 1x resolution, no shadows or dust.</Mono>
           </>
         ) : dialog === 'samples' ? (
@@ -453,7 +467,7 @@ function Overlay({
           </>
         )}
       </Panel>
-    </View>
+    </Modal>
   );
 }
 
@@ -666,15 +680,14 @@ export function SurveyHud({
               <Button label="Orbit camera left" onPress={() => game.rotate(-Math.PI / 6)} style={{ flex: 1 }}>
                 &lt;
               </Button>
-              <Button
+              <SwitchButton
                 label="Toggle overview camera"
-                role="switch"
                 checked={state.overview}
-                onPress={game.overview}
+                onCheckedChange={game.overview}
                 style={{ flex: 3 }}
               >
                 {state.overview ? 'Follow' : 'Overview'}
-              </Button>
+              </SwitchButton>
               <Button label="Orbit camera right" onPress={() => game.rotate(Math.PI / 6)} style={{ flex: 1 }}>
                 &gt;
               </Button>

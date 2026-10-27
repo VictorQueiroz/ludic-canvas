@@ -16,6 +16,9 @@ try {
   for (const path of [
     'cli/index.mjs',
     'cli/fonts.mjs',
+    'cli/init.mjs',
+    'cli/templates/shared/fonts/Interface.ttf',
+    'dist/controls.js',
     'assets/fontgen.wasm',
     'font-atlas.schema.json',
     'licenses/FreeType-FTL.txt',
@@ -35,6 +38,8 @@ try {
   await access(join(project, 'node_modules/.bin', process.platform === 'win32' ? 'ludic-canvas.cmd' : 'ludic-canvas'));
   const imported = await import(pathToFileURL(join(installed, 'dist/index.js')).href);
   if (typeof imported.createUI !== 'function') throw new Error('Root exports do not resolve');
+  for (const name of ['Button', 'Switch', 'Slider', 'Tabs', 'Tab', 'Dialog', 'ScrollArea', 'useUIRoot'])
+    if (typeof imported[name] !== 'function') throw new Error(`Packed control does not resolve: ${name}`);
   await Promise.all(Object.values(imported.defaultAssets).map((url) => access(new URL(url))));
   await copyFile(join(root, 'tests/fixtures/fixture.woff2'), join(project, 'fonts/input.woff2'));
   await writeFile(
@@ -103,8 +108,25 @@ ui.render(createElement(Text, null, 'A?'));\n`,
   npm(['install', '--no-audit', '--no-fund'], survey);
   npm(['run', 'build'], survey);
   await access(join(survey, 'dist/index.html'));
+  // Exercise the real packaged initializer. Each generated project installs its
+  // own dependencies and builds against this exact tarball, outside the checkout.
+  for (const template of ['canvas2d', 'three']) {
+    const generated = join(staging, `initialized ${template} game`);
+    execFileSync(process.execPath, [bin, 'init', generated, '--template', template], {
+      cwd: staging,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const pkg = JSON.parse(await readFile(join(generated, 'package.json'), 'utf8'));
+    pkg.dependencies['ludic-canvas'] = join(staging, packed.filename);
+    await writeFile(join(generated, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+    npm(['install', '--no-audit', '--no-fund'], generated);
+    npm(['run', 'build'], generated);
+    await access(join(generated, 'dist/index.html'));
+    await access(join(generated, 'src/fonts/generated/interface.png'));
+  }
   console.log(
-    `Packed consumer verified: CLI, WOFF2 generation/cache, both Vite starters and independent Three.js project (${packed.size} package bytes)`,
+    `Packed consumer verified: font CLI/cache, existing starters, independent Three.js project and both initialized projects (${packed.size} package bytes)`,
   );
 } catch (error) {
   if (error.stderr) console.error(error.stderr.toString());

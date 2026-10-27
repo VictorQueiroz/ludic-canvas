@@ -156,6 +156,9 @@ export class Painter {
         node.props.onPointerUp ||
         node.props.onHover ||
         node.props.block ||
+        node.props.role === 'tablist' ||
+        node.props.role === 'dialog' ||
+        node.props.role === 'region' ||
         style.overflow === 'scroll')
     )
       this.hitList.push(node);

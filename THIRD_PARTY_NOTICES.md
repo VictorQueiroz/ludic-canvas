@@ -13,4 +13,9 @@ Ludic Canvas source is MIT licensed. Third-party components retain their own lic
 
 Font source provenance is recorded in tools/fontgen/fonts/SOURCE_COMMIT. Yoga and WASI archives are SHA-256 pinned in CMakeLists.txt and tools/toolchain/bootstrap.mjs. Font tool source revisions and hashes are pinned in tools/fontgen/wasm/CMakeLists.txt. Browser runtime dependencies are locked in package-lock.json.
 
+The project initializer copies that same unmodified Barlow Condensed SemiBold
+source into generated projects as `fonts/Interface.ttf`, together with
+`fonts/OFL.txt`. Its packaged template source and license are verified against
+the pinned repository font and license by the public-distribution audit.
+
 The portable font compiler in assets/fontgen.wasm also includes FreeType 2.14.3 (selected FreeType License, licenses/FreeType-FTL.txt and licenses/FreeType-LICENSE.txt), its bundled zlib (licenses/FreeType-bundled-zlib.txt), and Brotli 1.1.0 (MIT, licenses/Brotli-MIT.txt). These dependencies are used for offline outline-font decoding, including WOFF and WOFF2. Build inputs, compiler and artifact hash are recorded in assets/fontgen-provenance.json. The WASI/LLVM notices above apply to this module as well.

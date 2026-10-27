@@ -15,6 +15,7 @@ export default defineConfig({
         home: resolve(import.meta.dirname, 'docs/index.html'),
         guide: resolve(import.meta.dirname, 'docs/guide/index.html'),
         api: resolve(import.meta.dirname, 'docs/api/index.html'),
+        components: resolve(import.meta.dirname, 'docs/components/index.html'),
         play: resolve(import.meta.dirname, 'docs/play/index.html'),
         orbital: resolve(import.meta.dirname, 'docs/play/orbital-relay/index.html'),
         survey: resolve(import.meta.dirname, 'docs/3d/index.html'),

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
+import { UIRootContext } from './context.ts';
 import { createAssetResolver, type AssetResolver, type ImageAssets } from './assets.ts';
 import { defaultAssets } from './defaults.ts';
 import { UiBatch } from './gfx/batch.ts';
@@ -333,7 +334,7 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
     const root: UIRoot = {
       render(element) {
         ensureAlive();
-        ui.render(element);
+        ui.render(createElement(UIRootContext.Provider, { value: root }, element));
       },
       frame(now = performance.now()) {
         ensureAlive();
