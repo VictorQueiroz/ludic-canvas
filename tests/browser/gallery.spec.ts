@@ -1,4 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
+
+async function expectPlayerVisible(player: Locator) {
+  const box = await player.boundingBox();
+  expect(box).not.toBeNull();
+  // WebKit can round a half-visible frame just below 0.5; permit one CSS pixel.
+  await expect(player).toBeInViewport({ ratio: Math.max(0, 0.5 - 1 / box!.height) });
+}
 
 test('the Play gallery switches one game viewport and its integration notes', async ({ page }, testInfo) => {
   test.setTimeout(60000);
@@ -22,7 +29,7 @@ test('the Play gallery switches one game viewport and its integration notes', as
   await expect(kestrel).toHaveAttribute('aria-pressed', 'true');
   await expect(orbital).toHaveAttribute('aria-pressed', 'false');
   await expect(player).toHaveAttribute('data-example', 'kestrel-survey');
-  await expect(player).toBeInViewport({ ratio: 0.5 });
+  await expectPlayerVisible(player);
   await expect(game.getByRole('button', { name: 'Pause survey', exact: true })).toBeAttached();
   await expect(page.getByRole('heading', { name: 'How Kestrel Survey uses Ludic Canvas.', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'How Orbital Relay uses Ludic Canvas.', exact: true })).toHaveCount(0);
@@ -68,7 +75,7 @@ test('the gallery and selected game fit 320 pixels, and legacy embeds still work
   await page.setViewportSize({ width: 320, height: 844 });
   await page.goto('http://127.0.0.1:6174/play/?example=kestrel-survey');
   const game = page.frameLocator('#example-player');
-  await expect(page.locator('#example-player')).toBeInViewport({ ratio: 0.5 });
+  await expectPlayerVisible(page.locator('#example-player'));
   await expect(game.getByRole('button', { name: 'Open survey sites', exact: true })).toBeAttached();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(

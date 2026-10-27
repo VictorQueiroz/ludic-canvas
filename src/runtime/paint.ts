@@ -284,9 +284,9 @@ export class Painter {
     const d = f.dpr;
     const ts = node.textStyle();
     const shaped = f.fonts.shape(node.text, ts, node.box.w);
-    const font = f.fonts.get(ts.font);
     const size = ts.size * scale;
-    const pxRange = Math.max(1, font.distanceRange * ((size * d) / font.atlasEm));
+    const range = (font: ReturnType<typeof f.fonts.get>) =>
+      Math.max(1, font.distanceRange * ((size * d) / font.atlasEm));
     const base = hoverColor('color', style.color ?? f.textColor);
     const emph = this.#color(style.emphasisColor ?? f.emphasisColor);
     const weight = style.weight ?? 0;
@@ -296,6 +296,7 @@ export class Painter {
       const sh: Rgba = [0, 0, 0, 0.7 * opacity];
       const off = Math.max(1.5, size * 0.04);
       for (const g of shaped.glyphs) {
+        const font = f.fonts.get(g.font);
         f.batch.glyph(
           font,
           (x + g.x0 * scale) * d,
@@ -304,12 +305,13 @@ export class Painter {
           (y + oy + g.y1 * scale + off) * d,
           g.uv,
           sh,
-          Math.max(1, pxRange * 0.3),
+          Math.max(1, range(font) * 0.3),
           weight + 0.1,
         );
       }
     }
     for (const g of shaped.glyphs) {
+      const font = f.fonts.get(g.font);
       const c = g.emphasis ? emph : base;
       f.batch.glyph(
         font,
@@ -319,7 +321,7 @@ export class Painter {
         (y + oy + g.y1 * scale) * d,
         g.uv,
         [c[0] * opacity, c[1] * opacity, c[2] * opacity, c[3] * opacity],
-        pxRange,
+        range(font),
         weight + (g.emphasis ? 0.03 : 0),
       );
     }

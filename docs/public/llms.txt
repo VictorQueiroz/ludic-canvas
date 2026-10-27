@@ -5,5 +5,6 @@ React UI for browser games, using Yoga WASM and WebGL 1.
 - [Guide](https://libraries.ludic-canvas.victorqueiroz.dev/guide/)
 - [Components](https://libraries.ludic-canvas.victorqueiroz.dev/components/)
 - [API](https://libraries.ludic-canvas.victorqueiroz.dev/api/)
+- [Performance](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
 - [Playable example](https://libraries.ludic-canvas.victorqueiroz.dev/play/)
 - [Source](https://github.com/VictorQueiroz/ludic-canvas)

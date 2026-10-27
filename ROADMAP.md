@@ -24,9 +24,11 @@ Shipping this milestone does not remove the production boundaries documented in
 MSDF/MTSDF provides glyph rendering. Layout and OpenType shaping require their
 own contracts and fixtures. This work follows the adoption release.
 
-1. Add pair kerning and explicit font fallback. Define how measurement, wrapping,
-   glyph lookup and batching select a fallback while preserving current metrics.
-   Cover missing glyphs and keep predictable resource limits.
+1. Baseline implemented: atlas pair kerning, ordered fontFamily chains, shared
+   measurement/painting resolution, per-line fallback metrics, ellipsis and bounded
+   missing-glyph diagnostics. The CLI extracts legacy kern-table pairs, not GPOS.
+   The four-atlas limit remains. Regression fixtures cover em normalization,
+   wrapping, cache replacement, cross-face boundaries and fallback atlas painting.
 2. Design bidi, grapheme-aware line breaking and complex-script shaping together.
    Establish the glyph-ID/atlas contract needed by contextual substitutions and
    ligatures before choosing a shaping dependency. Keep atlas generation offline.
@@ -50,3 +52,9 @@ Publish actual device results, unresolved findings and support limits together.
 
 This is an ongoing qualification track. Mobile browser emulation and software
 GPU CI cannot supply physical-device performance or screen-reader results.
+
+The [performance lab](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
+and [measurement method](docs/PERFORMANCE.md) provide deterministic HUD, telemetry,
+scrolling, resize and teardown workloads with raw JSON. A completed microbenchmark
+does not complete this qualification track. Native text entry, semantic document
+coverage, shaping and the proposed declarative React adapter remain future work.

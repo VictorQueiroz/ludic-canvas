@@ -24,7 +24,7 @@ export type {
 } from './runtime/types.ts';
 export { createAssetResolver } from './assets.ts';
 export type { ImageAsset, ImageAssets, AssetResolver } from './assets.ts';
-export type { AtlasJson } from './gfx/font.ts';
+export type { AtlasJson, FontFamily, FontDiagnostic } from './gfx/font.ts';
 export { defaultAssets } from './defaults.ts';
 export type { ResourceLimits } from './resources.ts';
 export { useUIRoot } from './context.ts';

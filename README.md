@@ -198,7 +198,33 @@ Ludic Canvas targets desktop and mobile browser games. React 19.3.1 is the teste
 
 The runtime supports captured pointer/key events, vertical wheel/touch scrolling, scoped hotkeys, modal focus scopes, spatial focus navigation, DOM control/group semantics, polite live announcements, text scaling and reduced motion. The mirror is a limited accessibility aid rather than a complete semantic document.
 
-Text uses pre-baked glyphs and greedy wrapping. Complex-script shaping, kerning, editable canvas text, shared WebGL 2 contexts and native engine bindings are not implemented. Up to four font atlases are supported per root. See the [production review](PRODUCTION.md) and [support matrix](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#production) for tested scope, release gates and remaining limits.
+Text uses pre-baked glyphs, atlas pair kerning and greedy wrapping. A string or
+ordered array in `fontFamily` selects registered faces; each glyph uses the first
+face containing it. All selected faces share a baseline and fallback metrics can
+increase line height. Set `fontKerning: 'none'` to disable pair adjustments.
+Complex-script/GPOS shaping, bidi, grapheme-aware wrapping, editable canvas text,
+shared WebGL 2 contexts and native engine bindings remain unimplemented. Up to
+four font atlases are supported per root. See the [production review](PRODUCTION.md)
+and [support matrix](https://libraries.ludic-canvas.victorqueiroz.dev/guide/#production).
+
+```tsx
+const ui = await createUI({
+  canvas,
+  fonts: [interfaceFont, symbolsFont],
+  onFontDiagnostic: (diagnostic) => console.warn(diagnostic.message),
+});
+ui.render(<Text style={{ fontFamily: ['interface', 'symbols'] }}>Café · Ready</Text>);
+```
+
+Use the names in your `FontSource` values. A missing glyph becomes `?` in the
+primary face and can produce an opt-in diagnostic, once per codepoint/ordered
+chain, capped at 1024 reports per root. Regenerate an atlas when changing charset
+coverage. The CLI extracts legacy `kern` tables; a GPOS-only font can export zero
+pairs. Existing atlas JSON without a kerning array remains usable.
+
+The [performance lab](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
+runs fixed UI workloads and downloads raw samples with source/environment metadata.
+See [measurement limits and acquisition instructions](docs/PERFORMANCE.md).
 
 The [roadmap](ROADMAP.md) defines the dedicated typography milestone and the
 [physical-device qualification protocol](docs/DEVICE_QUALIFICATION.md) separates

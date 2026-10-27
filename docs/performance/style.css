@@ -1,0 +1,115 @@
+.performance-document {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 48px 28px 80px;
+}
+.performance-document h1 {
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  letter-spacing: -0.04em;
+}
+.performance-document .lead {
+  max-width: 800px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.performance-document form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 18px;
+  margin: 28px 0 20px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #141d27;
+}
+.performance-document label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+.performance-document input {
+  width: 170px;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid #4b6075;
+  border-radius: 4px;
+  color: var(--text);
+  background: #111c29;
+}
+.performance-document input[name='hardware'] {
+  width: 240px;
+}
+.performance-document button,
+.performance-document #performance-download {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid #a6d8c7;
+  border-radius: 5px;
+  background: #a6d8c7;
+  color: #111c29;
+  font: inherit;
+  text-decoration: none;
+}
+.performance-document button:disabled {
+  opacity: 0.5;
+}
+.performance-document output {
+  display: block;
+  margin: 18px 0;
+  min-height: 30px;
+}
+.performance-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #111c29;
+}
+#performance-canvas {
+  display: block;
+  width: 960px;
+  max-width: 100%;
+  height: 540px;
+}
+#performance-results {
+  overflow-x: auto;
+  margin: 24px 0;
+}
+#performance-results table {
+  width: 100%;
+  white-space: nowrap;
+}
+#performance-results th,
+#performance-results td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.performance-document details {
+  margin: 24px 0;
+}
+#performance-json {
+  max-height: 480px;
+  overflow: auto;
+  padding: 18px;
+  background: #0d1117;
+  font-size: 0.78rem;
+}
+.performance-document .method {
+  max-width: 900px;
+  line-height: 1.7;
+}
+@media (max-width: 600px) {
+  .performance-document {
+    padding: 30px 16px;
+  }
+  .performance-document form {
+    padding: 14px;
+  }
+  .performance-document input,
+  .performance-document input[name='hardware'] {
+    max-width: 100%;
+    width: 220px;
+  }
+}

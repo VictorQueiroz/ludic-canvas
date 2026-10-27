@@ -109,6 +109,7 @@ export class HostNode {
     const s = (this.props.style ?? {}) as TextStyleProp;
     return {
       font: s.fontFamily ?? this.ctx.fonts.defaultName,
+      kerning: s.fontKerning !== 'none',
       size: (s.fontSize ?? 16) * this.ctx.textScale,
       lineHeight: s.lineHeight ?? 1,
       tracking: s.letterSpacing ?? 0,
@@ -211,6 +212,7 @@ function textStyleChanged(a: AnyProps, b: AnyProps) {
   const sb = (b.style ?? {}) as TextStyleProp;
   return (
     sa.fontFamily !== sb.fontFamily ||
+    sa.fontKerning !== sb.fontKerning ||
     sa.fontSize !== sb.fontSize ||
     sa.lineHeight !== sb.lineHeight ||
     sa.letterSpacing !== sb.letterSpacing ||

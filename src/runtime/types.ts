@@ -2,7 +2,7 @@
 // Yoga layout properties with visual ones, React-Native style.
 
 import type { ReactNode } from 'react';
-import type { FontName } from '../gfx/font.ts';
+import type { FontFamily } from '../gfx/font.ts';
 
 export type Dim = number | `${number}%` | 'auto';
 
@@ -73,7 +73,10 @@ export interface VisualStyle {
 export interface TextVisualStyle {
   color?: string;
   emphasisColor?: string;
-  fontFamily?: FontName;
+  /** Registered face name or explicit ordered fallback chain (maximum four). */
+  fontFamily?: FontFamily;
+  /** Apply atlas pair kerning. Default: normal. This does not enable script shaping. */
+  fontKerning?: 'normal' | 'none';
   fontSize?: number;
   lineHeight?: number;
   letterSpacing?: number; // em

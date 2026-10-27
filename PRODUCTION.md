@@ -36,7 +36,7 @@ The reference workload included four-face typography, responsive nested panels, 
 ## Remaining boundaries
 
 - React 19.3.1, WebGL 1 and browser WebAssembly are the supported runtime contract. Use a separate overlay canvas with WebGL 2 engines.
-- At most four font atlases per root. No kerning, bidi, complex-script/ligature shaping, editable canvas text, emoji fallback or full static-text accessibility tree. Use native DOM text/editing for those requirements.
+- At most four font atlases per root. Ordered fontFamily chains and atlas pair kerning are supported; the CLI extracts legacy kern-table pairs. GPOS positioning, bidi, grapheme-aware wrapping, complex-script/ligature shaping, editable canvas text, automatic emoji fallback and a full static-text accessibility tree remain unsupported. Use native DOM text/editing for those requirements.
 - Axis-aligned positive scale/translation and rectangular clips. No rotation/skew, arbitrary shaders, stencil masks or rounded clipping of child content.
 - The optional controlled components cover buttons, switches, horizontal sliders, tabs, dialogs and vertical scroll areas. The interactive catalogue demonstrates independent roots and custom skins. No built-in virtualized lists, engine adapters or controller polling are included. Applications own control values and can route controller input through root focus/navigation methods.
 - GPU image budgets are soft, browser decoding can temporarily allocate additional memory, and the font compiler's individually renamed outputs are not a filesystem-wide transaction.
@@ -55,3 +55,17 @@ installs their own dependencies and builds them against the packed library.
 Typography and hardware qualification remain separate work, with explicit
 acceptance criteria in [ROADMAP.md](ROADMAP.md) and
 [the device protocol](docs/DEVICE_QUALIFICATION.md).
+
+## Typography baseline and measurement workloads
+
+Measurement and painting resolve the same ordered font chain, per-face kerning,
+fallback baseline metrics and ellipsis marker. Missing-glyph diagnostics are
+opt-in, root-local, deduplicated and capped. A synthetic licensed kern-table
+fixture verifies the compiler-to-runtime path; browser pixel checks distinguish
+the fallback atlas and cover recovery and reactive measurement changes.
+
+The [performance lab](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
+exports raw CPU frame-call, commit-latency and RAF-interval samples for versioned
+workloads. These are UI-only measurements with no GPU timer or memory acquisition.
+The [method](docs/PERFORMANCE.md) and explicit budgets make runs reproducible;
+automated smoke checks do not complete physical-device qualification.
