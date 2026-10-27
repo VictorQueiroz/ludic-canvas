@@ -12,6 +12,8 @@ example uses the default font and compiled layout WASM included in the published
 
 This example pins Vite 7.3.5 to avoid the Vite 8 Rolldown binding failure in
 StackBlitz WebContainers ([upstream report](https://github.com/stackblitz/starters/issues/118)).
+Its Vite configuration also preserves the library's relative WASM and font asset
+URLs during development while prebundling its React dependencies.
 
 ## Run locally
 
