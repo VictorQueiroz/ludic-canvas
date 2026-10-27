@@ -1,11 +1,11 @@
 # Acquired qualification evidence
 
-| Target                                       | Status  | Acquired evidence                                                           | Outstanding work                                               |
-| -------------------------------------------- | ------- | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Desktop Apple M3 / Chrome 156                | Partial | Version 1 UI microbenchmark, 120 samples per workload, five teardown cycles | Full games, 30-minute session, memory traces and accessibility |
-| Physical iPhone / Safari                     | Not run | None                                                                        | Complete device protocol                                       |
-| Physical Android / Chrome                    | Not run | None                                                                        | Complete device protocol                                       |
-| VoiceOver / TalkBack / desktop screen reader | Not run | None                                                                        | Assistive-technology protocol                                  |
+| Target                                       | Status  | Acquired evidence                                                                           | Outstanding work                                               |
+| -------------------------------------------- | ------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Desktop Apple M3 / Chrome 156                | Partial | Original UI microbenchmark plus three matched collection runs and a diagnostic Chrome trace | Full games, 30-minute session, memory traces and accessibility |
+| Physical iPhone / Safari                     | Not run | None                                                                                        | Complete device protocol                                       |
+| Physical Android / Chrome                    | Not run | None                                                                                        | Complete device protocol                                       |
+| VoiceOver / TalkBack / desktop screen reader | Not run | None                                                                                        | Assistive-technology protocol                                  |
 
 ## Desktop microbenchmark, 2026-10-27
 
@@ -44,3 +44,48 @@ The acquired file is 76,892 bytes and is preserved without reformatting.
 Use [PERFORMANCE.md](PERFORMANCE.md) to repeat the microbenchmark and
 [DEVICE_QUALIFICATION.md](DEVICE_QUALIFICATION.md) for the remaining device,
 game-session, memory and assistive-technology work.
+
+## Matched collection acquisition, 2026-10-27
+
+Clean source [802b0d72292480e5ae71b026189b1c393996d901](https://github.com/VictorQueiroz/ludic-canvas/commit/802b0d72292480e5ae71b026189b1c393996d901)
+carried 0.5.0 metadata before the release bump. These are repository-source
+measurements, not measurements of published npm 0.5.0. The verified Mac15,12 /
+Apple M3 / 8 GB machine ran macOS 26.6.2 and installed Chrome 156 with ANGLE Metal,
+in an isolated headed browser profile. Viewport: 1710 × 930; workload canvas:
+960 × 540 CSS pixels at DPR 2.
+
+Three unprofiled acquisitions used collections-1, 20 warmup frames, 120 acquired
+frames per workload, 119 RAF intervals and five teardown cycles. Workload order
+alternated forward/reverse/forward. Each supplied a 4 ms CPU frame-call p95 budget.
+
+| Workload      | Nodes at completion | Run 1 p95 ms | Run 2 p95 ms | Run 3 p95 ms | Budget |
+| ------------- | ------------------: | -----------: | -----------: | -----------: | ------ |
+| retained-400  |                1202 |          4.8 |          5.0 |          4.7 | Failed |
+| virtual-400   |                  60 |          2.2 |          3.4 |          2.7 | Passed |
+| retained-4000 |               12002 |         54.5 |         49.9 |         49.4 | Failed |
+| virtual-4000  |                  60 |          3.5 |          3.3 |          2.7 | Passed |
+| virtual-40000 |                  60 |          2.6 |          3.1 |          2.5 | Passed |
+
+The separate profiled/traced diagnostic recorded 51–63 mounted nodes for every
+virtualized size. The retained 4,000-row diagnostic averaged 20.8 ms in
+paint/submission and 23.9 ms in input/mirror synchronization. These coarse
+wall-clock segments include diagnostic overhead; they are not isolated JavaScript
+or GPU times. The trace contains 55,353 events and 1,286 CPU profile chunks.
+Windowing reduced the retained-node work sufficiently to meet this collection
+budget; no additional renderer rewrite was required for this reference result.
+
+All scroll commands settled to their recorded offsets. Runs reported no errors
+or font diagnostics, and each checked teardown removed its accessibility surface.
+This does not prove leak freedom. Initial item/index memory remains linear; heap,
+process/GPU memory, presentation and complete game timing were not measured.
+Background applications and browser/process caches were uncontrolled. The 40,000
+item probe has no retained comparator, and the original focus-driven workload v1
+is not directly comparable with collections-1.
+
+Original evidence: [run 1](public/performance/collections-m3-chrome-2026-10-27/run-1.json),
+[run 2](public/performance/collections-m3-chrome-2026-10-27/run-2.json),
+[run 3](public/performance/collections-m3-chrome-2026-10-27/run-3.json),
+[diagnostic](public/performance/collections-m3-chrome-2026-10-27/diagnostic.json),
+[Chrome trace](public/performance/collections-m3-chrome-2026-10-27/diagnostic.trace.json.gz).
+Each file has a sibling `.sha256`; the [acquisition notes](public/performance/collections-m3-chrome-2026-10-27/README.md)
+record the configuration and interpretation limits.
