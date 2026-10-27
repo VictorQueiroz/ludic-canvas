@@ -44,7 +44,8 @@ describe('packaged font atlas compiler', () => {
   it('bounds expanded alias pairs before writing a large atlas or metrics file', async () => {
     const { path } = await fixture('fixture-kerning-alias-limit.ttf', { charset: '[0xE000, 0xE257]' });
     await expect(generateFontAtlases(path, silent)).rejects.toThrow('262144 expanded kerning pairs');
-  });
+    // Cold WASI startup on hosted Windows is outside the ordinary unit-test budget.
+  }, 30000);
   it('preserves kerning for every Unicode alias of a selected source glyph', async () => {
     const { path, output } = await fixture('fixture-kerning.ttf', { charset: '0x20, 0x3F, 0x41, 0x56, 0xA0' });
     await generateFontAtlases(path, silent);

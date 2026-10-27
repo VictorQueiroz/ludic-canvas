@@ -6,7 +6,7 @@ import type { UIPointerEvent } from './types.ts';
 type Direction = 'up' | 'down' | 'left' | 'right';
 type PointerHandler = 'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel';
 const pressable = (n: HostNode) => Boolean(n.props.onPress || n.props.focusable);
-const semanticGroup = (n: HostNode) => ['tablist', 'dialog', 'region'].includes(n.props.role ?? '');
+const semanticGroup = (n: HostNode) => ['tablist', 'dialog', 'region', 'listbox'].includes(n.props.role ?? '');
 const pointerTarget = (n: HostNode) =>
   Boolean(n.props.onPress || n.props.onPointerDown || n.props.onPointerMove || n.props.onPointerUp);
 const inside = (n: HostNode, scope: HostNode | undefined): boolean => {
@@ -128,6 +128,7 @@ export class InputSystem {
       button.disabled = !enabled || Boolean(node.props.disabled) || !inside(node, this.#modal);
   }
   afterPaint() {
+    if (this.#capture?.destroyed || this.#pressed?.destroyed) this.#cancel();
     if (this.#enabled && this.#pointer && !this.#drag) this.#hover(...this.#pointer);
     this.#syncMirror();
   }
@@ -138,7 +139,7 @@ export class InputSystem {
     }
   }
 
-  #hit(x: number, y: number, predicate: (n: HostNode) => boolean): HostNode | undefined {
+  #hit(x: number, y: number, predicate: (n: HostNode) => boolean, blockDisabled = true): HostNode | undefined {
     if (!this.#enabled) return;
     for (let i = this.#painter.hitList.length - 1; i >= 0; i--) {
       const n = this.#painter.hitList[i]!;
@@ -146,7 +147,13 @@ export class InputSystem {
       const matches = predicate(n),
         a = n.abs,
         c = n.clip;
-      if ((!matches && !n.props.block && !n.props.disabled) || x < a.x || y < a.y || x > a.x + a.w || y > a.y + a.h)
+      if (
+        (!matches && !n.props.block && (!n.props.disabled || !blockDisabled)) ||
+        x < a.x ||
+        y < a.y ||
+        x > a.x + a.w ||
+        y > a.y + a.h
+      )
         continue;
       if (c && (x < c.x || y < c.y || x > c.x + c.w || y > c.y + c.h)) continue;
       return matches && !n.props.disabled ? n : undefined;
@@ -241,7 +248,7 @@ export class InputSystem {
     this.#lastEvent = e;
     this.#hover(x, y);
     const target = this.#hit(x, y, pointerTarget);
-    const scroller = this.#hit(x, y, (n) => n.props.style?.overflow === 'scroll');
+    const scroller = this.#hit(x, y, (n) => n.props.style?.overflow === 'scroll', false);
     this.#pointerId = e.pointerId;
     this.#capture = target;
     const prevented = this.#dispatch('onPointerDown', target, e);
@@ -280,7 +287,7 @@ export class InputSystem {
   }
   #wheel(e: WheelEvent) {
     const [x, y] = this.#local(e);
-    for (let n = this.#hit(x, y, (node) => node.props.style?.overflow === 'scroll'); n; n = n.parent) {
+    for (let n = this.#hit(x, y, (node) => node.props.style?.overflow === 'scroll', false); n; n = n.parent) {
       if (n.props.style?.overflow !== 'scroll') continue;
       const max = Math.max(0, n.contentHeight - n.box.h),
         before = n.scrollY;
@@ -311,6 +318,15 @@ export class InputSystem {
     const candidates = this.#eligible();
     if (!candidates.length) return false;
     const current = this.#focused();
+    for (let node = current; node && inside(node, this.#modal); node = node.parent) {
+      if (node.props.onNavigate) {
+        let handled = false;
+        this.#call(() => {
+          handled = node.props.onNavigate!(direction);
+        });
+        if (handled) return true;
+      }
+    }
     if (!current) {
       candidates[0]![1].focus({ preventScroll: true });
       return true;
@@ -407,6 +423,7 @@ export class InputSystem {
     }
   }
   #syncMirror() {
+    const focusedBefore = this.#focused();
     const modal = this.#painter.visible.findLast((n) => Boolean(n.props.modal));
     const changedModal = modal !== this.#modal;
     const returning = Boolean(modal && this.#modalFocus.has(modal));
@@ -486,9 +503,11 @@ export class InputSystem {
         button.addEventListener('focus', () => {
           n.focused = true;
           this.#reveal(n);
+          this.#call(n.props.onFocus);
         });
         button.addEventListener('blur', () => {
           n.focused = false;
+          if (!n.destroyed) this.#call(n.props.onBlur);
         });
         this.#buttons.set(n, button);
       }
@@ -504,6 +523,8 @@ export class InputSystem {
         valuenow: n.props.valueNow,
         valuetext: n.props.valueText,
         orientation: n.props.orientation,
+        posinset: n.props.positionInSet,
+        setsize: n.props.setSize,
       })) {
         if (value === undefined) button.removeAttribute(`aria-${key}`);
         else button.setAttribute(`aria-${key}`, String(value));
@@ -528,6 +549,11 @@ export class InputSystem {
         group.remove();
         this.#groups.delete(node);
       }
+    if (!changedModal && focusedBefore && !focusedBefore.destroyed) {
+      const button = this.#buttons.get(focusedBefore);
+      if (button && !button.disabled && button.isConnected && document.activeElement !== button)
+        button.focus({ preventScroll: true });
+    }
     if (changedModal) {
       if (modal) {
         const eligible = this.#eligible();
@@ -544,13 +570,19 @@ export class InputSystem {
         );
         (target ?? this.#canvas).focus({ preventScroll: true });
       }
-    } else if (modal && this.#pendingModalFocus) {
+    } else if (modal && (this.#pendingModalFocus || focusedBefore?.destroyed)) {
       const first = this.#eligible().find(([, button]) => button.tabIndex >= 0)?.[1];
-      if (first) {
+      const canFocus =
+        document.activeElement === this.#canvas ||
+        (focusedBefore?.destroyed && document.activeElement === document.body);
+      if (first && canFocus) {
         // Enter animations may hide all controls during the first modal frame.
         // Honor a deliberate focus move outside this root while waiting.
-        if (document.activeElement === this.#canvas) first.focus({ preventScroll: true });
+        first.focus({ preventScroll: true });
         this.#pendingModalFocus = false;
+      } else if (!first && canFocus) {
+        this.#pendingModalFocus = true;
+        this.#canvas.focus({ preventScroll: true });
       }
     }
   }

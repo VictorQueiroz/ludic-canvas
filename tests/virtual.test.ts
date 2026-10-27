@@ -1,5 +1,14 @@
 import { expect, it } from 'vitest';
 import { fixedRange, offsetForIndex } from '../src/virtual/range.ts';
+import { createVirtualListHandle } from '../src/index.ts';
+
+it('collection handles reject operations before a collection is mounted', async () => {
+  const handle = createVirtualListHandle();
+  expect(handle.scrollToIndex(0)).toBe(false);
+  expect(await handle.focusIndex(0)).toBe(false);
+  expect(await handle.focusKey('missing')).toBe(false);
+  expect(handle.scroll.getSnapshot().connected).toBe(false);
+});
 
 it('bounds mounted ranges by the viewport, including boundaries and empty/hidden lists', () => {
   for (const count of [400, 4000, 40000]) {

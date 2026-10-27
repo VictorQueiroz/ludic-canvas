@@ -4,7 +4,13 @@ export type { FrameProfile } from './runtime/profile.ts';
 export { createScrollHandle } from './scroll.ts';
 export type { ScrollHandle, ScrollSnapshot } from './scroll.ts';
 export { VirtualList, createVirtualListHandle } from './virtual-list.tsx';
-export type { VirtualListProps, VirtualListHandle, VirtualItemKey, ScrollAlignment } from './virtual-list.tsx';
+export type {
+  VirtualListProps,
+  VirtualListHandle,
+  VirtualItemKey,
+  VirtualItemState,
+  ScrollAlignment,
+} from './virtual-list.tsx';
 export { View, Text, Image, Line } from './primitives.ts';
 export type {
   ViewProps,
