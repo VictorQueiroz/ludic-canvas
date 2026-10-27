@@ -1,6 +1,6 @@
 {
   "name": "ludic-canvas",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "React interfaces for browser games, powered by Yoga WebAssembly and WebGL.",
   "type": "module",
   "license": "MIT",
