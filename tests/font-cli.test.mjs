@@ -41,6 +41,22 @@ function pixels(png) {
 }
 
 describe('packaged font atlas compiler', () => {
+  it('bounds expanded alias pairs before writing a large atlas or metrics file', async () => {
+    const { path } = await fixture('fixture-kerning-alias-limit.ttf', { charset: '[0xE000, 0xE257]' });
+    await expect(generateFontAtlases(path, silent)).rejects.toThrow('262144 expanded kerning pairs');
+  });
+  it('preserves kerning for every Unicode alias of a selected source glyph', async () => {
+    const { path, output } = await fixture('fixture-kerning.ttf', { charset: '0x20, 0x3F, 0x41, 0x56, 0xA0' });
+    await generateFontAtlases(path, silent);
+    const metrics = JSON.parse(await readFile(join(output, 'interface.json'), 'utf8'));
+    expect(metrics.kerning).toContainEqual({ unicode1: 65, unicode2: 32, advance: -0.05 });
+    expect(metrics.kerning).toContainEqual({ unicode1: 65, unicode2: 160, advance: -0.05 });
+    const fonts = new FontBook();
+    fonts.add(
+      new Font('ui', 0, metrics, { handle: {}, width: metrics.atlas.width, height: metrics.atlas.height, bytes: 0 }),
+    );
+    expect(fonts.shape('A\u00a0', { font: 'ui', size: 20 }).width).toBe(17);
+  });
   it('extracts a known kern-table pair into usable normalized runtime metrics', async () => {
     const { path, output } = await fixture('fixture-kerning.ttf', { charset: '0x20, 0x3F, 0x41, 0x56' });
     await generateFontAtlases(path, silent);

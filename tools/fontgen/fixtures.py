@@ -89,12 +89,19 @@ kerning['glyf']['V'] = deepcopy(kerning['glyf']['question'])
 kerning['hmtx']['V'] = (600, 0)
 for table in kerning['cmap'].tables:
     if table.isUnicode():
-        table.cmap = {32: 'space', 63: 'question', 65: 'A', 86: 'V'}
+        table.cmap = {32: 'space', 63: 'question', 65: 'A', 86: 'V', 160: 'space'}
 pair = KernTable_format_0()
 pair.version = 0
 pair.coverage = 1
-pair.kernTable = {('A', 'V'): -100}
+pair.kernTable = {('A', 'V'): -100, ('A', 'space'): -50}
 kerning['kern'] = newTable('kern')
 kerning['kern'].version = 0
 kerning['kern'].kernTables = [pair]
 kerning.save(out / 'fixture-kerning.ttf')
+
+# Many aliases plus one glyph-index pair must fail before atlas/pair output allocation.
+for table in kerning['cmap'].tables:
+    if table.isUnicode():
+        table.cmap.update({code: 'A' for code in range(0xE000, 0xE000 + 600)})
+kerning['kern'].kernTables[0].kernTable = {('A', 'A'): -10}
+kerning.save(out / 'fixture-kerning-alias-limit.ttf')

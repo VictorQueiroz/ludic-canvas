@@ -139,6 +139,9 @@ async function compileFont(font, fontBytes, module, directory) {
   const diagnostic = (await readFile(join(work, 'stderr.txt'), 'utf8')).trim();
   if (exitCode !== 0) fail(`Font "${font.name}" failed${diagnostic ? `: ${diagnostic}` : ` (exit ${exitCode})`}`);
   const metrics = await jsonFile(join(work, 'metrics.json'));
+  const kerning = await jsonFile(join(work, 'metrics.json.kerning.json'));
+  if (!Array.isArray(kerning) || kerning.length > 262144) fail(`Invalid generated kerning for ${font.name}`);
+  metrics.kerning = kerning;
   if (
     metrics.atlas?.type !== 'mtsdf' ||
     metrics.atlas?.yOrigin !== 'top' ||

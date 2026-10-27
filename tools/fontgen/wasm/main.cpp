@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <map>
 #include <vector>
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -69,7 +70,14 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "\n");
     return 2;
   }
-  if (geometry.getKerning().size() > 262144) return fail("More than 262144 kerning pairs");
+  // Pair storage uses glyph indices; preserve every selected Unicode alias on export.
+  std::map<int, std::vector<unsigned>> aliases;
+  for (const auto& glyph : glyphs) aliases[glyph.getIndex()].push_back(glyph.getCodepoint());
+  std::size_t pairCount = 0;
+  for (const auto& pair : geometry.getKerning()) {
+    pairCount += aliases.at(pair.first.first).size() * aliases.at(pair.first.second).size();
+    if (pairCount > 262144) return fail("More than 262144 expanded kerning pairs");
+  }
   for (auto& glyph : glyphs) glyph.edgeColoring(msdfgen::edgeColoringInkTrap, 3.0, 0);
   msdf_atlas::TightAtlasPacker packer;
   packer.setDimensionsConstraint(msdf_atlas::DimensionsConstraint::POWER_OF_TWO_SQUARE);
@@ -101,7 +109,22 @@ int main(int argc, char** argv) {
   metrics.distanceRange = packer.getPixelRange();
   metrics.size = packer.getScale(); metrics.width = width; metrics.height = height;
   metrics.yDirection = msdfgen::Y_DOWNWARD;
-  if (!msdf_atlas::exportJSON(&geometry, 1, msdf_atlas::ImageType::MTSDF, metrics, argv[4], true))
+  if (!msdf_atlas::exportJSON(&geometry, 1, msdf_atlas::ImageType::MTSDF, metrics, argv[4], false))
     return fail("Could not write font metrics");
+  // The upstream Unicode exporter chooses one codepoint per glyph index. Write
+  // complete pairs separately for the CLI to merge into its public metrics JSON.
+  std::FILE* pairs = std::fopen((std::string(argv[4])+".kerning.json").c_str(), "wb");
+  if (!pairs) return fail("Could not open kerning output");
+  bool first = true;
+  bool kerningWritten = std::fputs("[", pairs) != EOF;
+  for (const auto& pair : geometry.getKerning())
+    for (const auto left : aliases.at(pair.first.first))
+      for (const auto right : aliases.at(pair.first.second)) {
+        if (std::fprintf(pairs, "%s{\"unicode1\":%u,\"unicode2\":%u,\"advance\":%.17g}",
+            first ? "" : ",", left, right, pair.second) < 0) kerningWritten = false;
+        first = false;
+      }
+  if (std::fputs("]\n", pairs) == EOF) kerningWritten = false;
+  if (std::fclose(pairs) != 0 || !kerningWritten) return fail("Could not write kerning output");
   return 0;
 }
