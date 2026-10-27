@@ -171,6 +171,10 @@ npm pack              # installable release tarball
 
 The documentation uses Vite and static HTML for crawlable guides and an API reference generated from emitted TypeScript declarations. Its live examples consume the built package's public exports.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the source map, generated documentation,
+focused browser checks, CI troubleshooting and evidence procedures. The dated
+[session handoff](docs/SESSION_HANDOFF.md) records verified state and remaining work.
+
 Rebuild the optional native tools:
 
 ```sh
@@ -189,8 +193,9 @@ update a version PR. Merging the version PR publishes through npm OIDC, with
 provenance, after Linux/macOS/Windows checks pass. The workflow creates tags and
 GitHub releases and skips versions already present on npm.
 
-See [docs/RELEASING.md](docs/RELEASING.md) for the one-time npm ownership and trusted
-publisher setup. No npm token is stored in GitHub secrets.
+See [docs/RELEASING.md](docs/RELEASING.md) for the routine release procedure,
+`npm run verify:release`, deployment verification and historical owner setup.
+No npm token is stored in GitHub secrets.
 
 ## Compatibility and scope
 

@@ -30,7 +30,7 @@ The reference workload included four-face typography, responsive nested panels, 
 - `npm run check`: package build, strict types, regression tests, docs generation/build, public-boundary audit, packed-package installation and both Vite consumers.
 - `npm run format:check` and `npm pack --dry-run` on Linux, macOS and Windows.
 - `npm run test:browser`: browser rendering/input/lifecycle contracts on five Playwright projects. Reports and failure traces are retained by CI. Software rendering validates correctness, not physical GPU performance.
-- Changesets version PR merged only after checks; trusted npm publication with provenance after that merge.
+- Implementation checks pass before versioning. Review the Changesets version PR; the versioned main commit must pass release checks before trusted npm publication with provenance. Bot-created version PRs may have no ordinary PR check run; see [RELEASING.md](docs/RELEASING.md).
 - Application qualification on physical target devices, real assistive technology and representative long-running scenes before a game release.
 
 ## Remaining boundaries

@@ -69,6 +69,7 @@
     "fonts:example": "node cli/index.mjs fonts --config examples/fonts/ludic-canvas.fonts.json",
     "fonts:game": "node cli/index.mjs fonts --config examples/orbital-relay/ui/ludic-canvas.fonts.json && node cli/index.mjs fonts --config examples/orbital-relay/missions/ludic-canvas.fonts.json",
     "release:bootstrap": "node tools/release/bootstrap.mjs",
+    "verify:release": "node tools/release/verify.mjs",
     "test:package": "node tools/test-package.mjs",
     "test:browser": "playwright test",
     "test:browser:serve": "vite --config vite.browser.config.ts",
