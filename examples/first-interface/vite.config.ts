@@ -6,7 +6,13 @@ export default defineConfig({
   // Keep the library's WASM and font URLs relative to its installed files.
   optimizeDeps: {
     exclude: ['ludic-canvas'],
-    include: ['react', 'react-reconciler', 'react-reconciler/constants.js'],
+    include: [
+      'react',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'react-reconciler',
+      'react-reconciler/constants.js',
+    ],
   },
   build: { target: 'es2023', assetsInlineLimit: 0 },
 });
