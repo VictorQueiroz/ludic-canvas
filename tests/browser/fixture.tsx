@@ -202,6 +202,7 @@ async function mount(manageCanvasSize = true) {
     context: gl,
     manageCanvasSize,
     maxDpr: 1,
+    profile: new URLSearchParams(location.search).has('profile'),
     fonts: ['default', 'second', 'third', 'fourth'].map((name) => ({ name, atlas: defaultAssets.fontAtlas, metrics })),
     assets: { alpha: { url: image.toDataURL() } },
     onError(error) {

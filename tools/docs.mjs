@@ -236,6 +236,7 @@ for (const file of [
   'assets',
   'defaults',
   'runtime/types',
+  'runtime/profile',
   'gfx/font',
   'resources',
 ]) {

@@ -57,6 +57,21 @@ Save the original JSON and a SHA-256 checksum, profiler traces and screenshots
 with the matching inputs. In a source checkout, `shasum -a 256 report.json` records
 the acquired file's hash. Compare traces before attributing stalls to a subsystem.
 
+## Opt-in frame profiles
+
+Pass `profile: true` to `createUI` to obtain `frame.profile` on drawn frames. It
+reports wall-clock layout calculation, layout reading/tree traversal, painting/GL
+submission and input/accessibility synchronization in milliseconds, plus mounted
+nodes, nodes visited for painting and submitted quads. These stages do not isolate
+GPU execution, browser rendering or React commits. Suspended frames have no profile.
+The feature is root-local and disabled by default; disabled frames do not acquire
+stage timestamps or allocate a profile object.
+
+The browser harness accepts `ludicPerformance.run({ profile: true })` and preserves
+each frame's profile in the downloaded JSON. Compare matching profiling modes;
+instrumentation introduces overhead. Use a browser Performance trace alongside
+these coarse stages before selecting a renderer optimization.
+
 ## Automated and physical qualification
 
 `npm run test:browser` runs a short, eight-sample structural smoke test per browser

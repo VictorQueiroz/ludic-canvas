@@ -1,4 +1,4 @@
-import { createUI, defaultAssets, type AtlasJson, type UIRoot } from 'ludic-canvas';
+import { createUI, defaultAssets, type AtlasJson, type UIRoot, type FrameProfile } from 'ludic-canvas';
 import { version } from '../../package.json';
 import { evaluateBudgets, summarize, type PerformanceBudgets } from './report.ts';
 import { renderCommitted, workloadElement, workloads, workloadSizes, workloadVersion } from './workloads.tsx';
@@ -12,6 +12,8 @@ export interface BenchmarkOptions {
   warmupFrames?: number;
   lifecycleCycles?: number;
   budgets?: PerformanceBudgets;
+  /** Optional stage measurements. Compare only runs with the same setting. */
+  profile?: boolean;
   onProgress?: (message: string) => void;
 }
 function countNodes(value: unknown): number {
@@ -70,6 +72,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
       canvas,
       fonts,
       autoStart: false,
+      profile: options.profile ?? false,
       signal,
       maxDpr: 2,
       reducedMotion: true,
@@ -117,6 +120,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
         frameIntervalMs: number[] = [],
         drawCalls: number[] = [];
       const dimensions: { width: number; height: number; dpr: number }[] = [];
+      const profiles: FrameProfile[] = [];
       let previous = 0;
       const startedAt = performance.now();
       for (let i = -warmupFrames; i < sampleFrames; i++) {
@@ -141,6 +145,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
           cpuFrameMs.push(elapsed);
           drawCalls.push(frame.drawCalls);
           dimensions.push({ width: frame.cssWidth, height: frame.cssHeight, dpr: frame.dpr });
+          if (frame.profile) profiles.push(frame.profile);
           if (previous) frameIntervalMs.push(now - previous);
           previous = now;
         }
@@ -155,6 +160,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
         renderToCommitMs: { summary: summarize(commitMs), samples: commitMs },
         maxDrawCalls: Math.max(...drawCalls),
         dimensions,
+        ...(options.profile ? { profiles } : {}),
         budget: evaluateBudgets(cpuFrameMs, frameIntervalMs, budgets),
       });
     }
@@ -191,6 +197,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
         lifecycleCycles,
         maxDpr: 2,
         budgets,
+        profile: options.profile ?? false,
         fonts: 'Two copies of bundled Barlow: ASCII primary and Latin-1 fallback',
         worldRenderer: 'none',
         cacheState: 'uncontrolled-browser-cache',

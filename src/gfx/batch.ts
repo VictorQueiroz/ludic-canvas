@@ -121,6 +121,7 @@ export class UiBatch {
   #physical: [number, number] = [1, 1];
   #time = 0;
   drawCalls = 0;
+  submittedQuads = 0;
 
   constructor(gl: GL) {
     this.#gl = gl;
@@ -181,6 +182,7 @@ export class UiBatch {
     this.#image = undefined;
     this.#clip = undefined;
     this.drawCalls = 0;
+    this.submittedQuads = 0;
     const gl = this.#gl;
     if (this.#vaoExtension) {
       this.#previousVao = gl.getParameter(
@@ -438,6 +440,7 @@ export class UiBatch {
     attr('a_shape', 4, 12);
     attr('a_local', 2, 16);
     gl.drawElements(gl.TRIANGLES, this.#quads * 6, gl.UNSIGNED_SHORT, 0);
+    this.submittedQuads += this.#quads;
     this.drawCalls++;
     this.#quads = 0;
   }

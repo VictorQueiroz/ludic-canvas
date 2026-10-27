@@ -9,6 +9,7 @@ import { InputSystem } from './input.ts';
 import { HostNode, type RuntimeContext } from './nodes.ts';
 import { Painter } from './paint.ts';
 import { createUiRoot, type UiRoot } from './reconciler.ts';
+import type { FrameProfile } from './profile.ts';
 
 export class UiRuntime {
   readonly ctx: RuntimeContext;
@@ -84,7 +85,9 @@ export class UiRuntime {
     size: { width: number; height: number; dpr: number; cssWidth?: number; cssHeight?: number },
     now: number,
     dt: number,
-  ) {
+    profile = false,
+  ): FrameProfile | undefined {
+    const startedAt = profile ? performance.now() : 0;
     const { width, height, dpr } = size;
     if (this.#scale !== dpr) {
       this.#scale = dpr;
@@ -95,6 +98,7 @@ export class UiRuntime {
     if (this.#size[0] !== cssW || this.#size[1] !== cssH) this.#size = [cssW, cssH];
     const root = this.#root.root;
     this.#layout.calculate(root.yoga, cssW, cssH);
+    const laidOutAt = profile ? performance.now() : 0;
 
     // Read every box in one boundary crossing.
     const nodes: HostNode[] = [];
@@ -136,6 +140,7 @@ export class UiRuntime {
       });
     }
 
+    const readAt = profile ? performance.now() : 0;
     batch.begin(cssW * dpr, cssH * dpr, now / 1000, width, height);
     try {
       this.#painter.paint(root, {
@@ -152,6 +157,7 @@ export class UiRuntime {
     } finally {
       batch.end();
     }
+    const paintedAt = profile ? performance.now() : 0;
     this.input.afterPaint();
 
     // Live region: the newest announced text.
@@ -165,6 +171,19 @@ export class UiRuntime {
         this.input.announce(n.text.replace(/\*\*/g, ''));
         break;
       }
+    }
+    if (profile) {
+      const endedAt = performance.now();
+      return {
+        layoutMs: laidOutAt - startedAt,
+        readLayoutMs: readAt - laidOutAt,
+        paintMs: paintedAt - readAt,
+        inputMs: endedAt - paintedAt,
+        totalMs: endedAt - startedAt,
+        mountedNodes: nodes.length,
+        paintedNodes: this.#painter.visible.length,
+        submittedQuads: batch.submittedQuads,
+      };
     }
   }
 }
