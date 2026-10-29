@@ -61,6 +61,7 @@ const report = {
     forcedGcAtCheckpoints: true,
     settlingMs: 1000,
     frameBufferLimit: 4096,
+    focusEmulation: 'Playwright default; tab activation alone does not prove page hiding',
     frameColumns: ['rafTimestampMs', 'uiFrameCpuMs', 'rafIntervalMs', 'uiDrawCalls', 'uiImageCacheBytes'],
   },
   coverage: {
@@ -70,6 +71,7 @@ const report = {
     leakAttribution: 'not-established',
     performanceBudget: 'not-set',
     fullSurvey: 'not-run',
+    backgroundResume: 'not-observed',
   },
   instrumentation:
     'A copied standalone consumer exposes mount/destroy and a bounded per-minute frame buffer. Timing wraps ui.frame only; game RAF intervals include world rendering. Heap/DOM counters use CDP after forced GC. RSS includes shared mappings and is not GPU allocation.',
@@ -301,11 +303,18 @@ await acquisition.mount();\n`,
   expect(await page.locator('[data-ludic-canvas="accessibility"]').count()).toBe(0);
   report.status = seconds >= 1800 && !values.headless ? 'partial' : 'smoke-only';
   report.coverage.longSession = seconds >= 1800 ? 'acquired' : 'not-run';
+  const visibilityStates = report.checkpoints.flatMap((checkpoint) =>
+    checkpoint.visibility.map((event) => event.state),
+  );
+  report.coverage.backgroundResume =
+    visibilityStates.includes('hidden') && visibilityStates.includes('visible') ? 'observed' : 'not-observed';
   report.remaining = [
     'Physical phones and screen readers not exercised',
     'GPU allocation and leak attribution not measured',
     'One game on one desktop/browser; no universal performance claim',
   ];
+  if (report.coverage.backgroundResume !== 'observed')
+    report.remaining.push('No hidden/visible transition observed; tab background/resume remains unqualified');
 } catch (error) {
   report.status = 'failed';
   report.error = error.stack;

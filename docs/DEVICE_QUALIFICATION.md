@@ -5,14 +5,19 @@ technology qualification campaign has not been completed. Do not interpret
 automated browser results or the component catalogue's draw counters as device
 certification or GPU timing measurements.
 
+The current integration milestone is desktop-only. Physical phones are deferred,
+and the operator has explicitly left VoiceOver qualification pending. These
+scope decisions do not change the unqualified status of those targets.
+
 Start reproducible acquisition at [/performance/](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
 using [PERFORMANCE.md](PERFORMANCE.md). Retain its downloaded JSON alongside this
 protocol's game, long-session and assistive-technology evidence. The lab does not
 acquire heap/GPU memory or complete any absent physical-phone qualification.
 
 [QUALIFICATION_RESULTS.md](QUALIFICATION_RESULTS.md) records the acquired desktop
-microbenchmark and the physical-phone, long-session and screen-reader work still
-outstanding. A partial result must not be promoted to a full device pass.
+benchmarks and active game session, plus remaining physical-phone, background,
+memory-attribution and screen-reader work. A partial result must not be promoted
+to a full device pass.
 
 ## Targets
 
@@ -59,9 +64,15 @@ npm run qualify:desktop -- --output build/qualification/desktop.json.gz
 It verifies the registry artifact's integrity/release source, builds the consumer,
 completes the three-site game through its controls, then acquires a 30-minute
 session. Each minute exercises pause/resume and navigation. Every five minutes
-it backgrounds the tab briefly, resizes the desktop viewport, destroys the scene,
-checks mirror cleanup and mounts a fresh scene. The game keeps its normal world
-renderer and motion settings. Tab hiding is not OS suspend/resume.
+it attempts a tab foreground switch, resizes the desktop viewport, destroys the
+scene, checks mirror cleanup and mounts a fresh scene. The game keeps its normal
+world renderer and motion settings.
+
+[Playwright pages behave as focused pages](https://github.com/microsoft/playwright/blob/main/docs/src/pages.md#multiple-pages).
+Calling `bringToFront()` alone does not establish page hiding. The runner retains
+visibility events and only labels background/resume observed when both hidden
+and visible states occur; absent events leave that qualification pending. Even
+observed tab hiding is separate from OS suspend/resume.
 
 The copied application is instrumented with a bounded frame buffer around
 `ui.frame()` and an explicit mount/destroy bridge. The report records original and

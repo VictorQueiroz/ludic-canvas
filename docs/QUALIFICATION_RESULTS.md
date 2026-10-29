@@ -1,11 +1,11 @@
 # Acquired qualification evidence
 
-| Target                                       | Status  | Acquired evidence                                                                           | Outstanding work                                               |
-| -------------------------------------------- | ------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Desktop Apple M3 / Chrome 156                | Partial | Original UI microbenchmark plus three matched collection runs and a diagnostic Chrome trace | Full games, 30-minute session, memory traces and accessibility |
-| Physical iPhone / Safari                     | Not run | None                                                                                        | Complete device protocol                                       |
-| Physical Android / Chrome                    | Not run | None                                                                                        | Complete device protocol                                       |
-| VoiceOver / TalkBack / desktop screen reader | Not run | None                                                                                        | Assistive-technology protocol                                  |
+| Target                                       | Status  | Acquired evidence                                                                                                                   | Outstanding work                                                                                       |
+| -------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Desktop Apple M3 / Chrome 156                | Partial | UI/collection benchmarks, diagnostic trace, complete 3D survey and 30-minute active game session with heap/DOM/process observations | Other game/catalogue hardware coverage, actual background/resume, memory attribution and accessibility |
+| Physical iPhone / Safari                     | Not run | None                                                                                                                                | Complete device protocol                                                                               |
+| Physical Android / Chrome                    | Not run | None                                                                                                                                | Complete device protocol                                                                               |
+| VoiceOver / TalkBack / desktop screen reader | Not run | None                                                                                                                                | Assistive-technology protocol                                                                          |
 
 ## Automated browser coverage and platform limits
 
@@ -35,6 +35,56 @@ no dialog, consistent with the target being replaced during the press rather
 than a context-loss state. The test now waits for the compact
 site picker and removal of the desktop tabs before pressing Collection. This
 changes the test's readiness contract, not SDK rendering or startup deadlines.
+
+## Consumer integration, 2026-10-29
+
+[Source 7195d99](https://github.com/VictorQueiroz/ludic-canvas/commit/7195d99c7a7317835c0d38dba6efa93807fff3fe)
+passed [all CI jobs](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/40855210387).
+Independent copies of the minimal counter, packaged Canvas2D/Three.js starters
+and Kestrel Survey passed development startup, binary WASM/font acquisition,
+interaction, production build and preview. Packed consumers ran on Chromium,
+Firefox and native macOS WebKit; the pinned npm 0.6.0 consumers also ran on
+Chromium. Root package/type/documentation/CLI checks passed on Linux, macOS and
+Windows. These remain software correctness checks with the platform limits above.
+
+Two integration failures were corrected before that passing revision. A clean
+checkout selected root Vite 8 types for the separate Vite 7 sample's TypeScript
+configuration; making that configuration `.mjs` keeps the independent toolchains
+separate. The initial headless Linux Firefox consumer could not acquire WebGL 1;
+the consumer job now uses the established headed Xvfb/Mesa environment. No SDK
+fallback or longer startup deadline was added. The StackBlitz example keeps Vite
+7.3.5 because the Vite 8 Rolldown WASI binding failed in WebContainers. See
+[the supported consumer configurations](INTEGRATION.md).
+
+## Desktop game session, 2026-10-29
+
+The pinned registry 0.6.0 Kestrel Survey completed all three sites, then acquired
+1,803.099 seconds on Apple M3 / 8 GiB / macOS 26.6.2 / installed Chrome
+156.0.8078.73 with the Metal hardware renderer. Acquisition source
+`7195d99c7a7317835c0d38dba6efa93807fff3fe` was clean and its SDK matches the
+release. Thirty mounted intervals, six resize/destroy/remount cycles and final
+destruction reported zero unhandled errors, zero dropped frame samples and zero
+mirrors after all seven destructions.
+
+Post-destruction used JS heap increased from 6.325 to 7.112 MiB and DOM-node
+counts from 38 to 44; listener counts stayed at 28. The retaining paths and cause
+were not acquired. This does not establish leak freedom. CPU frame-call p95 was
+2.3 ms over 106,526 mounted samples; RAF interval p95 was 18.3 ms. Diagnostics,
+forced GC and uncontrolled system activity affect timing; no acceptance budget
+was set. Raw process RSS is separate from GPU allocations.
+
+Tab activation produced no hidden/visible events under Playwright focus
+emulation, so actual background/resume remains unqualified. The desktop result
+is **partial**. Physical phones are outside the current desktop-only scope and
+VoiceOver was explicitly left pending by the operator. Full Orbital Relay and
+catalogue hardware coverage, OS suspend/resume, GPU memory and memory-growth
+attribution remain open.
+
+The [original report, checksums, screenshot and acquisition notes](public/performance/desktop-session-m3-chrome-2026-10-29/README.md)
+also preserve the first attempt interrupted by `ENOSPC` at its last valid
+7.315-minute checkpoint and the subsequent storage-preflight refusal. The
+completed attempt is a new acquisition; the interrupted bytes were not repaired
+or relabeled.
 
 ## Desktop microbenchmark, 2026-10-27
 

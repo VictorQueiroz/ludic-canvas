@@ -48,16 +48,35 @@ interactive grids. The [qualification record](docs/QUALIFICATION_RESULTS.md)
 documents the acquired reference result and its limits; this milestone does not
 complete device, accessibility or memory qualification.
 
-## Next: physical-device and assistive-technology qualification
+## In progress: reliable integration and desktop qualification
+
+- A minimal independent counter with a fresh StackBlitz fork and pinned Vite 7
+  configuration; see [the integration guide](docs/INTEGRATION.md).
+- Independent packed/registry consumer checks for real development startup,
+  binary WASM/font acquisition, interaction and production preview. Packed
+  consumers cover Chromium, Firefox and native macOS WebKit in CI.
+- A reproducible installed-Chrome desktop acquisition that verifies the npm
+  artifact, completes the 3D survey and records scene lifecycle, frame, heap,
+  DOM/listener and process observations during a 30-minute session.
+
+The current campaign is desktop-only; physical phones are deferred and VoiceOver
+is explicitly pending. Record acquired outcomes and interruptions in
+[the qualification record](docs/QUALIFICATION_RESULTS.md). This work changes
+integration examples and verification tooling; it does not require a new SDK
+runtime release.
+
+## Next: remaining device and assistive-technology qualification
 
 Use [docs/DEVICE_QUALIFICATION.md](docs/DEVICE_QUALIFICATION.md). Record the exact
 commit, installed package, hardware, browser/OS, workload and acquired measurements.
 Run the component catalogue and both games, including long sessions and teardown.
 Publish actual device results, unresolved findings and support limits together.
 
-Physical iPhone/Android, real screen readers and a representative 30-minute memory
-session remain outstanding. Investigate the documented Linux WPE startup stall
-independently of native macOS WebKit coverage. Mobile emulation and software-GPU CI
+Physical iPhone/Android and real screen readers remain outstanding. A desktop
+30-minute active Kestrel session is acquired; actual background/resume, other
+game/catalogue hardware coverage, GPU allocations and the observed post-destroy
+heap/node growth still need qualification. Investigate the documented Linux WPE
+startup stall independently of native macOS WebKit coverage. Mobile emulation and software-GPU CI
 provide correctness evidence, not physical-device certification.
 
 ## Planned: shaping and native text entry
