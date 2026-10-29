@@ -73,7 +73,9 @@
     "test:package": "node tools/test-package.mjs",
     "test:browser": "playwright test",
     "test:browser:serve": "vite --config vite.browser.config.ts",
-    "test:performance": "playwright test --config playwright.performance.config.ts"
+    "test:performance": "playwright test --config playwright.performance.config.ts",
+    "test:consumer": "playwright test --config playwright.consumer.config.ts",
+    "qualify:desktop": "node tools/qualification/desktop.mjs"
   },
   "peerDependencies": {
     "react": "19.3.1"

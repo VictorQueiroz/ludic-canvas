@@ -9,7 +9,7 @@ function Counter() {
       <Text style={{ fontSize: 28, color: '#f1f5ff' }}>Your first interface</Text>
       <Text style={{ fontSize: 20, color: '#a8bedb' }}>Count: {count}</Text>
       <Button
-        label="Add one"
+        label={`Add one (count ${count})`}
         onPress={() => setCount((value) => value + 1)}
         style={{ padding: 16, background: '#526dff', borderRadius: 8, alignSelf: 'flex-start' }}
         hoverStyle={{ background: '#6c8dff' }}

@@ -47,6 +47,39 @@ from emulation or infer results from another browser using the same engine.
 
 ## Measurements
 
+### Desktop acquisition
+
+The reproducible desktop runner uses an isolated installed-Chrome profile and a
+fresh independent Kestrel Survey consumer of its pinned npm release:
+
+```sh
+npm run qualify:desktop -- --output build/qualification/desktop.json.gz
+```
+
+It verifies the registry artifact's integrity/release source, builds the consumer,
+completes the three-site game through its controls, then acquires a 30-minute
+session. Each minute exercises pause/resume and navigation. Every five minutes
+it backgrounds the tab briefly, resizes the desktop viewport, destroys the scene,
+checks mirror cleanup and mounts a fresh scene. The game keeps its normal world
+renderer and motion settings. Tab hiding is not OS suspend/resume.
+
+The copied application is instrumented with a bounded frame buffer around
+`ui.frame()` and an explicit mount/destroy bridge. The report records original and
+instrumented source hashes, the acquisition script hash, source revision, package
+integrity, hardware renderer, browser, viewport and settings. Unhandled errors
+stop the acquisition. Short runs (`--seconds 30 --interval 5 --cycle 10`) only
+validate the harness; they are recorded as `smoke-only`.
+
+Checkpoints drain the frame buffer, force JavaScript GC, then acquire CDP heap and
+DOM/listener counters plus OS-reported process RSS. Raw samples and any dropped
+frame count are retained in gzip JSON with a SHA-256 checksum and screenshot.
+GC and diagnostic acquisition affect timing. RSS contains shared mappings;
+neither it nor the image-cache counter measures GPU allocations. A plateau in
+these observations is not proof of leak freedom. No timing budget is assumed.
+Physical-phone and screen-reader coverage remains separate.
+
+### Interpretation
+
 Capture cold/warm startup, frame interval distributions, CPU time in layout/UI
 submission, draw calls, uploaded texture bytes and browser-reported memory where
 available. Report the sample duration, sample count, median/p95 and any long

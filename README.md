@@ -100,6 +100,12 @@ for character coverage, variable fonts and diagnostics.
 
 ## First interface
 
+[Open the minimal counter in StackBlitz](https://stackblitz.com/fork/github/VictorQueiroz/ludic-canvas/tree/main/examples/first-interface?file=src/main.tsx)
+or run the [standalone example](examples/first-interface). It installs the published
+package and uses its bundled font and layout WASM without native build tools.
+See the [tested consumer configurations](docs/INTEGRATION.md) for development
+startup and browser verification.
+
 Give the canvas a nonzero CSS width and height inside a positioned parent. Then use automatic JSX compilation:
 
 ```tsx
