@@ -6,27 +6,27 @@ This is a dated evidence snapshot, not a live release dashboard. Start in the
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
 
-## Unreleased native editing implementation
+## Native editing 0.7.0 release candidate
 
-The current working tree adds TextInput/TextArea over base
-`4143a592d62de8121137db3f18255bc436a8c86a`. This SDK change is separate from the
-earlier desktop-delivery snapshot below. It has a pending minor changeset and
-is prepared on the `feat/native-text-fields` branch; publication and deployment
-verification are recorded separately. Read
-[NATIVE_EDITING.md](NATIVE_EDITING.md) for the contract, exact validation outcomes,
-initial failures and qualification limits. The component catalogue now includes
-an Edit profile dialog with both fields in independent roots.
+[Implementation PR 29](https://github.com/VictorQueiroz/ludic-canvas/pull/29) merged
+as `941a337e4a09c3f95a75aad8a0e976c35b4ad203`. Its exact SDK source passed all eight
+CI jobs: Linux/macOS/Windows package checks, 320 complete-suite browser contracts
+with 10 explicit skips, and 16 packed/registry consumer checks.
+[Release PR 30](https://github.com/VictorQueiroz/ludic-canvas/pull/30) versions the
+package to 0.7.0 without changing SDK source. Publication remains pending until
+the release workflow and registry verification complete.
 
 React owns values, Yoga positions boxes, WebGL draws decoration and root-local
-native editors draw text/caret/selection. Browser fonts are separate from atlases.
-Use topmost forms/dialogs; arbitrary DOM/canvas interleaving is unsupported. Real
-IME, physical phone keyboards and screen-reader qualification remain outstanding.
-Validation: npm run check passed (105 unit tests and independent packed
-consumers); the final focused five-project browser run passed 240 contracts with
-10 explicit skips and no retries. See NATIVE_EDITING.md for source identity and
-initial failures. The production-bundle preview at
-http://127.0.0.1:6175/components/ was visually checked at desktop/narrow widths.
-Remote registry/deployment state was not refreshed for this source implementation.
+native editors draw text/caret/selection. Use topmost forms/dialogs; arbitrary
+DOM/canvas interleaving is unsupported. Browser fonts are separate from atlases.
+Read [NATIVE_EDITING.md](NATIVE_EDITING.md) for source identity, contract, CI
+evidence, the unresolved local survey startup/resize checks and qualification
+limits. Real CJK IME, physical phone keyboards and screen readers remain
+unqualified; the attempted VoiceOver acquisition produced no usable feedback
+and the original off state was restored.
+
+The following package/deployment and desktop acquisition sections preserve the
+earlier 0.6.0 snapshot. They are not the publication record for 0.7.0.
 
 ## Package, delivery and deployment
 

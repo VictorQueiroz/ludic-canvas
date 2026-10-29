@@ -79,7 +79,7 @@ heap/node growth still need qualification. Investigate the documented Linux WPE
 startup stall independently of native macOS WebKit coverage. Mobile emulation and software-GPU CI
 provide correctness evidence, not physical-device certification.
 
-## Implemented, unreleased: native text entry
+## 0.7 — native text entry
 
 - Controlled TextInput and TextArea with root-local native editors, synchronous
   value reconciliation, deferred composition resets and stable focus/select/blur
@@ -91,8 +91,9 @@ provide correctness evidence, not physical-device certification.
   interleaving is outside this implementation.
 
 See [the editing contract and verification record](docs/NATIVE_EDITING.md).
-This is a pending minor changeset, not an npm publication. Real IME, physical
-phone keyboards and screen readers remain separate qualification work.
+The 0.7 source implements this contract; publication identity is recorded in the
+[session handoff](docs/SESSION_HANDOFF.md). Real IME, physical phone keyboards and
+screen readers remain separate qualification work.
 
 ## Planned: shaping and remaining native editing qualification
 
