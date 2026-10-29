@@ -12,7 +12,12 @@ export default defineConfig({
   maxFailures: 1,
   outputDir: `test-results/consumers/${artifact}`,
   reporter: [['list'], ['html', { open: 'never', outputFolder: `playwright-report/consumers/${artifact}` }]],
-  use: { trace: 'retain-on-failure', screenshot: 'only-on-failure', actionTimeout: 15000 },
+  use: {
+    headless: process.env.LUDIC_HEADED !== '1',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    actionTimeout: 15000,
+  },
   projects: [
     {
       name: 'chromium',

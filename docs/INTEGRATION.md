@@ -57,3 +57,8 @@ committed registry consumers on Chromium. These are correctness checks. Software
 GPU CI, Playwright WebKit and viewport emulation do not certify physical phones,
 screen readers or hardware performance. See the
 [qualification record](QUALIFICATION_RESULTS.md) for acquired device evidence.
+
+Linux browser consumers run headed under Xvfb with the same software-Mesa setup
+as the existing browser contracts. The first headless Linux Firefox candidate
+could not acquire WebGL 1. That failure was in the CI graphics environment;
+startup deadlines and SDK behavior were not changed to accommodate it.

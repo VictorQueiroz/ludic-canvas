@@ -78,6 +78,12 @@ neither it nor the image-cache counter measures GPU allocations. A plateau in
 these observations is not proof of leak freedom. No timing budget is assumed.
 Physical-phone and screen-reader coverage remains separate.
 
+Acquisition requires 512 MiB free before preparation, 256 MiB after the consumer
+build, and 128 MiB at each checkpoint. Reports are staged before replacement so
+a failed write preserves the last completed bytes. Resource cleanup also runs
+after persistence errors. An interrupted report stays incomplete; use a new
+output path for a fresh attempt and retain the interruption reason separately.
+
 ### Interpretation
 
 Capture cold/warm startup, frame interval distributions, CPU time in layout/UI

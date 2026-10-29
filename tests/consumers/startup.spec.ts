@@ -116,26 +116,37 @@ async function serve(project: string, script: 'dev' | 'preview', action: (url: s
 
 async function check(page: Page, url: string, kind: string) {
   const errors: string[] = [];
+  const consoleMessages: { type: string; text: string }[] = [];
   const assets: { url: string; status: number; type: string; magic: number[] }[] = [];
   const pending: Promise<void>[] = [];
   const onError = (error: Error) => errors.push(error.message);
+  const onConsole = (message: import('@playwright/test').ConsoleMessage) => {
+    if (['warning', 'error'].includes(message.type()))
+      consoleMessages.push({ type: message.type(), text: message.text() });
+  };
   const onResponse = (response: import('@playwright/test').Response) => {
     // Vite also serves JS URL-export wrappers at *.png?import. Only inspect
     // bytes fetched by the renderer, not modules that name those assets.
     if (response.request().resourceType() === 'script') return;
     if (!/\.(wasm|png)(?:\?|$)/.test(response.url())) return;
     pending.push(
-      response.body().then((bytes) => {
-        assets.push({
-          url: response.url(),
-          status: response.status(),
-          type: response.headers()['content-type'] ?? '',
-          magic: [...bytes.subarray(0, 4)],
-        });
-      }),
+      response
+        .body()
+        .then((bytes) => {
+          assets.push({
+            url: response.url(),
+            status: response.status(),
+            type: response.headers()['content-type'] ?? '',
+            magic: [...bytes.subarray(0, 4)],
+          });
+        })
+        .catch((error) => {
+          errors.push(`Asset body ${response.url()}: ${error.message}`);
+        }),
     );
   };
   page.on('pageerror', onError);
+  page.on('console', onConsole);
   page.on('response', onResponse);
   try {
     await page.goto(url);
@@ -184,9 +195,10 @@ async function check(page: Page, url: string, kind: string) {
     expect(errors).toEqual([]);
   } finally {
     page.off('pageerror', onError);
+    page.off('console', onConsole);
     page.off('response', onResponse);
     await test.info().attach('runtime-assets.json', {
-      body: JSON.stringify({ kind, url, artifact: identity, assets, errors }, null, 2),
+      body: JSON.stringify({ kind, url, artifact: identity, assets, errors, consoleMessages }, null, 2),
       contentType: 'application/json',
     });
   }

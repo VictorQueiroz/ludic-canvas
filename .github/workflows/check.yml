@@ -49,11 +49,16 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LUDIC_HEADED: '1'
       - if: matrix.project == 'chromium' || matrix.project == 'firefox'
-        run: npm run test:consumer -- --project=${{ matrix.project }} --workers=1
+        run: xvfb-run --auto-servernum npm run test:consumer -- --project=${{ matrix.project }} --workers=1
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LUDIC_HEADED: '1'
       - if: matrix.project == 'chromium'
-        run: npm run test:consumer -- --project=chromium --workers=1
+        run: xvfb-run --auto-servernum npm run test:consumer -- --project=chromium --workers=1
         env:
           LUDIC_CONSUMER_PACKAGE: registry
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LUDIC_HEADED: '1'
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
