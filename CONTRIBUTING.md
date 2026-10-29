@@ -31,6 +31,10 @@ The library owns composition, layout, rendering and interaction. Application
 models, engine adapters, art and persistence stay outside it. Examples consume
 public exports; the website aliases those exports to the current checkout.
 The independent example's manifest and lockfile select its registry package.
+Native TextInput/TextArea use root-owned DOM editors for glyphs and editing;
+Yoga owns their boxes and WebGL draws their decoration. See
+[the editing contract](docs/NATIVE_EDITING.md) before changing synchronization,
+composition, focus or layering.
 
 ## Documentation changes
 

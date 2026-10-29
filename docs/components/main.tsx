@@ -7,6 +7,8 @@ import {
   Switch,
   Tabs,
   Text,
+  TextInput,
+  TextArea,
   View,
   createUI,
   useUIRoot,
@@ -57,6 +59,9 @@ function ControlLab({ skin, width, disabled }: { skin: Skin; width: number; disa
   const [open, setOpen] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [telemetry, setTelemetry] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [playerName, setPlayerName] = useState('');
+  const [notes, setNotes] = useState('');
   const compact = width < 400;
   const text = { fontSize: compact ? 15 : 17, color: skin.text };
   const action: ViewStyle = {
@@ -229,6 +234,62 @@ function ControlLab({ skin, width, disabled }: { skin: Skin; width: number; disa
           Keyboard + pointer + touch / one controlled model
         </Text>
       )}
+      <Button label="Edit profile" disabled={disabled} onPress={() => setProfileOpen(true)} style={action}>
+        <Text style={text}>Edit profile</Text>
+      </Button>
+      <Dialog
+        label="Player profile"
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        zIndex={40}
+        style={{ background: '#0b1418e8', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <View style={{ ...panel, padding: compact ? 14 : 22, gap: 12 }}>
+          <Text style={{ ...text, fontSize: 25 }}>Your profile.</Text>
+          <ScrollArea label="Profile fields" style={{ height: 240, gap: 12 }}>
+            <Text style={{ ...text, fontSize: 15 }}>Player name</Text>
+            <TextInput
+              label="Player name"
+              value={playerName}
+              onValueChange={setPlayerName}
+              placeholder="Enter your name"
+              maxLength={40}
+              error={playerName.trim() ? undefined : 'Enter a player name.'}
+              onSubmit={() => {
+                if (playerName.trim()) setProfileOpen(false);
+              }}
+              style={{ background: skin.panel, borderWidth: 1, borderColor: skin.line, borderRadius: skin.radius }}
+              textStyle={{ color: skin.text, fontSize: 16 }}
+            />
+            <Text style={{ ...text, fontSize: 15 }}>Field notes</Text>
+            <TextArea
+              label="Field notes"
+              value={notes}
+              onValueChange={setNotes}
+              placeholder="Write a note"
+              style={{
+                height: 100,
+                background: skin.panel,
+                borderWidth: 1,
+                borderColor: skin.line,
+                borderRadius: skin.radius,
+              }}
+              textStyle={{ color: skin.text, fontSize: 16 }}
+            />
+          </ScrollArea>
+          <Button
+            label="Save profile"
+            disabled={!playerName.trim()}
+            onPress={() => setProfileOpen(false)}
+            style={{ ...action, background: skin.accent }}
+          >
+            <Text style={{ ...text, color: skin.ink }}>Save profile</Text>
+          </Button>
+          <Button label="Close profile" onPress={() => setProfileOpen(false)} style={action}>
+            <Text style={text}>Close profile</Text>
+          </Button>
+        </View>
+      </Dialog>
       <Dialog
         label="Interface settings"
         open={open}

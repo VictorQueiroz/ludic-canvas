@@ -10,6 +10,11 @@ Controlled **Button**, **Switch**, **Slider**, **Tab**, **Tabs**, **Dialog** and
 **ScrollArea** components share interaction behavior while leaving their layout,
 colors and contents to your game. Explore the [component catalogue](https://libraries.ludic-canvas.victorqueiroz.dev/components/).
 
+Unreleased source also includes controlled **TextInput** and **TextArea** native
+editors for topmost form panels and dialogs. See the [native editing contract](docs/NATIVE_EDITING.md)
+for fonts, layering, composition and qualification limits. These fields are not
+part of npm 0.6.0.
+
 ## Install
 
 The npm package includes JavaScript, TypeScript declarations, a precompiled Yoga reactor, a default OFL font atlas, the portable font atlas compiler and license notices.

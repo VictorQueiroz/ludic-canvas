@@ -19,6 +19,9 @@ try {
     'cli/init.mjs',
     'cli/templates/shared/fonts/Interface.ttf',
     'dist/controls.js',
+    'dist/text-input.js',
+    'dist/text-input.d.ts',
+    'dist/runtime/editing.js',
     'assets/fontgen.wasm',
     'font-atlas.schema.json',
     'licenses/FreeType-FTL.txt',
@@ -38,7 +41,18 @@ try {
   await access(join(project, 'node_modules/.bin', process.platform === 'win32' ? 'ludic-canvas.cmd' : 'ludic-canvas'));
   const imported = await import(pathToFileURL(join(installed, 'dist/index.js')).href);
   if (typeof imported.createUI !== 'function') throw new Error('Root exports do not resolve');
-  for (const name of ['Button', 'Switch', 'Slider', 'Tabs', 'Tab', 'Dialog', 'ScrollArea', 'useUIRoot'])
+  for (const name of [
+    'Button',
+    'Switch',
+    'Slider',
+    'Tabs',
+    'Tab',
+    'Dialog',
+    'ScrollArea',
+    'TextInput',
+    'TextArea',
+    'useUIRoot',
+  ])
     if (typeof imported[name] !== 'function') throw new Error(`Packed control does not resolve: ${name}`);
   await Promise.all(Object.values(imported.defaultAssets).map((url) => access(new URL(url))));
   await copyFile(join(root, 'tests/fixtures/fixture.woff2'), join(project, 'fonts/input.woff2'));
@@ -69,10 +83,13 @@ try {
   await writeFile(
     join(project, 'main.ts'),
     `import { createElement } from 'react';
-import { createUI, Text } from 'ludic-canvas';
+import { createUI, Text, TextInput, TextArea, View } from 'ludic-canvas';
 const ui = await createUI({ canvas: document.querySelector<HTMLCanvasElement>('#ui')!,
   fonts: [{ name: 'interface', atlas: '/fonts/interface.png', metrics: '/fonts/interface.json' }] });
-ui.render(createElement(Text, null, 'A?'));\n`,
+ui.render(createElement(View, null,
+  createElement(Text, null, 'A?'),
+  createElement(TextInput, { label: 'Player name', value: 'Ada', onValueChange() {} }),
+  createElement(TextArea, { label: 'Notes', value: '', onValueChange() {} })));\n`,
   );
   execFileSync(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'build'], {
     cwd: project,

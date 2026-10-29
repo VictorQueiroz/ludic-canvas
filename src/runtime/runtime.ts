@@ -44,7 +44,9 @@ export class UiRuntime {
       onError: options.onError,
     };
     this.#root = createUiRoot(this.ctx);
-    this.input = new InputSystem(options.canvas, options.a11y, this.#painter);
+    this.input = new InputSystem(options.canvas, options.a11y, this.#painter, (callback) =>
+      this.#root.flushSync(callback),
+    );
   }
 
   /** Development aid: the host tree with computed boxes. */
