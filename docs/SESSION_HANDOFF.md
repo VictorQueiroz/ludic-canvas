@@ -6,24 +6,28 @@ This is a dated evidence snapshot, not a live release dashboard. Start in the
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
 
-## Native editing 0.7.0 release candidate
+## Published native editing 0.7.0
 
-[Implementation PR 29](https://github.com/VictorQueiroz/ludic-canvas/pull/29) merged
-as `941a337e4a09c3f95a75aad8a0e976c35b4ad203`. Its exact SDK source passed all eight
-CI jobs: Linux/macOS/Windows package checks, 320 complete-suite browser contracts
-with 10 explicit skips, and 16 packed/registry consumer checks.
-[Release PR 30](https://github.com/VictorQueiroz/ludic-canvas/pull/30) versions the
-package to 0.7.0 without changing SDK source. Publication remains pending until
-the release workflow and registry verification complete.
+[ludic-canvas 0.7.0](https://www.npmjs.com/package/ludic-canvas/v/0.7.0) is published
+and npm latest. [Release PR 30](https://github.com/VictorQueiroz/ludic-canvas/pull/30)
+merged as `b0c9beaca76cf72e17d824af463e27a684abb991`; tag v0.7.0 and npm gitHead
+match that commit. The actual 828,230-byte registry tarball matched its SHA-512
+integrity. Provenance metadata was inspected; cryptographic signature validation
+was not performed. Both standalone examples now pin the exact release.
 
-React owns values, Yoga positions boxes, WebGL draws decoration and root-local
-native editors draw text/caret/selection. Use topmost forms/dialogs; arbitrary
-DOM/canvas interleaving is unsupported. Browser fonts are separate from atlases.
-Read [NATIVE_EDITING.md](NATIVE_EDITING.md) for source identity, contract, CI
-evidence, the unresolved local survey startup/resize checks and qualification
-limits. Real CJK IME, physical phone keyboards and screen readers remain
-unqualified; the attempted VoiceOver acquisition produced no usable feedback
-and the original off state was restored.
+The [release verification record](RELEASE_0_7_0.md) distinguishes implementation,
+publication and deployment identity. It includes full CI, independent registry
+consumer/build verification and actual npm-installed native-field interaction.
+The production catalogue served 0.7.0 and passed editing, focus-return and value
+persistence checks. One unchanged WebKit typography diagnostic case passed on
+retry in the publishing workflow; separate local survey startup/resize failures
+remain unresolved and have not been attributed to the editor bridge.
+
+Read [NATIVE_EDITING.md](NATIVE_EDITING.md) for the contract and limits. Use fields
+in topmost forms/dialogs; arbitrary DOM/canvas interleaving is unsupported. Native
+fonts are separate from atlases. Real CJK IME, physical phone keyboards and
+screen readers remain unqualified. The VoiceOver attempt produced no usable
+feedback and its original off state was restored.
 
 The following package/deployment and desktop acquisition sections preserve the
 earlier 0.6.0 snapshot. They are not the publication record for 0.7.0.
