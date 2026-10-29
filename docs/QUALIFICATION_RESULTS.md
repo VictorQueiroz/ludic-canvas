@@ -179,8 +179,9 @@ record the configuration and interpretation limits.
 
 TextInput/TextArea ship in 0.7.0. The [release verification record](RELEASE_0_7_0.md)
 retains source/artifact identity, full five-project CI, the WebKit diagnostic
-callback retry, initial npm 404 availability responses, independent registry
-consumer checks and deployed component interaction. These are browser/software
+callback retry, follow-up WebKit survey retry, initial npm 404 availability
+responses, independent registry consumer checks and deployed component interaction.
+These are browser/software
 and distribution checks. They do not complete real IME, phone-keyboard,
 screen-reader, long-session memory or hardware performance qualification.
 

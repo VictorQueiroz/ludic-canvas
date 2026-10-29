@@ -46,6 +46,18 @@ cryptographically validated.
 - The production catalogue passed field editing, modal focus return and value
   persistence after reopening. Provider READY/source identity and browser/page
   behavior are separate checks.
+- [Consumer follow-up CI](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/40918148060)
+  passed all eight jobs on `cd332ac387bb945573578f3e436ead00ef1058c2`.
+  Five browser projects reported 319 passed, one flaky and 10 skipped; packed
+  and registry consumers added 16 passes. The WebKit survey case timed out at
+  `survey.spec.ts:28` waiting for the `Navigate to Echo Spire` button, then passed
+  retry 1. No SDK or test change was made for that observation.
+- The refreshed [minimal counter in StackBlitz](https://stackblitz.com/fork/github/VictorQueiroz/ludic-canvas/tree/main/examples/first-interface?file=src/main.tsx)
+  rendered from follow-up commit `cd332ac387bb945573578f3e436ead00ef1058c2`.
+  The editor showed the exact 0.7.0 dependency and Vite 7.3.7; its terminal
+  reported Vite ready. Pointer activation changed count 0 to 1, then Enter
+  activation changed it to 2. This checks the counter, not native editing in
+  WebContainers.
 
 ## Attempts and limits
 
@@ -58,12 +70,19 @@ checks are retained separately.
 
 Additional local full-suite and isolated survey startup/resize failures remain
 unresolved; see NATIVE_EDITING.md. A green CI run does not establish their cause
-or repair. The publishing WebKit retry likewise remains a flaky observation.
+or repair. Both the publishing typography retry and follow-up survey retry
+remain flaky observations.
 
 The minimal consumer's existing Vite 7.3.5/esbuild development dependencies
 reported advisories during lock verification. The follow-up keeps Vite 7 and
 updates to Vite 7.3.7/esbuild 0.28.2; its subsequent npm audit reported zero
 advisories. This changes the example toolchain, not the published SDK.
+
+The StackBlitz import initially remained at its GitHub cloning screen. Reloading
+opened the imported project; the preview was initially blank and rendered after
+using Reload preview. Monaco also reported missing source-file errors for the
+editor's `stackblitz:` paths. The counter interaction succeeded afterward; this
+does not establish the cause of the import/preview delay or those editor errors.
 
 Real CJK IME, physical phone keyboards, screen readers, long-session editing
 memory and hardware performance are unqualified. Only the U.S. desktop input

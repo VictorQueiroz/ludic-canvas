@@ -20,8 +20,12 @@ publication and deployment identity. It includes full CI, independent registry
 consumer/build verification and actual npm-installed native-field interaction.
 The production catalogue served 0.7.0 and passed editing, focus-return and value
 persistence checks. One unchanged WebKit typography diagnostic case passed on
-retry in the publishing workflow; separate local survey startup/resize failures
-remain unresolved and have not been attributed to the editor bridge.
+retry in the publishing workflow. The consumer follow-up also passed all eight
+CI jobs with a WebKit survey retry while waiting for navigation controls.
+Separate local survey startup/resize failures remain unresolved and have not
+been attributed to the editor bridge.
+The refreshed 0.7.0/Vite 7.3.7 StackBlitz counter rendered and passed click/Enter
+activation after import/preview reloads; its acquisition limits are in the record.
 
 Read [NATIVE_EDITING.md](NATIVE_EDITING.md) for the contract and limits. Use fields
 in topmost forms/dialogs; arbitrary DOM/canvas interleaving is unsupported. Native
