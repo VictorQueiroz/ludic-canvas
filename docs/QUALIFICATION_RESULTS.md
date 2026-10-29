@@ -174,3 +174,19 @@ Original evidence: [run 1](public/performance/collections-m3-chrome-2026-10-27/r
 [Chrome trace](public/performance/collections-m3-chrome-2026-10-27/diagnostic.trace.json.gz).
 Each file has a sibling `.sha256`; the [acquisition notes](public/performance/collections-m3-chrome-2026-10-27/README.md)
 record the configuration and interpretation limits.
+
+## Native editing release — 2026-10-29
+
+TextInput/TextArea ship in 0.7.0. The [release verification record](RELEASE_0_7_0.md)
+retains source/artifact identity, full five-project CI, the WebKit diagnostic
+callback retry, follow-up WebKit survey retry, initial npm 404 availability
+responses, independent registry consumer checks and deployed component interaction.
+These are browser/software
+and distribution checks. They do not complete real IME, phone-keyboard,
+screen-reader, long-session memory or hardware performance qualification.
+
+The complete additional local suite stopped at the existing 320-pixel survey
+case before compact controls appeared. Its isolated attempt failed earlier at
+the survey ready marker. Both traces were retained. Passing CI on the same SDK
+does not establish a fix in that local environment. No SDK, test deadline, motion
+or port change was made to accommodate those outcomes.

@@ -10,7 +10,7 @@
     "fonts": "ludic-canvas fonts --config src/ui/ludic-canvas.fonts.json && ludic-canvas fonts --config src/telemetry/ludic-canvas.fonts.json"
   },
   "dependencies": {
-    "ludic-canvas": "0.6.0",
+    "ludic-canvas": "0.7.0",
     "react": "19.3.1",
     "three": "0.186.1"
   },

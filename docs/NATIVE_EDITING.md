@@ -196,3 +196,12 @@ It was restored to its original off state and its process termination checked.
 Screen-reader qualification therefore remains pending. No claim of physical
 mobile-keyboard, real IME or full assistive-technology support follows from this
 release.
+
+## Published artifact
+
+The 0.7.0 artifact is published and its tag/gitHead, downloaded tarball integrity
+and independent consumer were verified. The npm-installed native fields also
+passed editing, undo, multiline, submit, modal-remount and binary asset-loading
+checks. See [the 0.7.0 release verification record](RELEASE_0_7_0.md) for exact
+identities, registry-availability attempts and the WebKit diagnostic test that
+passed on retry in the publication run.
