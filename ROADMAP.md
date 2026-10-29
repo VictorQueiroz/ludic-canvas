@@ -79,7 +79,22 @@ heap/node growth still need qualification. Investigate the documented Linux WPE
 startup stall independently of native macOS WebKit coverage. Mobile emulation and software-GPU CI
 provide correctness evidence, not physical-device certification.
 
-## Planned: shaping and native text entry
+## Implemented, unreleased: native text entry
+
+- Controlled TextInput and TextArea with root-local native editors, synchronous
+  value reconciliation, deferred composition resets and stable focus/select/blur
+  handles. Yoga positions fields; WebGL decorates them; browser fonts draw text.
+- Modal focus/isolation, rectangular clipping, inherited transforms/opacity,
+  accessible error descriptions, suspension and teardown.
+- The catalogue's Edit profile dialog demonstrates both fields in independent
+  roots. Fields require topmost form/dialog surfaces; arbitrary canvas/DOM
+  interleaving is outside this implementation.
+
+See [the editing contract and verification record](docs/NATIVE_EDITING.md).
+This is a pending minor changeset, not an npm publication. Real IME, physical
+phone keyboards and screen readers remain separate qualification work.
+
+## Planned: shaping and remaining native editing qualification
 
 MSDF/MTSDF provides glyph rendering. Layout and OpenType shaping require their
 own contracts and fixtures. The 0.5 baseline supplies rendering and pair kerning;
@@ -88,9 +103,9 @@ the following text-system work remains separate.
 1. Design bidi, grapheme-aware line breaking and complex-script shaping together.
    Establish the glyph-ID/atlas contract needed by contextual substitutions and
    ligatures before choosing a shaping dependency. Keep atlas generation offline.
-2. Provide a native text-input bridge for editing, IME composition, mobile
-   keyboards, selection and clipboard. Align its focus, sizing, transforms and
-   clipping with the canvas; preserve native editing semantics.
+2. Qualify the native text-input bridge with actual IME composition, physical
+   mobile keyboards, selection/clipboard and assistive technology. Retain exact
+   browser/device/script evidence separately from synthetic event tests.
 3. Qualify Latin kerning, combining marks, Arabic/RTL, an Indic script and mixed
    direction strings using licensed fixtures and known expected glyph/layout
    results. Verify wrapping, selection, fallback and accessibility separately.

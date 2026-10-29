@@ -108,3 +108,23 @@ test('the catalogue and large-text controls fit a 320 pixel viewport', async ({ 
   await close.press('Escape');
   await expect(night.getByRole('button', { name: 'Open settings' })).toBeFocused();
 });
+
+test('the catalogue profile dialog edits native fields and preserves independent root state', async ({ page }) => {
+  const { night, field } = await catalogue(page);
+  await night.getByRole('button', { name: 'Edit profile', exact: true }).press('Enter');
+  const name = night.getByRole('textbox', { name: 'Player name', exact: true });
+  await expect(name).toBeFocused();
+  await expect(night.getByRole('button', { name: 'Save profile', exact: true })).toBeDisabled();
+  await name.fill('Mara');
+  await night.getByRole('textbox', { name: 'Field notes', exact: true }).fill('Survey started.');
+  const save = night.getByRole('button', { name: 'Save profile', exact: true });
+  await expect(save).toBeEnabled();
+  await save.press('Enter');
+  await expect(night.getByRole('button', { name: 'Edit profile', exact: true })).toBeFocused();
+  await night.getByRole('button', { name: 'Edit profile', exact: true }).press('Enter');
+  await expect(name).toHaveValue('Mara');
+  await expect(night.getByRole('textbox', { name: 'Field notes', exact: true })).toHaveValue('Survey started.');
+  await name.press('Escape');
+  await field.getByRole('button', { name: 'Edit profile', exact: true }).press('Enter');
+  await expect(field.getByRole('textbox', { name: 'Player name', exact: true })).toHaveValue('');
+});

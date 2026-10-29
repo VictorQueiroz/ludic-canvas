@@ -2,6 +2,9 @@
 import { HostNode } from './nodes.ts';
 import type { Painter } from './paint.ts';
 import type { UIPointerEvent } from './types.ts';
+import { EditorManager, type EditorElement } from './editing.ts';
+
+type ControlElement = HTMLButtonElement | EditorElement;
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 type PointerHandler = 'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel';
@@ -21,7 +24,8 @@ export class InputSystem {
   readonly #live: HTMLElement;
   readonly #painter: Painter;
   readonly #events = new AbortController();
-  readonly #buttons = new Map<HostNode, HTMLButtonElement>();
+  readonly #controls = new Map<HostNode, ControlElement>();
+  readonly #editors: EditorManager;
   readonly #groups = new Map<HostNode, HTMLDivElement>();
   #hovered = new Set<HostNode>();
   #pressed: HostNode | undefined;
@@ -38,10 +42,20 @@ export class InputSystem {
   onPointer: (nx: number, ny: number) => void = () => {};
   onActivity: () => void = () => {};
 
-  constructor(canvas: HTMLCanvasElement, a11y: HTMLElement, painter: Painter) {
+  constructor(canvas: HTMLCanvasElement, a11y: HTMLElement, painter: Painter, commit: (callback: () => void) => void) {
     this.#canvas = canvas;
     this.#a11y = a11y;
     this.#painter = painter;
+    this.#editors = new EditorManager(
+      a11y,
+      (callback) => this.#call(() => commit(callback)),
+      (node, focused) => {
+        node.focused = focused;
+        if (focused) this.#reveal(node);
+        if (!node.destroyed) this.#call(focused ? node.props.onFocus : node.props.onBlur);
+      },
+      () => this.onActivity(),
+    );
     this.#live = document.createElement('div');
     this.#live.style.cssText =
       'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap';
@@ -84,6 +98,22 @@ export class InputSystem {
     listen(canvas, 'wheel', (e) => this.#wheel(e), false);
     listen(canvas, 'keydown', (e) => this.#key(e));
     listen(a11y, 'keydown', (e) => this.#key(e));
+    listen(
+      a11y,
+      'wheel',
+      (e) => {
+        const target = e.target;
+        // Let a multiline editor consume its native scroll before chaining to Yoga.
+        if (
+          target instanceof HTMLTextAreaElement &&
+          ((e.deltaY < 0 && target.scrollTop > 0) ||
+            (e.deltaY > 0 && target.scrollTop + target.clientHeight < target.scrollHeight))
+        )
+          return;
+        this.#wheel(e);
+      },
+      false,
+    );
     window.addEventListener('blur', () => this.#cancel(), options);
     document.addEventListener(
       'visibilitychange',
@@ -107,10 +137,11 @@ export class InputSystem {
   }
   destroy() {
     this.#events.abort();
+    this.#editors.destroy();
     this.#cancel();
     this.#setHovered(new Set());
-    for (const button of this.#buttons.values()) button.remove();
-    this.#buttons.clear();
+    for (const button of this.#controls.values()) button.remove();
+    this.#controls.clear();
     for (const group of this.#groups.values()) group.remove();
     this.#groups.clear();
     this.#modalFocus.clear();
@@ -124,7 +155,8 @@ export class InputSystem {
       this.#pointer = undefined;
       this.#setHovered(new Set());
     }
-    for (const [node, button] of this.#buttons)
+    if (!enabled) this.#editors.suspend();
+    for (const [node, button] of this.#controls)
       button.disabled = !enabled || Boolean(node.props.disabled) || !inside(node, this.#modal);
   }
   afterPaint() {
@@ -303,10 +335,12 @@ export class InputSystem {
     }
   }
   #focused(): HostNode | undefined {
-    return [...this.#buttons].find(([, button]) => button === document.activeElement)?.[0];
+    return [...this.#controls].find(([, button]) => button === document.activeElement)?.[0];
   }
   #eligible() {
-    return [...this.#buttons].filter(([n, button]) => !button.disabled && !n.destroyed && inside(n, this.#modal));
+    return [...this.#controls].filter(
+      ([n, button]) => !button.disabled && !n.props.disabled && !n.destroyed && inside(n, this.#modal),
+    );
   }
   focus(id: string): boolean {
     const match = this.#eligible().find(([n]) => n.props.id === id);
@@ -333,7 +367,7 @@ export class InputSystem {
     }
     const cx = current.abs.x + current.abs.w / 2,
       cy = current.abs.y + current.abs.h / 2;
-    let best: HTMLButtonElement | undefined,
+    let best: ControlElement | undefined,
       score = Infinity;
     for (const [n, button] of candidates) {
       if (n === current) continue;
@@ -359,6 +393,28 @@ export class InputSystem {
   #key(e: KeyboardEvent) {
     if (!this.#enabled) return;
     this.onActivity();
+    const focused = this.#focused();
+    if (focused?.props.editor) {
+      e.stopPropagation(); // Game bubble listeners must not consume typing or editing shortcuts.
+      if (focused.props.disabled) return;
+      if (e.isComposing || e.keyCode === 229 || this.#editors.isComposing(focused)) return;
+      if (e.key !== 'Tab' && e.key !== 'Escape') {
+        if (
+          e.key === 'Enter' &&
+          !e.repeat &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !e.shiftKey &&
+          !focused.props.editor.multiline &&
+          focused.props.editor.onSubmit
+        ) {
+          e.preventDefault();
+          this.#call(() => focused.props.editor?.onSubmit?.(this.#editors.value(focused)));
+        }
+        return;
+      }
+    }
     let stopped = false;
     for (let n = this.#focused(); n && inside(n, this.#modal); n = n.parent) {
       const callback = n.props.onKeyDown;
@@ -387,7 +443,7 @@ export class InputSystem {
       const controls = this.#eligible()
         .map(([, button]) => button)
         .filter((button) => button.tabIndex >= 0);
-      const index = controls.indexOf(document.activeElement as HTMLButtonElement);
+      const index = controls.indexOf(document.activeElement as ControlElement);
       e.preventDefault();
       controls[(index + (e.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus({ preventScroll: true });
       return;
@@ -452,6 +508,7 @@ export class InputSystem {
       }
     }
     const live = new Set<HostNode>();
+    const liveEditors = new Set<HostNode>();
     const liveGroups = new Set<HostNode>();
     for (const n of this.#painter.hitList) {
       if (n.destroyed || !semanticGroup(n)) continue;
@@ -459,7 +516,7 @@ export class InputSystem {
       let group = this.#groups.get(n);
       if (!group) {
         group = document.createElement('div');
-        group.style.cssText = 'position:static;opacity:0;pointer-events:none';
+        group.style.cssText = 'position:static;pointer-events:none';
         this.#groups.set(n, group);
       }
       group.setAttribute('role', n.props.role!);
@@ -470,6 +527,11 @@ export class InputSystem {
       if (n.props.orientation) group.setAttribute('aria-orientation', n.props.orientation);
       else group.removeAttribute('aria-orientation');
     }
+    const dormant = new Set<HTMLElement>();
+    const painted = new Set(this.#painter.hitList);
+    for (const [node, group] of this.#groups) if (!liveGroups.has(node)) dormant.add(group);
+    for (const [node, control] of this.#controls)
+      if (node.props.editor && !painted.has(node) && !node.destroyed) dormant.add(control);
     const previous = new Map<HTMLElement, HTMLElement>();
     const place = (node: HostNode, element: HTMLElement) => {
       let parent: HTMLElement = this.#a11y;
@@ -481,7 +543,15 @@ export class InputSystem {
         }
       }
       const before = previous.get(parent);
-      const next = before ? before.nextSibling : parent.firstChild;
+      let next = before ? before.nextSibling : parent.firstChild;
+      // Hidden editors and bookkeeping nodes do not change the order of live controls.
+      // Moving their semantic group would reset native editing history in Chromium.
+      while (
+        next &&
+        next !== element &&
+        (next === this.#live || (next instanceof HTMLElement && (next.hidden || dormant.has(next))))
+      )
+        next = next.nextSibling;
       if (next !== element) parent.insertBefore(element, next);
       previous.set(parent, element);
     };
@@ -493,8 +563,18 @@ export class InputSystem {
       const label = n.props.label ?? labelOf(n);
       if (!label) continue;
       live.add(n);
-      let button = this.#buttons.get(n);
+      if (n.props.editor) {
+        liveEditors.add(n);
+        const visible = this.#enabled && inside(n, modal);
+        const editor = this.#editors.sync(n, visible && !n.props.disabled, visible);
+        this.#controls.set(n, editor);
+        place(n, editor);
+        continue;
+      }
+      const previousControl = this.#controls.get(n);
+      let button = previousControl instanceof HTMLButtonElement ? previousControl : undefined;
       if (!button) {
+        previousControl?.remove();
         button = document.createElement('button');
         button.type = 'button';
         button.addEventListener('click', () => {
@@ -509,7 +589,7 @@ export class InputSystem {
           n.focused = false;
           if (!n.destroyed) this.#call(n.props.onBlur);
         });
-        this.#buttons.set(n, button);
+        this.#controls.set(n, button);
       }
       button.setAttribute('aria-label', label);
       button.setAttribute('role', n.props.role ?? 'button');
@@ -539,18 +619,24 @@ export class InputSystem {
       }
       place(n, button);
     }
-    for (const [node, button] of this.#buttons)
+    this.#editors.retain(liveEditors);
+    for (const [node, button] of this.#controls)
       if (!live.has(node)) {
-        button.remove();
-        this.#buttons.delete(node);
+        if (!node.props.editor || node.destroyed) button.remove();
+        this.#controls.delete(node);
       }
     for (const [node, group] of this.#groups)
       if (!liveGroups.has(node)) {
+        // A mounted but hidden editor keeps its DOM node (and native undo history).
+        if (!node.destroyed && group.querySelector('[data-ludic-editor]')) {
+          group.setAttribute('aria-hidden', 'true');
+          continue;
+        }
         group.remove();
         this.#groups.delete(node);
       }
     if (!changedModal && focusedBefore && !focusedBefore.destroyed) {
-      const button = this.#buttons.get(focusedBefore);
+      const button = this.#controls.get(focusedBefore);
       if (button && !button.disabled && button.isConnected && document.activeElement !== button)
         button.focus({ preventScroll: true });
     }
@@ -565,9 +651,7 @@ export class InputSystem {
         (target ?? first ?? this.#canvas).focus({ preventScroll: true });
       } else {
         this.#pendingModalFocus = false;
-        const target = restore.find(
-          (element) => element.isConnected && !(element instanceof HTMLButtonElement && element.disabled),
-        );
+        const target = restore.find((element) => element.isConnected && !('disabled' in element && element.disabled));
         (target ?? this.#canvas).focus({ preventScroll: true });
       }
     } else if (modal && (this.#pendingModalFocus || focusedBefore?.destroyed)) {

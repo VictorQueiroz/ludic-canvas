@@ -66,6 +66,9 @@ export class HostNode {
   box: Box = { x: 0, y: 0, w: 0, h: 0 };
   abs: Box = { x: 0, y: 0, w: 0, h: 0 };
   clip: Box | undefined;
+  /** Final inherited opacity shared with native editors. */
+  paintedOpacity = 1;
+  releaseEditor?: () => void;
 
   // Interaction & animation state, owned by the painter/input system.
   hovered = false;
@@ -190,6 +193,7 @@ export class HostNode {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.releaseEditor?.();
     detachScroll(this.props.scrollHandle, this);
     for (const c of this.children) if (c instanceof HostNode) c.destroy();
     if (this.#measureId) this.ctx.layout.releaseMeasure(this.#measureId);

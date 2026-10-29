@@ -39,6 +39,8 @@ export type { AtlasJson, FontFamily, FontDiagnostic } from './gfx/font.ts';
 export { defaultAssets } from './defaults.ts';
 export type { ResourceLimits } from './resources.ts';
 export { useUIRoot } from './context.ts';
+export { TextInput, TextArea } from './text-input.tsx';
+export type { TextInputProps, TextAreaProps, TextInputHandle, NativeTextStyle } from './text-input.tsx';
 export { Button, Switch, Slider, Tab, Tabs, Dialog, ScrollArea } from './controls.tsx';
 export type {
   ButtonProps,

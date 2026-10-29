@@ -13,6 +13,8 @@ dated starting point; refresh its mutable state before relying on it.
   names, identifiers, content and assets do not belong in its code, documentation,
   examples, commits or release messages.
 - React owns composition, Yoga WebAssembly owns layout and WebGL owns drawing.
+  Native text fields are the explicit exception: root-owned DOM editors draw
+  their text, caret and selection inside Yoga boxes with WebGL decoration.
   Applications own game state and the simulation/frame loop. Keep resources,
   focus, scrolling and subscriptions root-local; avoid a global active root.
 - Generate font atlases offline with the packaged CLI. Preserve the documented

@@ -4,6 +4,7 @@
 import type { ReactNode } from 'react';
 import type { FontFamily } from '../gfx/font.ts';
 import type { ScrollHandle, ScrollSnapshot } from '../scroll.ts';
+import type { EditorProps } from './editing.ts';
 
 export type Dim = number | `${number}%` | 'auto';
 
@@ -244,4 +245,4 @@ export interface LineProps extends CommonProps {
 }
 
 export type HostType = 'view' | 'text' | 'image' | 'line';
-export type AnyProps = ViewProps & TextProps & Partial<ImageProps> & Partial<LineProps>;
+export type AnyProps = ViewProps & TextProps & Partial<ImageProps> & Partial<LineProps> & { editor?: EditorProps };

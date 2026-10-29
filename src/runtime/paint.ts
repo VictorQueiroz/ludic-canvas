@@ -142,6 +142,7 @@ export class Painter {
     const ay = y + (node.box.h * parentScale - h) / 2;
     node.abs = { x: ax, y: ay, w, h };
     node.clip = clip;
+    node.paintedOpacity = opacity;
 
     if (opacity <= 0.003 || scale <= 0) return;
     this.visible.push(node);

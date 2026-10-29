@@ -6,6 +6,28 @@ This is a dated evidence snapshot, not a live release dashboard. Start in the
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
 
+## Unreleased native editing implementation
+
+The current working tree adds TextInput/TextArea over base
+`4143a592d62de8121137db3f18255bc436a8c86a`. This SDK change is separate from the
+earlier desktop-delivery snapshot below. It has a pending minor changeset and
+is prepared on the `feat/native-text-fields` branch; publication and deployment
+verification are recorded separately. Read
+[NATIVE_EDITING.md](NATIVE_EDITING.md) for the contract, exact validation outcomes,
+initial failures and qualification limits. The component catalogue now includes
+an Edit profile dialog with both fields in independent roots.
+
+React owns values, Yoga positions boxes, WebGL draws decoration and root-local
+native editors draw text/caret/selection. Browser fonts are separate from atlases.
+Use topmost forms/dialogs; arbitrary DOM/canvas interleaving is unsupported. Real
+IME, physical phone keyboards and screen-reader qualification remain outstanding.
+Validation: npm run check passed (105 unit tests and independent packed
+consumers); the final focused five-project browser run passed 240 contracts with
+10 explicit skips and no retries. See NATIVE_EDITING.md for source identity and
+initial failures. The production-bundle preview at
+http://127.0.0.1:6175/components/ was visually checked at desktop/narrow widths.
+Remote registry/deployment state was not refreshed for this source implementation.
+
 ## Package, delivery and deployment
 
 - Published package: [ludic-canvas 0.6.0](https://www.npmjs.com/package/ludic-canvas/v/0.6.0).
@@ -15,8 +37,9 @@ Preserve unrelated edits and original acquisition bytes/checksums.
   The actual 821,884-byte registry tarball matched its SHA-512 integrity and tag.
   Provenance was inspected as metadata, not independently signature-validated.
 - Delivery is tracked in [PR 28](https://github.com/VictorQueiroz/ludic-canvas/pull/28).
-  This milestone changes examples, documentation and verification tooling; SDK
-  `src/` is identical to 0.6.0 and no npm release is required.
+  That earlier milestone changed examples, documentation and verification tooling;
+  its SDK `src/` matched 0.6.0. The unreleased implementation above now changes SDK
+  behavior and requires a future minor publication.
 - Before publication of this PR, the canonical alias was verified on Vercel as
   READY, production, source `39424d09d5e2dea90f01a431721a92899f742d1f`.
   The preview for `7195d99c7a7317835c0d38dba6efa93807fff3fe` was READY and its
@@ -95,6 +118,7 @@ historical qualification run. Native macOS WebKit coverage does not fix or quali
 that port. Earlier context-loss retries and the responsive-control test race
 remain documented in the qualification record.
 
-Shaping/bidi/graphemes, native text entry, variable-height collections and
-interactive grids remain design work. The acquired collection budget was met by
+Shaping/bidi/graphemes, variable-height collections and interactive grids remain
+design work. Native text entry is implemented but unreleased; its hardware and
+assistive-technology qualification remains outstanding. The acquired collection budget was met by
 windowing; select further optimizations from a relevant profile.
