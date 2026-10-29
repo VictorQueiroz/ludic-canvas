@@ -10,10 +10,10 @@ Controlled **Button**, **Switch**, **Slider**, **Tab**, **Tabs**, **Dialog** and
 **ScrollArea** components share interaction behavior while leaving their layout,
 colors and contents to your game. Explore the [component catalogue](https://libraries.ludic-canvas.victorqueiroz.dev/components/).
 
-Unreleased source also includes controlled **TextInput** and **TextArea** native
+Version 0.7.0 adds controlled **TextInput** and **TextArea** native
 editors for topmost form panels and dialogs. See the [native editing contract](docs/NATIVE_EDITING.md)
-for fonts, layering, composition and qualification limits. These fields are not
-part of npm 0.6.0.
+for fonts, layering, composition and qualification limits. These fields require
+ludic-canvas 0.7.0 or later.
 
 ## Install
 

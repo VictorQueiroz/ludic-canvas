@@ -1,9 +1,11 @@
 # Native text editing
 
-TextInput and TextArea are implemented in the source checkout with a pending
-minor changeset. They are not included in npm 0.6.0. The work is based on
-`4143a592d62de8121137db3f18255bc436a8c86a`; the implementation is prepared on the
-`feat/native-text-fields` branch with a pending minor changeset. No npm publication or deployment is claimed.
+TextInput and TextArea are introduced in ludic-canvas 0.7.0. The implementation
+was developed from `4143a592d62de8121137db3f18255bc436a8c86a` and merged in
+[PR 29](https://github.com/VictorQueiroz/ludic-canvas/pull/29).
+[Release PR 30](https://github.com/VictorQueiroz/ludic-canvas/pull/30) versions
+the package. Publication and deployed revision are verified separately in
+[the session handoff](SESSION_HANDOFF.md).
 
 ## Ownership and rendering
 
@@ -165,5 +167,32 @@ npm run test:browser -- tests/browser/editing.spec.ts tests/browser/controls.spe
 
 The local preview is served at `http://127.0.0.1:6175/components/`; choose Edit
 profile. This preview serves a local source build with 0.6.0 metadata,
-not the registry artifact or a deployed revision. The pending minor changeset
-prepares future versioning; publication was not performed.
+not the registry artifact or a deployed revision. That initial local acquisition preceded publication; current release identity
+is recorded separately in the session handoff.
+
+## Release qualification
+
+[Implementation CI run 40911352644](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/40911352644)
+passed all eight jobs on `b8d289258ebeee64a61798f0e3b6b05057c3d67a`: package,
+type, formatting and distribution checks on Linux/macOS/Windows; **320 browser
+passes with 10 explicit skips** across the complete five-project suite; and **16
+independent packed/registry consumer passes**. No flaky test was reported.
+[The release workflow on the implementation merge](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/40912419212)
+also passed its checks and generated the 0.7.0 version PR. SDK source is unchanged
+by versioning; the source-tree checksum above remains applicable.
+
+The additional complete local suite stopped at the existing 320-pixel survey
+layout case: compact controls did not appear within its existing assertion. An
+isolated attempt then failed earlier, before the survey ready marker. Both
+traces are retained under `/tmp/ludic-canvas-native-editing-release-2026-10-29/`.
+These outcomes have not been attributed to the editor bridge, and the passing
+CI results do not establish a fix in that local environment. No SDK behavior,
+test deadline, motion setting or browser port was changed in response.
+
+The native desktop has only the U.S. input layout enabled, so real CJK IME
+qualification was not acquired. VoiceOver was launched for a bounded smoke test,
+but the UI channel timed out before usable spoken/caption evidence was obtained.
+It was restored to its original off state and its process termination checked.
+Screen-reader qualification therefore remains pending. No claim of physical
+mobile-keyboard, real IME or full assistive-technology support follows from this
+release.
