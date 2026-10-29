@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "ludic-canvas": "0.6.0",
+    "ludic-canvas": "0.7.0",
     "react": "19.3.1"
   },
   "devDependencies": {
