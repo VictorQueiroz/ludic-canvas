@@ -1,13 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, writeFile, statfs, access } from 'node:fs/promises';
 import { cpus, platform, release, tmpdir, totalmem } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import { gzipSync } from 'node:zlib';
 import { chromium, expect } from '@playwright/test';
 import { verifyArtifact, verifyConsumer } from '../release/verify.mjs';
+import { writeCheckpoint } from './record.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 const { values } = parseArgs({
@@ -28,6 +28,12 @@ const npmCli = process.env.npm_execpath;
 if (!npmCli) throw new Error('Run through npm run qualify:desktop');
 const startedAt = new Date().toISOString();
 const output = resolve(root, values.output ?? `build/qualification/desktop-${startedAt.replace(/[:.]/g, '-')}.json.gz`);
+try {
+  await access(output);
+  throw new Error('Choose a new --output path; acquired reports are never overwritten');
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const npm = (args, cwd) =>
@@ -72,14 +78,15 @@ const report = {
 };
 if (platform() === 'darwin')
   report.host.osVersion = execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim();
-const save = async () => {
-  const bytes = gzipSync(JSON.stringify(report));
-  await mkdir(dirname(output), { recursive: true });
-  await writeFile(output, bytes);
-  await writeFile(`${output}.sha256`, `${digest(bytes)}  ${output.split(/[\\/]/).at(-1)}\n`);
+const freeBytes = async () => {
+  const disk = await statfs(root);
+  return disk.bavail * disk.bsize;
 };
+const save = () => writeCheckpoint(output, report);
 let staging, browser, server;
 try {
+  if ((await freeBytes()) < 512 * 1024 * 1024)
+    throw new Error('Desktop acquisition needs at least 512 MiB free before preparation');
   staging = await mkdtemp(join(tmpdir(), 'ludic-desktop-qualification-'));
   const source = join(root, 'examples/kestrel-survey');
   const project = join(staging, 'game');
@@ -157,6 +164,7 @@ await acquisition.mount();\n`,
     entrySha256: digest(await readFile(join(project, 'src/standalone.ts'))),
   };
   console.log(npm(['run', 'build'], project));
+  if ((await freeBytes()) < 256 * 1024 * 1024) throw new Error('Insufficient disk headroom after consumer preparation');
   const { preview } = await import(pathToFileURL(join(project, 'node_modules/vite/dist/node/index.js')).href);
   server = await preview({
     root: project,
@@ -195,6 +203,9 @@ await acquisition.mount();\n`,
   if (/swiftshader|llvmpipe|software/i.test(report.browser.graphics.renderer))
     throw new Error('Physical acquisition requires a hardware GPU');
   const checkpoint = async (phase) => {
+    const diskFreeBytes = await freeBytes();
+    if (diskFreeBytes < 128 * 1024 * 1024)
+      throw new Error('Storage headroom below 128 MiB; acquisition stopped before persistence failure');
     const sample = await page.evaluate(() => window.__ludicQualification.drain());
     await cdp.send('HeapProfiler.collectGarbage');
     const heap = await cdp.send('Runtime.getHeapUsage');
@@ -220,6 +231,7 @@ await acquisition.mount();\n`,
       processes,
       mirrors: await page.locator('[data-ludic-canvas="accessibility"]').count(),
       ...sample,
+      diskFreeBytes,
       viewport: page.viewportSize(),
     });
     await save();
@@ -300,9 +312,15 @@ await acquisition.mount();\n`,
   process.exitCode = 1;
 } finally {
   report.finishedAt = new Date().toISOString();
-  await save();
-  if (browser) await browser.close();
-  if (server) await new Promise((done) => server.httpServer.close(done));
-  if (staging) await rm(staging, { recursive: true, force: true });
+  try {
+    await save();
+  } catch (error) {
+    console.error(`Report persistence failed; the last completed checkpoint is retained: ${error.message}`);
+    process.exitCode = 1;
+  } finally {
+    if (browser) await browser.close();
+    if (server) await new Promise((done) => server.httpServer.close(done));
+    if (staging) await rm(staging, { recursive: true, force: true });
+  }
   console.log(`Qualification record: ${output}`);
 }
