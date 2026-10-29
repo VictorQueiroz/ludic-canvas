@@ -5,14 +5,19 @@ technology qualification campaign has not been completed. Do not interpret
 automated browser results or the component catalogue's draw counters as device
 certification or GPU timing measurements.
 
+The current integration milestone is desktop-only. Physical phones are deferred,
+and the operator has explicitly left VoiceOver qualification pending. These
+scope decisions do not change the unqualified status of those targets.
+
 Start reproducible acquisition at [/performance/](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
 using [PERFORMANCE.md](PERFORMANCE.md). Retain its downloaded JSON alongside this
 protocol's game, long-session and assistive-technology evidence. The lab does not
 acquire heap/GPU memory or complete any absent physical-phone qualification.
 
 [QUALIFICATION_RESULTS.md](QUALIFICATION_RESULTS.md) records the acquired desktop
-microbenchmark and the physical-phone, long-session and screen-reader work still
-outstanding. A partial result must not be promoted to a full device pass.
+benchmarks and active game session, plus remaining physical-phone, background,
+memory-attribution and screen-reader work. A partial result must not be promoted
+to a full device pass.
 
 ## Targets
 
@@ -46,6 +51,51 @@ from emulation or infer results from another browser using the same engine.
    unavailable probes rather than treating them as successful.
 
 ## Measurements
+
+### Desktop acquisition
+
+The reproducible desktop runner uses an isolated installed-Chrome profile and a
+fresh independent Kestrel Survey consumer of its pinned npm release:
+
+```sh
+npm run qualify:desktop -- --output build/qualification/desktop.json.gz
+```
+
+It verifies the registry artifact's integrity/release source, builds the consumer,
+completes the three-site game through its controls, then acquires a 30-minute
+session. Each minute exercises pause/resume and navigation. Every five minutes
+it attempts a tab foreground switch, resizes the desktop viewport, destroys the
+scene, checks mirror cleanup and mounts a fresh scene. The game keeps its normal
+world renderer and motion settings.
+
+[Playwright pages behave as focused pages](https://github.com/microsoft/playwright/blob/main/docs/src/pages.md#multiple-pages).
+Calling `bringToFront()` alone does not establish page hiding. The runner retains
+visibility events and only labels background/resume observed when both hidden
+and visible states occur; absent events leave that qualification pending. Even
+observed tab hiding is separate from OS suspend/resume.
+
+The copied application is instrumented with a bounded frame buffer around
+`ui.frame()` and an explicit mount/destroy bridge. The report records original and
+instrumented source hashes, the acquisition script hash, source revision, package
+integrity, hardware renderer, browser, viewport and settings. Unhandled errors
+stop the acquisition. Short runs (`--seconds 30 --interval 5 --cycle 10`) only
+validate the harness; they are recorded as `smoke-only`.
+
+Checkpoints drain the frame buffer, force JavaScript GC, then acquire CDP heap and
+DOM/listener counters plus OS-reported process RSS. Raw samples and any dropped
+frame count are retained in gzip JSON with a SHA-256 checksum and screenshot.
+GC and diagnostic acquisition affect timing. RSS contains shared mappings;
+neither it nor the image-cache counter measures GPU allocations. A plateau in
+these observations is not proof of leak freedom. No timing budget is assumed.
+Physical-phone and screen-reader coverage remains separate.
+
+Acquisition requires 512 MiB free before preparation, 256 MiB after the consumer
+build, and 128 MiB at each checkpoint. Reports are staged before replacement so
+a failed write preserves the last completed bytes. Resource cleanup also runs
+after persistence errors. An interrupted report stays incomplete; use a new
+output path for a fresh attempt and retain the interruption reason separately.
+
+### Interpretation
 
 Capture cold/warm startup, frame interval distributions, CPU time in layout/UI
 submission, draw calls, uploaded texture bytes and browser-reported memory where

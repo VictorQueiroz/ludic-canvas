@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>First interface · Ludic Canvas</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0c1728;
+        color: #f1f5ff;
+        font-family: system-ui, sans-serif;
+      }
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100svh;
+        min-height: 320px;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      #status {
+        position: absolute;
+        inset: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="ui" aria-label="Ludic Canvas interactive counter"></canvas>
+      <p id="status" role="status">Loading interface...</p>
+    </main>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

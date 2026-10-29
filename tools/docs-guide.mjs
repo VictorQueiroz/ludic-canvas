@@ -17,6 +17,7 @@ npm run dev`,
 
 export function gettingStarted(code, version) {
   return `<p>Start with Node 24+, npm, and a browser with WebGL and WebAssembly enabled. The package includes its layout module and a default font; your first interface needs no font generation or native toolchain.</p>
+<p><a class="button secondary" href="https://stackblitz.com/fork/github/VictorQueiroz/ludic-canvas/tree/main/examples/first-interface?file=src/main.tsx" target="_blank" rel="noopener">Open the minimal counter in StackBlitz ↗</a> Edit one component and try pointer or keyboard input. The standalone project pins a WebContainer-compatible Vite version and preserves the package's WASM/font URLs.</p>
 <h3>1. Create a project</h3><p>Use Vite's React + TypeScript template, then install Ludic Canvas and its supported React version. Keep React DOM on the same version as React in the template.</p>${code(
     `npm create vite@latest my-game-ui -- --template react-ts
 cd my-game-ui

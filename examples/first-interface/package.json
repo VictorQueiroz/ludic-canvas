@@ -1,0 +1,23 @@
+{
+  "name": "ludic-canvas-first-interface",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "ludic-canvas": "0.6.0",
+    "react": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "7.0.2",
+    "vite": "7.3.5"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -74,6 +74,13 @@ The packed-consumer test deliberately substitutes the local tarball. Use
 `npm run verify:release` to test the committed consumer against an actual npm
 publication; the two checks establish different facts.
 
+`npm run test:consumer` additionally runs independently installed projects through
+development startup, asset fetches, interaction, build and preview. Use
+`LUDIC_CONSUMER_PACKAGE=registry` for the exact release pinned by the minimal
+example. See [the configuration matrix](docs/INTEGRATION.md). Actual desktop
+memory acquisition uses `npm run qualify:desktop` and the
+[device protocol](docs/DEVICE_QUALIFICATION.md).
+
 For a focused browser test, install the required engine and select its project:
 
 ```sh
