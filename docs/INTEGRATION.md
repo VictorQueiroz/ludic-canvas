@@ -25,7 +25,7 @@ WebContainers during qualification. The same failure is tracked
 development-server failure before Ludic Canvas starts; rebuilding Yoga or fonts
 does not repair it.
 
-For Vite 7, use the example's [configuration](../examples/first-interface/vite.config.ts).
+For Vite 7, use the example's [configuration](../examples/first-interface/vite.config.mjs).
 It excludes the ESM library from dependency prebundling so the layout and default
 font URLs remain relative to the installed files. React, both JSX runtimes and
 the reconciler's CommonJS entry points remain prebundled. This prevents an HTML
