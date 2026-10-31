@@ -1,13 +1,23 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
-import { deepStrictEqual } from 'node:assert';
+import { deepStrictEqual, strictEqual, match } from 'node:assert';
 import { build } from 'vite';
 
 const root = fileURLToPath(new URL('../..', import.meta.url)),
   output = join(root, 'build/native/contracts');
 execFileSync(join(root, 'build/native/app/ludic-renderer-test'), [], { stdio: 'inherit' });
+const failedStartup = spawnSync(
+  join(root, 'build/native/app/ludic-contract'),
+  [join(root, 'tests/native/runtime-error.js')],
+  { encoding: 'utf8', timeout: 20000 },
+);
+if (failedStartup.error) throw failedStartup.error;
+strictEqual(failedStartup.signal, null, 'JS startup errors must not crash during runtime destruction');
+strictEqual(failedStartup.status, 1);
+match(failedStartup.stderr, /expected native startup failure/);
+console.log('Hermes startup error: reported without a runtime-lifetime crash.');
 for (const target of ['hermes', 'wasm'])
   await build({
     configFile: false,

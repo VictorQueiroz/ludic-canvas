@@ -140,24 +140,28 @@ export function createPortableUI(options: PortableUIOptions): UIRoot {
     },
     stop() {
       running = false;
-      if (scheduled !== undefined) host.scheduler.cancelFrame(scheduled);
+      const pending = scheduled;
       scheduled = undefined;
       last = undefined;
+      if (pending !== undefined) host.scheduler.cancelFrame(pending);
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      root.stop();
       try {
-        runtime.destroy();
+        root.stop();
       } finally {
         try {
-          renderer.dispose();
+          runtime.destroy();
         } finally {
           try {
-            images.dispose();
+            renderer.dispose();
           } finally {
-            host.destroy();
+            try {
+              images.dispose();
+            } finally {
+              host.destroy();
+            }
           }
         }
       }
@@ -189,6 +193,13 @@ export function createPortableUI(options: PortableUIOptions): UIRoot {
     isPointerOverUI: (point) => !destroyed && runtime.input.isPointerOverUI(point),
     inspect: () => runtime.dump(),
   };
-  if (options.autoStart) root.start();
+  if (options.autoStart) {
+    try {
+      root.start();
+    } catch (error) {
+      root.destroy();
+      throw error;
+    }
+  }
   return root;
 }

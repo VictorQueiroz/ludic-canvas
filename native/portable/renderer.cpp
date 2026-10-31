@@ -34,7 +34,7 @@ void SkiaRenderer::draw(SkCanvas *canvas, const std::vector<float> &commands,
   constexpr size_t stride = 24;
   if (commands.size() % stride)
     throw std::runtime_error("Invalid draw command buffer");
-  const auto base = canvas->save();
+  SkAutoCanvasRestore restore(canvas, true);
   canvas->save();
   for (size_t i = 0; i < commands.size(); i += stride) {
     const auto *p = &commands[i + 1];
@@ -144,6 +144,5 @@ void SkiaRenderer::draw(SkCanvas *canvas, const std::vector<float> &commands,
       throw std::runtime_error("Unsupported drawing command");
     }
   }
-  canvas->restoreToCount(base);
 }
 } // namespace lc

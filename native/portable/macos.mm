@@ -194,8 +194,11 @@ static NSString *role(NSString *value) {
 - (BOOL)emit:(NSDictionary *)event {
   if (!listener || !engine)
     return NO;
+  // The callback may destroy this surface before throwing. The application owns
+  // the engine for the whole event dispatch, even after dispose clears our link.
+  Engine *eventEngine = engine;
   try {
-    auto &rt = engine->runtime();
+    auto &rt = eventEngine->runtime();
     NSData *data = [NSJSONSerialization dataWithJSONObject:event options:0 error:nil];
     auto json = rt.global().getPropertyAsObject(rt, "JSON").getPropertyAsFunction(rt, "parse");
     auto value =
@@ -205,7 +208,7 @@ static NSString *role(NSString *value) {
     rt.drainMicrotasks();
     return result.isBool() && result.getBool();
   } catch (const std::exception &error) {
-    engine->errors.emplace_back(error.what());
+    eventEngine->errors.emplace_back(error.what());
     std::cerr << error.what() << '\n';
     return NO;
   }
@@ -655,214 +658,242 @@ int main(int argc, const char **argv) {
       NSApp.delegate = delegate;
       NSMutableDictionary<NSNumber *, LCView *> *surfaces = [NSMutableDictionary dictionary];
       NSMutableArray<NSWindow *> *windows = [NSMutableArray array];
-      const auto bundle =
-          argc > 1 ? std::filesystem::path(argv[1])
-                   : std::filesystem::path(NSBundle.mainBundle.resourcePath.UTF8String) / "app.hbc";
-      const auto assets = bundle.parent_path();
-      auto &rt = engine.runtime();
-      rt.global().getPropertyAsObject(rt, "__ludicNative").setProperty(rt, "version", 1);
-      uint32_t nextSurface = 0;
-      auto view = [&](const jsi::Value &id) -> LCView * {
-        auto v = surfaces[@(id.asNumber())];
-        if (!v)
-          throw std::runtime_error("Surface destroyed or unknown");
-        return v;
-      };
-      engine.bind("readAsset", 1, [&](auto &rt, const auto &, const auto *args, size_t) {
-        const auto bytes = readFile(assetPath(assets, args[0].asString(rt).utf8(rt)));
-        if (bytes.size() > 32 * 1024 * 1024)
-          throw std::runtime_error("Asset exceeds 32 MiB input limit");
-        return jsi::Value(jsi::String::createFromUtf8(rt, bytes));
-      });
-      engine.bind("createSurface", 3, [&](auto &rt, const auto &, const auto *args, size_t) {
-        double w = args[1].asNumber(), h = args[2].asNumber();
-        if (!std::isfinite(w) || !std::isfinite(h) || w <= 0 || h <= 0 || w > 8192 || h > 8192)
-          throw std::runtime_error("Invalid window dimensions");
-        NSWindow *window =
-            [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, w, h)
-                                        styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
-                                                  NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
-                                          backing:NSBackingStoreBuffered
-                                            defer:NO];
-        window.title = ns(args[0].asString(rt).utf8(rt));
-        window.delegate = delegate;
-        window.releasedWhenClosed = NO;
-        LCView *surface = [[LCView alloc] initWithFrame:NSMakeRect(0, 0, w, h)];
-        surface->engine = &engine;
-        surface.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-        window.contentView = surface;
-        window.acceptsMouseMovedEvents = YES;
-        const auto id = ++nextSurface;
-        surfaces[@(id)] = surface;
-        [windows addObject:window];
-        [window center];
-        [window makeKeyAndOrderFront:nil];
-        return jsi::Value(double(id));
-      });
-      engine.bind("size", 1, [&](auto &rt, const auto &, const auto *args, size_t) {
-        auto v = view(args[0]);
-        jsi::Object size(rt);
-        size.setProperty(rt, "width", v.bounds.size.width);
-        size.setProperty(rt, "height", v.bounds.size.height);
-        size.setProperty(rt, "scale", v.window.backingScaleFactor ?: 1);
-        return jsi::Value(std::move(size));
-      });
-      engine.bind("listen", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
-        auto v = view(args[0]);
-        if (args[1].isNull())
-          v->listener.reset();
-        else
-          v->listener = std::make_shared<jsi::Function>(args[1].asObject(rt).asFunction(rt));
-        return jsi::Value::undefined();
-      });
-      engine.bind("semantics", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
-        auto json = args[1].asString(rt).utf8(rt);
-        NSData *data = [NSData dataWithBytes:json.data() length:json.size()];
-        NSArray *nodes = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-        if (![nodes isKindOfClass:NSArray.class])
-          throw std::runtime_error("Invalid semantic tree");
-        [view(args[0]) sync:nodes];
-        return jsi::Value::undefined();
-      });
-      engine.bind("focus", 2, [&](auto &, const auto &, const auto *args, size_t) {
-        return jsi::Value(bool([view(args[0]) focusKey:args[1].asNumber()]));
-      });
-      engine.bind("selectEditor", 2, [&](auto &, const auto &, const auto *args, size_t) {
-        auto v = view(args[0]);
-        auto key = args[1].asNumber();
-        [v focusKey:key];
-        NSView *editor = v.editors[@(key)];
-        if ([editor isKindOfClass:NSTextField.class])
-          [(NSTextField *)editor selectText:nil];
-        else if ([editor isKindOfClass:NSScrollView.class])
-          [((NSScrollView *)editor).documentView selectAll:nil];
-        return jsi::Value(editor != nil);
-      });
-      engine.bind("cursor", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
-        view(args[0]);
-        const auto name = args[1].asString(rt).utf8(rt);
-        [(name == "pointer" ? NSCursor.pointingHandCursor
-          : name == "text"  ? NSCursor.IBeamCursor
-                            : NSCursor.arrowCursor) set];
-        return jsi::Value::undefined();
-      });
-      engine.bind("announce", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
-        NSAccessibilityPostNotificationWithUserInfo(
-            view(args[0]), NSAccessibilityAnnouncementRequestedNotification, @{
-              NSAccessibilityAnnouncementKey : ns(args[1].asString(rt).utf8(rt)),
-              NSAccessibilityPriorityKey : @(NSAccessibilityPriorityMedium)
-            });
-        return jsi::Value::undefined();
-      });
-      engine.bind("loadImage", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
-        auto v = view(args[0]);
-        auto image = loadImage(assetPath(assets, args[1].asString(rt).utf8(rt)));
-        if (!image)
-          throw std::runtime_error("Cannot create image");
-        const auto id = ++v->nextImage;
-        v->images[id] = image;
-        jsi::Object result(rt);
-        result.setProperty(rt, "handle", double(id));
-        result.setProperty(rt, "width", image->width());
-        result.setProperty(rt, "height", image->height());
-        result.setProperty(rt, "bytes", double(image->width()) * image->height() * 4);
-        return jsi::Value(std::move(result));
-      });
-      engine.bind("releaseImage", 2, [&](auto &, const auto &, const auto *args, size_t) {
-        view(args[0])->images.erase(args[1].asNumber());
-        return jsi::Value::undefined();
-      });
-      engine.bind("submit", 6, [&](auto &rt, const auto &, const auto *args, size_t) {
-        auto v = view(args[0]);
-        auto array = args[1].asObject(rt);
-        auto buffer = array.getPropertyAsObject(rt, "buffer").getArrayBuffer(rt);
-        const size_t offset = array.getProperty(rt, "byteOffset").asNumber(),
-                     bytes = array.getProperty(rt, "byteLength").asNumber();
-        if (offset > buffer.size(rt) || bytes > buffer.size(rt) - offset || bytes % (24 * sizeof(float)) ||
-            bytes > 64 * 1024 * 1024)
-          throw std::runtime_error("Invalid draw buffer");
-        v->commands.resize(bytes / sizeof(float));
-        std::memcpy(v->commands.data(), buffer.data(rt) + offset, bytes);
-        auto resources = args[2].asObject(rt).asArray(rt);
-        v->resources.clear();
-        for (size_t i = 0; i < resources.size(rt); ++i)
-          v->resources.push_back(resources.getValueAtIndex(rt, i).asNumber());
-        v->logicalWidth = args[3].asNumber();
-        v->logicalHeight = args[4].asNumber();
-        v->frameTime = args[5].asNumber();
-        [v present];
-        return jsi::Value::undefined();
-      });
-      engine.bind("destroySurface", 1, [&](auto &, const auto &, const auto *args, size_t) {
-        auto v = view(args[0]);
-        NSWindow *window = v.window;
-        [v dispose];
-        [window close];
-        window.contentView = nil;
-        [windows removeObject:window];
-        [surfaces removeObjectForKey:@(args[0].asNumber())];
-        return jsi::Value::undefined();
-      });
-      // Native test hooks are only installed for explicit qualification runs.
       const bool test = argc > 2 && std::string(argv[2]) == "--test";
-      if (test)
-        engine.bind("inspectNative", 0, [&](auto &rt, const auto &, const auto *, size_t) {
-          jsi::Object info(rt);
-          info.setProperty(rt, "layouts", double(engine.layoutCount()));
-          info.setProperty(rt, "nodes", double(engine.nodeCount()));
-          info.setProperty(rt, "surfaces", double(surfaces.count));
-          return jsi::Value(std::move(info));
+      auto finish = [&] {
+        // JSI exceptions and callbacks must die while their runtime is alive.
+        try {
+          engine.shutdown();
+        } catch (const std::exception &error) {
+          engine.errors.emplace_back(error.what());
+          std::cerr << error.what() << '\n';
+        }
+        for (LCView *surface in surfaces.allValues)
+          [surface dispose];
+        for (NSWindow *window in windows) {
+          window.delegate = nil;
+          window.contentView = nil;
+          [window close];
+        }
+        [surfaces removeAllObjects];
+        [windows removeAllObjects];
+        NSApp.delegate = nil;
+        if (test)
+          std::cout << "Native host cleanup: layouts=" << engine.layoutCount()
+                    << " nodes=" << engine.nodeCount() << " surfaces=" << surfaces.count << std::endl;
+      };
+      try {
+        const auto bundle =
+            argc > 1 ? std::filesystem::path(argv[1])
+                     : std::filesystem::path(NSBundle.mainBundle.resourcePath.UTF8String) / "app.hbc";
+        const auto assets = bundle.parent_path();
+        auto &rt = engine.runtime();
+        rt.global().getPropertyAsObject(rt, "__ludicNative").setProperty(rt, "version", 1);
+        uint32_t nextSurface = 0;
+        auto view = [&](const jsi::Value &id) -> LCView * {
+          auto v = surfaces[@(id.asNumber())];
+          if (!v)
+            throw std::runtime_error("Surface destroyed or unknown");
+          return v;
+        };
+        engine.bind("readAsset", 1, [&](auto &rt, const auto &, const auto *args, size_t) {
+          const auto bytes = readFile(assetPath(assets, args[0].asString(rt).utf8(rt)));
+          if (bytes.size() > 32 * 1024 * 1024)
+            throw std::runtime_error("Asset exceeds 32 MiB input limit");
+          return jsi::Value(jsi::String::createFromUtf8(rt, bytes));
         });
-      engine.load(bundle);
-      NSMenu *menu = [[NSMenu alloc] init];
-      NSMenuItem *item = [[NSMenuItem alloc] init];
-      [menu addItem:item];
-      NSMenu *appMenu = [[NSMenu alloc] init];
-      [appMenu addItemWithTitle:@"Quit Ludic Native" action:@selector(terminate:) keyEquivalent:@"q"];
-      item.submenu = appMenu;
-      NSApp.mainMenu = menu;
-      NSMenuItem *editItem = [[NSMenuItem alloc] init];
-      [menu addItem:editItem];
-      NSMenu *edit = [[NSMenu alloc] initWithTitle:@"Edit"];
-      editItem.submenu = edit;
-      [edit addItemWithTitle:@"Undo" action:@selector(undo:) keyEquivalent:@"z"];
-      NSMenuItem *redo = [edit addItemWithTitle:@"Redo" action:@selector(redo:) keyEquivalent:@"z"];
-      redo.keyEquivalentModifierMask = NSEventModifierFlagCommand | NSEventModifierFlagShift;
-      [edit addItem:NSMenuItem.separatorItem];
-      [edit addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
-      [edit addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
-      [edit addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
-      [edit addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
-      __block bool stopped = false;
-      Engine *pumpingEngine = &engine;
-      NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:1.0 / 120
-                                                       repeats:YES
-                                                         block:^(NSTimer *) {
-                                                           if (stopped)
-                                                             return;
-                                                           try {
-                                                             pumpingEngine->pump();
-                                                           } catch (const std::exception &error) {
-                                                             pumpingEngine->errors.emplace_back(error.what());
-                                                             std::cerr << error.what() << '\n';
-                                                             stopped = true;
-                                                             [NSApp stop:nil];
-                                                           }
-                                                         }];
-      [NSApp activateIgnoringOtherApps:YES];
-      [NSApp run];
-      stopped = true;
-      [timer invalidate];
-      if (test) {
-        std::cout << "Native app teardown: layouts=" << engine.layoutCount()
-                  << " nodes=" << engine.nodeCount() << " surfaces=" << surfaces.count << std::endl;
-        if (engine.layoutCount() || engine.nodeCount() || surfaces.count)
-          engine.errors.emplace_back("Native root was not released before runtime shutdown");
+        engine.bind("createSurface", 3, [&](auto &rt, const auto &, const auto *args, size_t) {
+          double w = args[1].asNumber(), h = args[2].asNumber();
+          if (!std::isfinite(w) || !std::isfinite(h) || w <= 0 || h <= 0 || w > 8192 || h > 8192)
+            throw std::runtime_error("Invalid window dimensions");
+          NSWindow *window = [[NSWindow alloc]
+              initWithContentRect:NSMakeRect(0, 0, w, h)
+                        styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
+                                  NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
+                          backing:NSBackingStoreBuffered
+                            defer:NO];
+          window.title = ns(args[0].asString(rt).utf8(rt));
+          window.delegate = delegate;
+          window.releasedWhenClosed = NO;
+          LCView *surface = [[LCView alloc] initWithFrame:NSMakeRect(0, 0, w, h)];
+          surface->engine = &engine;
+          surface.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+          window.contentView = surface;
+          window.acceptsMouseMovedEvents = YES;
+          const auto id = ++nextSurface;
+          surfaces[@(id)] = surface;
+          [windows addObject:window];
+          [window center];
+          [window makeKeyAndOrderFront:nil];
+          return jsi::Value(double(id));
+        });
+        engine.bind("size", 1, [&](auto &rt, const auto &, const auto *args, size_t) {
+          auto v = view(args[0]);
+          jsi::Object size(rt);
+          size.setProperty(rt, "width", v.bounds.size.width);
+          size.setProperty(rt, "height", v.bounds.size.height);
+          size.setProperty(rt, "scale", v.window.backingScaleFactor ?: 1);
+          return jsi::Value(std::move(size));
+        });
+        engine.bind("listen", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
+          auto v = view(args[0]);
+          if (args[1].isNull())
+            v->listener.reset();
+          else
+            v->listener = std::make_shared<jsi::Function>(args[1].asObject(rt).asFunction(rt));
+          return jsi::Value::undefined();
+        });
+        engine.bind("semantics", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
+          auto json = args[1].asString(rt).utf8(rt);
+          NSData *data = [NSData dataWithBytes:json.data() length:json.size()];
+          NSArray *nodes = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+          if (![nodes isKindOfClass:NSArray.class])
+            throw std::runtime_error("Invalid semantic tree");
+          [view(args[0]) sync:nodes];
+          return jsi::Value::undefined();
+        });
+        engine.bind("focus", 2, [&](auto &, const auto &, const auto *args, size_t) {
+          return jsi::Value(bool([view(args[0]) focusKey:args[1].asNumber()]));
+        });
+        engine.bind("selectEditor", 2, [&](auto &, const auto &, const auto *args, size_t) {
+          auto v = view(args[0]);
+          auto key = args[1].asNumber();
+          [v focusKey:key];
+          NSView *editor = v.editors[@(key)];
+          if ([editor isKindOfClass:NSTextField.class])
+            [(NSTextField *)editor selectText:nil];
+          else if ([editor isKindOfClass:NSScrollView.class])
+            [((NSScrollView *)editor).documentView selectAll:nil];
+          return jsi::Value(editor != nil);
+        });
+        engine.bind("cursor", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
+          view(args[0]);
+          const auto name = args[1].asString(rt).utf8(rt);
+          [(name == "pointer" ? NSCursor.pointingHandCursor
+            : name == "text"  ? NSCursor.IBeamCursor
+                              : NSCursor.arrowCursor) set];
+          return jsi::Value::undefined();
+        });
+        engine.bind("announce", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
+          NSAccessibilityPostNotificationWithUserInfo(
+              view(args[0]), NSAccessibilityAnnouncementRequestedNotification, @{
+                NSAccessibilityAnnouncementKey : ns(args[1].asString(rt).utf8(rt)),
+                NSAccessibilityPriorityKey : @(NSAccessibilityPriorityMedium)
+              });
+          return jsi::Value::undefined();
+        });
+        engine.bind("loadImage", 2, [&](auto &rt, const auto &, const auto *args, size_t) {
+          auto v = view(args[0]);
+          auto image = loadImage(assetPath(assets, args[1].asString(rt).utf8(rt)));
+          if (!image)
+            throw std::runtime_error("Cannot create image");
+          const auto id = ++v->nextImage;
+          v->images[id] = image;
+          jsi::Object result(rt);
+          result.setProperty(rt, "handle", double(id));
+          result.setProperty(rt, "width", image->width());
+          result.setProperty(rt, "height", image->height());
+          result.setProperty(rt, "bytes", double(image->width()) * image->height() * 4);
+          return jsi::Value(std::move(result));
+        });
+        engine.bind("releaseImage", 2, [&](auto &, const auto &, const auto *args, size_t) {
+          view(args[0])->images.erase(args[1].asNumber());
+          return jsi::Value::undefined();
+        });
+        engine.bind("submit", 6, [&](auto &rt, const auto &, const auto *args, size_t) {
+          auto v = view(args[0]);
+          auto array = args[1].asObject(rt);
+          auto buffer = array.getPropertyAsObject(rt, "buffer").getArrayBuffer(rt);
+          const size_t offset = array.getProperty(rt, "byteOffset").asNumber(),
+                       bytes = array.getProperty(rt, "byteLength").asNumber();
+          if (offset > buffer.size(rt) || bytes > buffer.size(rt) - offset || bytes % (24 * sizeof(float)) ||
+              bytes > 64 * 1024 * 1024)
+            throw std::runtime_error("Invalid draw buffer");
+          v->commands.resize(bytes / sizeof(float));
+          std::memcpy(v->commands.data(), buffer.data(rt) + offset, bytes);
+          auto resources = args[2].asObject(rt).asArray(rt);
+          v->resources.clear();
+          for (size_t i = 0; i < resources.size(rt); ++i)
+            v->resources.push_back(resources.getValueAtIndex(rt, i).asNumber());
+          v->logicalWidth = args[3].asNumber();
+          v->logicalHeight = args[4].asNumber();
+          v->frameTime = args[5].asNumber();
+          [v present];
+          return jsi::Value::undefined();
+        });
+        engine.bind("destroySurface", 1, [&](auto &, const auto &, const auto *args, size_t) {
+          auto v = view(args[0]);
+          NSWindow *window = v.window;
+          [v dispose];
+          [window close];
+          window.contentView = nil;
+          [windows removeObject:window];
+          [surfaces removeObjectForKey:@(args[0].asNumber())];
+          return jsi::Value::undefined();
+        });
+        // Native test hooks are only installed for explicit qualification runs.
+        if (test)
+          engine.bind("inspectNative", 0, [&](auto &rt, const auto &, const auto *, size_t) {
+            jsi::Object info(rt);
+            info.setProperty(rt, "layouts", double(engine.layoutCount()));
+            info.setProperty(rt, "nodes", double(engine.nodeCount()));
+            info.setProperty(rt, "surfaces", double(surfaces.count));
+            return jsi::Value(std::move(info));
+          });
+        engine.load(bundle);
+        NSMenu *menu = [[NSMenu alloc] init];
+        NSMenuItem *item = [[NSMenuItem alloc] init];
+        [menu addItem:item];
+        NSMenu *appMenu = [[NSMenu alloc] init];
+        [appMenu addItemWithTitle:@"Quit Ludic Native" action:@selector(terminate:) keyEquivalent:@"q"];
+        item.submenu = appMenu;
+        NSApp.mainMenu = menu;
+        NSMenuItem *editItem = [[NSMenuItem alloc] init];
+        [menu addItem:editItem];
+        NSMenu *edit = [[NSMenu alloc] initWithTitle:@"Edit"];
+        editItem.submenu = edit;
+        [edit addItemWithTitle:@"Undo" action:@selector(undo:) keyEquivalent:@"z"];
+        NSMenuItem *redo = [edit addItemWithTitle:@"Redo" action:@selector(redo:) keyEquivalent:@"z"];
+        redo.keyEquivalentModifierMask = NSEventModifierFlagCommand | NSEventModifierFlagShift;
+        [edit addItem:NSMenuItem.separatorItem];
+        [edit addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+        [edit addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+        [edit addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+        [edit addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+        __block bool stopped = false;
+        Engine *pumpingEngine = &engine;
+        NSTimer *timer =
+            [NSTimer scheduledTimerWithTimeInterval:1.0 / 120
+                                            repeats:YES
+                                              block:^(NSTimer *) {
+                                                if (stopped)
+                                                  return;
+                                                try {
+                                                  pumpingEngine->pump();
+                                                } catch (const std::exception &error) {
+                                                  pumpingEngine->errors.emplace_back(error.what());
+                                                  std::cerr << error.what() << '\n';
+                                                  stopped = true;
+                                                  [NSApp stop:nil];
+                                                }
+                                              }];
+        [NSApp activateIgnoringOtherApps:YES];
+        [NSApp run];
+        stopped = true;
+        [timer invalidate];
+        if (test) {
+          std::cout << "Native app teardown: layouts=" << engine.layoutCount()
+                    << " nodes=" << engine.nodeCount() << " surfaces=" << surfaces.count << std::endl;
+          if (engine.layoutCount() || engine.nodeCount() || surfaces.count)
+            engine.errors.emplace_back("Native root was not released before runtime shutdown");
+        }
+        finish();
+        return engine.errors.empty() ? 0 : 1;
+      } catch (const std::exception &error) {
+        // Catch before Engine unwinds: JSError retains a runtime-owned JS value.
+        std::cerr << error.what() << '\n';
+        finish();
+        return 1;
       }
-      engine.shutdown();
-      for (LCView *v in surfaces.allValues)
-        [v dispose];
-      return engine.errors.empty() ? 0 : 1;
     } catch (const std::exception &error) {
       std::cerr << error.what() << '\n';
       return 1;

@@ -240,13 +240,12 @@ size_t Engine::nodeCount() const {
   return n;
 }
 void Engine::shutdown() {
+  checkThread();
   if (stopped_)
     return;
   stopped_ = true;
-  auto &rt = runtime();
-  auto stop = rt.global().getProperty(rt, "__ludicShutdown");
-  if (stop.isObject() && stop.asObject(rt).isFunction(rt))
-    stop.asObject(rt).asFunction(rt).call(rt);
+  // Hosts close their roots before this point. Do not run application callbacks
+  // during teardown, when their native captures may already have unwound.
   timers_.clear();
   layouts_.clear();
 }

@@ -6,6 +6,67 @@ on:
 permissions:
   contents: read
 jobs:
+  native-macos:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      LUDIC_NATIVE_JOBS: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Record native toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          mkdir -p build/native/ci
+          {
+            sw_vers
+            uname -m
+            xcode-select -p
+            xcodebuild -version
+            xcrun --sdk macosx --show-sdk-version
+            xcrun --sdk macosx --show-sdk-build-version
+            xcrun clang --version
+            cmake --version
+            ninja --version
+            python3 --version
+            node --version
+            # CMake's cached paths must match the restoring workspace.
+            pwd -P
+          } | tee build/native/ci/toolchain.txt
+          digest=$(shasum -a 256 build/native/ci/toolchain.txt | cut -d ' ' -f 1)
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+      - name: Cache pinned native dependencies
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: .toolchain/native
+          key: native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('tools/native/dependencies.json', 'tools/native/build.mjs') }}
+      # A cache hit never skips configuration, application compilation or tests.
+      - name: Build Hermes, Yoga, Skia and the macOS host
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run native:build 2>&1 | tee build/native/ci/build.log
+      - name: Check native rendering and Hermes/WASM behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run native:test 2>&1 | tee build/native/ci/test.log
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: native-macos-report
+          path: |
+            build/native/ci/
+            build/native/contracts/result.json
+            build/native/app/ludic-native.app/Contents/Resources/native-build.json
+          retention-days: 14
   verify:
     strategy:
       fail-fast: false

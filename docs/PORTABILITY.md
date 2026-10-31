@@ -51,6 +51,19 @@ npm run native:test
 open build/native/app/ludic-native.app
 ```
 
+The `native-macos` check builds the host and runs `native:test` on the standard
+macOS 26 ARM64 runner. Its dependency cache key includes source pins, build flags,
+architecture, workspace path and the recorded Xcode/SDK/compiler/tool versions.
+Builds and tests still run on cache hits. Toolchain details, logs and contract
+results are uploaded as `native-macos-report`; the job does not exercise AppKit
+interaction or establish device/performance support.
+
+From a logged-in macOS GUI session, `npm run native:test:host` additionally checks
+AppKit startup-error cleanup and an event callback that destroys its own surface
+before throwing. It checks error reporting, exit status and native ownership
+counters. Interactive editing, accessibility and Metal rendering still require
+the separate host smoke checks below.
+
 `examples/portable/App.tsx` is used unchanged by both hosts. The browser entry
 is available at `/examples/portable/` with `npm run test:browser:serve`.
 The native entry is intentionally small:
@@ -104,6 +117,11 @@ frames currently use host timers, rather than display synchronization.
 Closing a window destroys its root; quitting the app closes every owned root
 before shutting down the VM. The proof supplies timers, microtasks, a clock and
 console output, but no DOM, Node, network-fetch or Intl APIs.
+
+Failed automatic-frame startup and cancellation still release owned services.
+Native hosts catch JavaScript exceptions while Hermes is alive, and runtime
+shutdown does not invoke application callbacks. A rejected drawing command
+restores the caller's canvas state before propagating its error.
 
 `CommandRenderer` emits fixed-width float records plus a separate resource table
 in one submission per frame. Protocol version and stride are exported. The buffer

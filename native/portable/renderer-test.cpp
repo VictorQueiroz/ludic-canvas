@@ -75,7 +75,23 @@ int main() {
     renderer.draw(surface->getCanvas(), clipped, {}, images, 0);
     check(SkColorGetR(pixel(8, 8)) > 200);
     check(SkColorGetA(pixel(2, 2)) == 0);
+    // A rejected frame must not leave its clip/save stack on the caller's canvas.
+    const auto saves = surface->getCanvas()->getSaveCount();
+    auto rejected = clipped;
+    rejected[24] = 3; // Image command, but no resource table entry.
+    bool threw = false;
+    try {
+      renderer.draw(surface->getCanvas(), rejected, {}, images, 0);
+    } catch (const std::runtime_error &) {
+      threw = true;
+    }
+    if (!threw || surface->getCanvas()->getSaveCount() != saves)
+      throw std::runtime_error("Rejected frame leaked canvas state");
+    std::vector<float> next(clipped.begin() + 24, clipped.end());
+    renderer.draw(surface->getCanvas(), next, {}, images, 0);
+    check(SkColorGetR(pixel(2, 2)) > 200);
     std::cout << "Skia raster: all eight drawing operations passed pixel checks.\n";
+    std::cout << "Skia error recovery: rejected frame restores canvas state.\n";
     return 0;
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';

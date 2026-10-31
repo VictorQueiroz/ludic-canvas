@@ -85,7 +85,8 @@
     "test:consumer": "playwright test --config playwright.consumer.config.ts",
     "qualify:desktop": "node tools/qualification/desktop.mjs",
     "native:build": "node tools/native/build.mjs",
-    "native:test": "node tools/native/test.mjs"
+    "native:test": "node tools/native/test.mjs",
+    "native:test:host": "node tools/native/test-host.mjs"
   },
   "peerDependencies": {
     "react": "19.3.1"

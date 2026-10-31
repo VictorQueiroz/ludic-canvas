@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createElement, createRef, useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   Button,
   Dialog,
@@ -19,7 +19,7 @@ import {
 } from '../src/core.ts';
 import { YogaLayout } from '../src/wasm/layout.ts';
 
-async function fixture() {
+async function services() {
   const layout = await YogaLayout.load(
     new Uint8Array(await readFile(new URL('../assets/layout.wasm', import.meta.url))),
   );
@@ -35,8 +35,11 @@ async function fixture() {
   );
   const host = createHeadlessHost({ width: 400, height: 300 });
   const renderer = new RecordingRenderer();
-  const ui = createPortableUI({ layout, fonts, host, renderer });
-  return { ui, host, renderer };
+  return { layout, fonts, host, renderer };
+}
+async function fixture() {
+  const owned = await services();
+  return { ...owned, ui: createPortableUI(owned) };
 }
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 const key = (value: string): HostKeyEvent & { type: 'keydown' } => ({
@@ -56,6 +59,50 @@ const key = (value: string): HostKeyEvent & { type: 'keydown' } => ({
 });
 
 describe('portable UI contract', () => {
+  it('releases owned services when automatic scheduling fails during creation', async () => {
+    const owned = await services();
+    const dispose = vi.spyOn(owned.layout, 'dispose');
+    owned.host.scheduler.requestFrame = () => {
+      throw new Error('scheduler unavailable');
+    };
+    try {
+      expect(() => createPortableUI({ ...owned, autoStart: true })).toThrow('scheduler unavailable');
+      expect(dispose).toHaveBeenCalledOnce();
+      expect(owned.host.destroyed).toBe(true);
+      expect(owned.renderer.destroyed).toBe(true);
+    } finally {
+      owned.layout.dispose();
+      owned.renderer.dispose();
+      owned.host.destroy();
+    }
+  });
+
+  it('releases the tree and services even when cancelling a frame fails', async () => {
+    const { ui, host, renderer, layout } = await fixture();
+    const dispose = vi.spyOn(layout, 'dispose');
+    const ref = createRef<TextInputHandle>();
+    ui.render(<TextInput ref={ref} label="Editor" value="text" onValueChange={() => {}} />);
+    await settle();
+    ui.frame(0);
+    expect(ref.current).not.toBeNull();
+    ui.start();
+    host.scheduler.cancelFrame = () => {
+      throw new Error('cancel failed');
+    };
+    try {
+      expect(() => ui.destroy()).toThrow('cancel failed');
+      expect(dispose).toHaveBeenCalledOnce();
+      expect(ref.current).toBeNull();
+      expect(host.destroyed).toBe(true);
+      expect(renderer.destroyed).toBe(true);
+      expect(() => ui.destroy()).not.toThrow();
+    } finally {
+      layout.dispose();
+      renderer.dispose();
+      host.destroy();
+    }
+  });
+
   it('renders and activates the same React component without DOM globals', async () => {
     expect(typeof document).toBe('undefined');
     const { ui, host, renderer } = await fixture();

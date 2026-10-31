@@ -42,6 +42,9 @@ project and portable entry points without DOM libs. Native changes also require
 `npm run native:build` and `npm run native:test` on macOS, plus host interaction
 evidence. Preserve the separation between native contract tests and actual
 platform/editor/device qualification.
+The `native-macos` CI job builds and tests on macOS 26 ARM64. Run
+`npm run native:test:host` separately in a logged-in macOS GUI session when
+changing AppKit event delivery or startup/teardown behavior.
 
 ## Documentation changes
 
