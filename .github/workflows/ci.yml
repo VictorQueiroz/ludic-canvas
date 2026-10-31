@@ -1,0 +1,211 @@
+name: CI jobs
+on:
+  workflow_call:
+    inputs:
+      full:
+        type: boolean
+        default: true
+    outputs:
+      passed:
+        description: All applicable checks passed the plan.
+        value: ${{ jobs.browser.outputs.passed }}
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
+      verify: ${{ steps.plan.outputs.verify }}
+      native-macos: ${{ steps.plan.outputs.native-macos }}
+      browser-tests: ${{ steps.plan.outputs.browser-tests }}
+      browser-webkit: ${{ steps.plan.outputs.browser-webkit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - id: plan
+        run: node tools/ci/run.mjs plan
+        env:
+          CI_FULL: ${{ inputs.full }}
+  native-macos:
+    needs: plan
+    if: needs.plan.outputs.native-macos == 'true'
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      LUDIC_NATIVE_JOBS: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Record native toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          mkdir -p build/native/ci
+          {
+            sw_vers
+            uname -m
+            xcode-select -p
+            xcodebuild -version
+            xcrun --sdk macosx --show-sdk-version
+            xcrun --sdk macosx --show-sdk-build-version
+            xcrun clang --version
+            cmake --version
+            ninja --version
+            python3 --version
+            node --version
+            # CMake's cached paths must match the restoring workspace.
+            pwd -P
+          } | tee build/native/ci/toolchain.txt
+          digest=$(shasum -a 256 build/native/ci/toolchain.txt | cut -d ' ' -f 1)
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+      - name: Cache pinned native dependencies
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: .toolchain/native
+          key: native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('tools/native/dependencies.json', 'tools/native/build.mjs') }}
+      # A cache hit never skips configuration, application compilation or tests.
+      - name: Build Hermes, Yoga, Skia and the macOS host
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run native:build 2>&1 | tee build/native/ci/build.log
+      - name: Check native rendering and Hermes/WASM behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run native:test 2>&1 | tee build/native/ci/test.log
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: native-macos-report
+          path: |
+            build/native/ci/
+            build/native/contracts/result.json
+            build/native/app/ludic-native.app/Contents/Resources/native-build.json
+          retention-days: 14
+  verify:
+    needs: plan
+    if: needs.plan.outputs.verify == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run format:check
+      - run: npm pack --dry-run
+  browser-tests:
+    needs: plan
+    if: needs.plan.outputs.browser-tests == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, mobile-chromium]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Keep this version aligned with @playwright/test. The image includes its
+    # browsers, Xvfb and native dependencies; no package-mirror install is needed.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
+      options: --ipc=host --user 1001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Headed focus, blur and pointer-capture contracts share one native display.
+      # Isolate projects in separate jobs and run one foreground test at a time.
+      - run: xvfb-run --auto-servernum npm run test:browser -- --project=${{ matrix.project }} --workers=1
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LUDIC_HEADED: '1'
+      - if: matrix.project == 'chromium' || matrix.project == 'firefox'
+        run: xvfb-run --auto-servernum npm run test:consumer -- --project=${{ matrix.project }} --workers=1
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LUDIC_HEADED: '1'
+      - if: matrix.project == 'chromium'
+        run: xvfb-run --auto-servernum npm run test:consumer -- --project=chromium --workers=1
+        env:
+          LUDIC_CONSUMER_PACKAGE: registry
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LUDIC_HEADED: '1'
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: browser-report-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+  browser-webkit:
+    needs: plan
+    if: needs.plan.outputs.browser-webkit == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [webkit, mobile-webkit]
+    # The native macOS WebKit port is the closest Playwright target to Safari.
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install webkit
+        timeout-minutes: 8
+      - run: npm run test:browser -- --project=${{ matrix.project }} --workers=1
+      - if: matrix.project == 'webkit'
+        run: npm run test:consumer -- --project=webkit --workers=1
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: browser-report-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  # Stable required check. Deliberate exclusions come from plan; all other skips,
+  # missing results, failures and cancellations must block the pull request.
+  browser:
+    if: ${{ always() }}
+    needs: [plan, verify, native-macos, browser-tests, browser-webkit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      passed: ${{ steps.report.outputs.passed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - id: report
+        run: node tools/ci/run.mjs report
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}

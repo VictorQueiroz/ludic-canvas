@@ -19,15 +19,26 @@ for portable scheduling cleanup, rejected drawing-command state, reentrant
 surface disposal and native exception lifetime. A detached checkout with empty
 native caches built and passed the native contracts. Final local checks passed
 113 unit tests, package/type/docs gates, native contracts and AppKit error/quit
-checks. The new hosted job is configured and linted but has not run remotely.
+checks. The hosted native job subsequently passed a cold build and a cache-hit
+build in the PR checks.
 The branch is now pushed and [PR 35](https://github.com/VictorQueiroz/ludic-canvas/pull/35)
 is open. Codex reviewed `a940bb5` and identified native password-type changes
 and focus restoration after window reactivation. Both have failing-before and
 passing-after AppKit regressions in the review follow-up. The new control test
 uses real AppKit editors and injected window notifications; physical application
 switching is not established by it. Native build, behavioral/rendering contracts
-and all AppKit control/error tests passed locally after the fixes. Review of the
-updated head and hosted checks remain merge gates; refresh their live state.
+and all AppKit control/error tests passed locally after the fixes. Codex reviewed
+`c75f432` without further findings; all nine CI jobs passed, including 392 browser
+tests with 13 explicit skips and 16 independent-consumer checks.
+
+The CI follow-up preserves the ruleset's `browser` and `checks / browser`
+contexts as always-evaluated aggregates. A reusable workflow runs the test
+matrix once; the PR wrapper checks its conclusion and explicit success output.
+Only allowlisted prose-only PRs can exclude browser/native work, with package
+checks retained. All other changes and all release runs select the full matrix.
+Required skips, missing results, cancellation and planning failures block the
+gate. The updated workflow still needs its hosted check-name verification and
+fresh Codex review before merging; refresh the PR's live state.
 
 The original milestone's `npm run check` passed 111 unit tests and package/type/docs/consumer gates. The
 complete browser suite passed 387 tests with 13 existing explicit skips and no

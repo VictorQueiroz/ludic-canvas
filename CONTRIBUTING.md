@@ -104,12 +104,44 @@ npx playwright install chromium
 npm run test:browser -- --project=chromium --workers=1 -g 'regional archive'
 ```
 
-See [the check workflow](.github/workflows/check.yml) for the current matrix and
+See [the reusable CI workflow](.github/workflows/ci.yml) for the current matrix and
 deadlines. Linux Chromium/Firefox jobs use a digest-pinned official Playwright
 image with browsers, native dependencies and Xvfb. Update its version and digest
 together with `@playwright/test`. Safari-oriented WebKit jobs use native macOS;
 the Linux WPE result remains a separate qualification limit. Native-focus tests
 run with one worker per isolated browser job.
+
+### Required CI checks
+
+The [PR workflow](.github/workflows/check.yml) starts for every pull request,
+merge group and manual run. Its two stable required checks are `browser` and
+`checks / browser`. These names are retained for repository ruleset compatibility;
+their result covers all applicable package, browser and native checks.
+
+The reusable workflow plans the work, runs the selected groups, and evaluates
+their results in an unconditional final job. The PR wrapper verifies both the
+reusable workflow's successful conclusion and its explicit aggregate output.
+Tests execute once; the two summaries do not duplicate the matrix.
+
+Only PRs changing exclusively root Markdown, `docs/*.md` or `.changeset/*.md`
+can skip browser and native groups. Package/type/unit/docs/format checks still
+run on Linux, macOS and Windows. Code, generated pages, assets, configuration,
+unknown paths, empty diffs and unavailable comparison data select the full suite.
+Change detection uses the entire PR diff and includes deleted files and both
+sides of renames. Release, merge-group and manual runs always select the full
+suite, regardless of changed paths.
+
+Skipped work is acceptable only when the plan explicitly marks that group
+inapplicable. A required skip, missing result, failure, cancellation, invalid plan
+or failed planner fails the aggregate. Summaries record each group's requirement
+and actual result; excluded work is not described as tested. Keep applicability
+conditions at job level, not workflow-level path filters. If a workflow cannot
+start at all, required checks must continue to block merging.
+
+The policy and CLI regressions run with `npm test -- tests/ci-policy.test.mjs`.
+When changing CI, also run actionlint and verify the exact check names and
+results on the pull request. Changes to the group inventory must update the
+planner, aggregate dependencies and policy tests together.
 
 ### Browser readiness and failure triage
 

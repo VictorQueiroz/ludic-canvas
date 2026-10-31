@@ -80,9 +80,11 @@ SDK source before extending an earlier benchmark claim to that release. When
 publishing performance evidence, fetch its deployed original files and verify
 their committed checksums as described in [PERFORMANCE.md](PERFORMANCE.md).
 
-The [check workflow](../.github/workflows/check.yml) and
+The [PR wrapper](../.github/workflows/check.yml),
+[reusable CI workflow](../.github/workflows/ci.yml) and
 [release workflow](../.github/workflows/release.yml) are authoritative for gates,
-runtime versions and permissions. A qualifying source/CI pass, a merged PR, an npm
+runtime versions and permissions. Release checks explicitly request the full
+matrix; the prose-only PR exclusions never apply to publication. A qualifying source/CI pass, a merged PR, an npm
 publication and a READY deployment establish separate states. Retain retry and
 platform limits in [QUALIFICATION_RESULTS.md](QUALIFICATION_RESULTS.md), and update
 the dated [session handoff](SESSION_HANDOFF.md) with verified results.
