@@ -32,6 +32,7 @@ for (const file of [
   'site/index.html',
   'site/guide/index.html',
   'site/api/index.html',
+  'site/input/index.html',
   'site/components/index.html',
   'site/performance/index.html',
   'site/performance/desktop-m3-chrome-2026-10-27.json',

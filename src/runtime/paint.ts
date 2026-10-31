@@ -155,6 +155,7 @@ export class Painter {
         node.props.onPointerDown ||
         node.props.onPointerMove ||
         node.props.onPointerUp ||
+        node.props.onWheel ||
         node.props.onHover ||
         node.props.block ||
         node.props.role === 'tablist' ||

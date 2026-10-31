@@ -29,7 +29,7 @@ export interface TextInputHandle {
 
 export interface TextInputProps extends Pick<
   ViewProps,
-  'id' | 'tabIndex' | 'onFocus' | 'onBlur' | 'onLayout' | 'transition' | 'enter' | 'zIndex' | 'disabled'
+  'id' | 'tabIndex' | 'onFocus' | 'onBlur' | 'onLayout' | 'onWheel' | 'transition' | 'enter' | 'zIndex' | 'disabled'
 > {
   label: string;
   /** Controlled string. Update it synchronously from onValueChange; defer expensive work separately. */

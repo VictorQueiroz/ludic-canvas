@@ -1,7 +1,7 @@
 // Per-root pointer capture, keyboard routing, modal focus and DOM semantics.
 import { HostNode } from './nodes.ts';
 import type { Painter } from './paint.ts';
-import type { UIPointerEvent } from './types.ts';
+import type { UIPointerEvent, UIWheelEvent } from './types.ts';
 import { EditorManager, type EditorElement } from './editing.ts';
 
 type ControlElement = HTMLButtonElement | EditorElement;
@@ -98,22 +98,7 @@ export class InputSystem {
     listen(canvas, 'wheel', (e) => this.#wheel(e), false);
     listen(canvas, 'keydown', (e) => this.#key(e));
     listen(a11y, 'keydown', (e) => this.#key(e));
-    listen(
-      a11y,
-      'wheel',
-      (e) => {
-        const target = e.target;
-        // Let a multiline editor consume its native scroll before chaining to Yoga.
-        if (
-          target instanceof HTMLTextAreaElement &&
-          ((e.deltaY < 0 && target.scrollTop > 0) ||
-            (e.deltaY > 0 && target.scrollTop + target.clientHeight < target.scrollHeight))
-        )
-          return;
-        this.#wheel(e);
-      },
-      false,
-    );
+    listen(a11y, 'wheel', (e) => this.#wheel(e), false);
     window.addEventListener('blur', () => this.#cancel(), options);
     document.addEventListener(
       'visibilitychange',
@@ -136,6 +121,7 @@ export class InputSystem {
     }
   }
   destroy() {
+    this.#enabled = false;
     this.#events.abort();
     this.#editors.destroy();
     this.#cancel();
@@ -164,6 +150,38 @@ export class InputSystem {
     if (this.#enabled && this.#pointer && !this.#drag) this.#hover(...this.#pointer);
     this.#syncMirror();
   }
+  isPointerOverUI(point: { clientX: number; clientY: number }): boolean {
+    if (!this.#enabled || !Number.isFinite(point.clientX) || !Number.isFinite(point.clientY)) return false;
+    const rect = this.#canvas.getBoundingClientRect();
+    const x = point.clientX - rect.left,
+      y = point.clientY - rect.top;
+    if (rect.width <= 0 || rect.height <= 0 || x < 0 || y < 0 || x >= rect.width || y >= rect.height) return false;
+    return Boolean((this.#modal && !this.#modal.destroyed) || this.#surface(x, y));
+  }
+  #contains(n: HostNode, x: number, y: number): boolean {
+    const a = n.abs,
+      c = n.clip;
+    return (
+      !n.destroyed &&
+      inside(n, this.#modal) &&
+      a.w > 0 &&
+      a.h > 0 &&
+      x >= a.x &&
+      y >= a.y &&
+      x <= a.x + a.w &&
+      y <= a.y + a.h &&
+      (!c || (c.w > 0 && c.h > 0 && x >= c.x && y >= c.y && x <= c.x + c.w && y <= c.y + c.h))
+    );
+  }
+  // Occupancy is separate from callback eligibility: disabled controls and block boxes
+  // still reserve their geometry, and a wheel must never search through them for a sibling.
+  #surface(x: number, y: number): HostNode | undefined {
+    if (!this.#enabled) return;
+    for (let i = this.#painter.hitList.length - 1; i >= 0; i--) {
+      const n = this.#painter.hitList[i]!;
+      if (this.#contains(n, x, y)) return n;
+    }
+  }
   announce(text: string) {
     if (text !== this.#announced) {
       this.#announced = text;
@@ -175,19 +193,9 @@ export class InputSystem {
     if (!this.#enabled) return;
     for (let i = this.#painter.hitList.length - 1; i >= 0; i--) {
       const n = this.#painter.hitList[i]!;
-      if (n.destroyed || !inside(n, this.#modal)) continue;
-      const matches = predicate(n),
-        a = n.abs,
-        c = n.clip;
-      if (
-        (!matches && !n.props.block && (!n.props.disabled || !blockDisabled)) ||
-        x < a.x ||
-        y < a.y ||
-        x > a.x + a.w ||
-        y > a.y + a.h
-      )
-        continue;
-      if (c && (x < c.x || y < c.y || x > c.x + c.w || y > c.y + c.h)) continue;
+      if (!this.#contains(n, x, y)) continue;
+      const matches = predicate(n);
+      if (!matches && !n.props.block && (!n.props.disabled || !blockDisabled)) continue;
       return matches && !n.props.disabled ? n : undefined;
     }
   }
@@ -318,14 +326,67 @@ export class InputSystem {
     if (id !== undefined && this.#canvas.hasPointerCapture(id)) this.#canvas.releasePointerCapture(id);
   }
   #wheel(e: WheelEvent) {
+    const deltaMode = e.deltaMode;
     const [x, y] = this.#local(e);
-    for (let n = this.#hit(x, y, (node) => node.props.style?.overflow === 'scroll', false); n; n = n.parent) {
-      if (n.props.style?.overflow !== 'scroll') continue;
+    const target = this.#surface(x, y);
+    if (!target) return;
+    this.onActivity();
+    // Freeze this route: callbacks may unmount nodes or change the tree.
+    const path: HostNode[] = [];
+    for (let n: HostNode | undefined = target; n && inside(n, this.#modal); n = n.parent) {
+      path.push(n);
+      if (n === this.#modal) break;
+    }
+    let prevented = e.defaultPrevented,
+      stopped = false;
+    for (const n of path) {
+      if (!this.#enabled) return;
+      if (n.destroyed) continue;
+      const event: UIWheelEvent = {
+        x,
+        y,
+        localX: (x - n.abs.x) / (n.abs.w / n.box.w || 1),
+        localY: (y - n.abs.y) / (n.abs.h / n.box.h || 1),
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        deltaZ: e.deltaZ,
+        deltaMode,
+        shiftKey: e.shiftKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey,
+        get defaultPrevented() {
+          return prevented;
+        },
+        preventDefault() {
+          prevented = true;
+          e.preventDefault();
+        },
+        stopPropagation() {
+          stopped = true;
+          e.stopPropagation();
+        },
+      };
+      if (!n.props.disabled) this.#call(() => n.props.onWheel?.(event));
+      if (stopped) break;
+    }
+    if (prevented || target.destroyed || !this.#enabled) return;
+    // Native textarea scrolling precedes the Yoga default, after custom handlers.
+    const editor = e.target;
+    if (
+      editor instanceof HTMLTextAreaElement &&
+      !editor.disabled &&
+      ((e.deltaY < 0 && editor.scrollTop > 0) ||
+        (e.deltaY > 0 && editor.scrollTop + editor.clientHeight < editor.scrollHeight))
+    )
+      return;
+    for (const n of path) {
+      if (n.destroyed || n.props.disabled || n.props.style?.overflow !== 'scroll') continue;
       const max = Math.max(0, n.contentHeight - n.box.h),
         before = n.scrollY;
       n.scrollY = Math.max(
         0,
-        Math.min(max, before + e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? n.box.h : 1)),
+        Math.min(max, before + e.deltaY * (deltaMode === 1 ? 32 : deltaMode === 2 ? n.box.h : 1)),
       );
       if (n.scrollY !== before) {
         e.preventDefault();

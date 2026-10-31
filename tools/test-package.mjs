@@ -97,6 +97,28 @@ ui.render(createElement(View, null,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   await access(join(project, 'dist/fonts/interface.png'));
+  const declarations = await readFile(join(installed, 'dist/runtime/types.d.ts'), 'utf8');
+  if (!declarations.includes('interface UIWheelEvent') || !declarations.includes('onWheel?'))
+    throw new Error('Packed wheel declarations are missing');
+  if (!(await readFile(join(installed, 'dist/root.d.ts'), 'utf8')).includes('isPointerOverUI'))
+    throw new Error('Packed root hit query is missing');
+  await copyFile(join(root, 'examples/input-routing/main.tsx'), join(project, 'input-routing.tsx'));
+  await writeFile(
+    join(project, 'main.ts'),
+    `import { mountMapSidebar } from './input-routing.tsx';
+const stage = document.createElement('div');
+document.body.append(stage);
+await mountMapSidebar(stage, 'external', document.createElement('output'));\n`,
+  );
+  await writeFile(
+    join(project, 'vite.config.mjs'),
+    "export default { oxc: { jsx: { runtime: 'automatic', importSource: 'react' } } };\n",
+  );
+  execFileSync(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'build'], {
+    cwd: project,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   // Build the exact first-run source shown in the guide, against the installed tarball.
   await copyFile(join(root, 'examples/starter/main.tsx'), join(project, 'starter.tsx'));
   await writeFile(
