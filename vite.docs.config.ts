@@ -30,6 +30,7 @@ export default defineConfig({
         home: resolve(import.meta.dirname, 'docs/index.html'),
         guide: resolve(import.meta.dirname, 'docs/guide/index.html'),
         api: resolve(import.meta.dirname, 'docs/api/index.html'),
+        input: resolve(import.meta.dirname, 'docs/input/index.html'),
         components: resolve(import.meta.dirname, 'docs/components/index.html'),
         performance: resolve(import.meta.dirname, 'docs/performance/index.html'),
         play: resolve(import.meta.dirname, 'docs/play/index.html'),

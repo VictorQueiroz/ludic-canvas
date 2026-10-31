@@ -1,10 +1,24 @@
-# Session handoff — 2026-10-29
+# Session handoff — 2026-10-31
 
 This is a dated evidence snapshot, not a live release dashboard. Start in the
 `ludic-canvas` checkout, read [AGENTS.md](../AGENTS.md) and
 [CONTRIBUTING.md](../CONTRIBUTING.md), then refresh Git status/origin/main, npm
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
+
+## Wheel and world input 0.8
+
+The implementation adds `onWheel`/`UIWheelEvent`, native-field wheel callbacks,
+and `UIRoot.isPointerOverUI` with a generic map-and-sidebar example at `/input/`.
+The [input verification record](INPUT_ROUTING.md) records source identity,
+the reproduced missing API, 62 focused browser passes, three explicit mobile
+WebKit wheel-injection skips and the earlier test/acquisition failures.
+
+A minor changeset prepares publication through the existing Changesets/OIDC
+workflow. Package metadata is still 0.7.0 until the version PR; source changes,
+the published artifact and the production deployment must be verified separately.
+The refreshed starting production deployment was READY at `67f95b2` in project
+`prj_kEyfh6TLuhsYKTfZryYKA2vo3K6o`, team `team_2RngWKl69QIK4FGBEZdpNkgN`.
 
 ## Published native editing 0.7.0
 

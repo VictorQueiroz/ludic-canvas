@@ -20,6 +20,7 @@ export type {
   CommonProps,
   Interactive,
   UIPointerEvent,
+  UIWheelEvent,
   UIKeyEvent,
   UIEvent,
   LayoutStyle,

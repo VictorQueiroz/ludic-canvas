@@ -102,6 +102,16 @@ export interface UIRoot {
   /** Navigate mounted geometry or an owning collection's logical items. Accepted collection focus settles in a frame. */
   navigate(direction: 'up' | 'down' | 'left' | 'right'): boolean;
   activateFocused(): boolean;
+  /**
+   * Whether this root reserves a viewport point for UI, using its latest painted geometry.
+   * Accepts a browser pointer/wheel event; no prior pointer movement is needed.
+   * Counts controls (including disabled ones), wheel surfaces, scroll regions and block boxes.
+   * Respects clipping, transforms and pointerEvents. A modal reserves the entire canvas.
+   * Empty layout/decorative boxes do not count. An application world-input View does count.
+   * Returns false outside the canvas, before first paint, while suspended, or after destroy.
+   * Does not dispatch, cancel events, render, or report pointer capture ownership.
+   */
+  isPointerOverUI(point: { clientX: number; clientY: number }): boolean;
   inspect(): unknown;
 }
 
@@ -478,6 +488,9 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
       activateFocused() {
         ensureAlive();
         return ui.input.activateFocused();
+      },
+      isPointerOverUI(point) {
+        return !destroyed && ui.input.isPointerOverUI(point);
       },
       inspect() {
         ensureAlive();

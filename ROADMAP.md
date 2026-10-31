@@ -95,6 +95,18 @@ The 0.7 source implements this contract; publication identity is recorded in the
 [session handoff](docs/SESSION_HANDOFF.md). Real IME, physical phone keyboards and
 screen readers remain separate qualification work.
 
+## 0.8 — wheel and world input
+
+- Bubbling `onWheel` handlers with browser delta units and modifier keys.
+- Frontmost-surface routing, disabled/panel blockers, nested scroll defaults and
+  native textarea chaining.
+- Root-local `isPointerOverUI` queries for external cameras without cached hover
+  state, respecting painted geometry, modal isolation and teardown.
+- A map-and-sidebar example for both UI-tree and external-camera arrangements.
+
+See [the input verification record](docs/INPUT_ROUTING.md). Publication identity
+is recorded separately in the [session handoff](docs/SESSION_HANDOFF.md).
+
 ## Planned: shaping and remaining native editing qualification
 
 MSDF/MTSDF provides glyph rendering. Layout and OpenType shaping require their

@@ -154,6 +154,8 @@ export interface Interactive {
   onPointerMove?: (event: UIPointerEvent) => void;
   onPointerUp?: (event: UIPointerEvent) => void;
   onPointerCancel?: (event: UIPointerEvent) => void;
+  /** Bubbles through the frontmost input surface's ancestors. Cancel to override built-in scrolling. */
+  onWheel?: (event: UIWheelEvent) => void;
   onKeyDown?: (event: UIKeyEvent) => void;
   onPress?: () => void;
   onHover?: (hovered: boolean) => void;
@@ -165,7 +167,7 @@ export interface Interactive {
   label?: string;
   hotkey?: string; // e.g. "1", "Escape", "Enter"
   pointerEvents?: 'auto' | 'none' | 'box-none';
-  /** Swallow presses/hover over this box (modal panels above a scrim). */
+  /** Block input to surfaces behind this box, including wheel input and external world hit queries. */
   block?: boolean;
   cursor?: 'pointer' | 'default';
 }
@@ -184,6 +186,26 @@ export interface UIPointerEvent extends UIEvent {
   pointerType: string;
   button: number;
   buttons: number;
+}
+/** Wheel input; deltas retain browser units. This is input, not a notification of a changed scroll offset. */
+export interface UIWheelEvent extends UIEvent {
+  /** Coordinates relative to the canvas, in CSS pixels. */
+  x: number;
+  y: number;
+  /** Coordinates in the current callback's element, before visual transforms. */
+  localX: number;
+  localY: number;
+  deltaX: number;
+  deltaY: number;
+  deltaZ: number;
+  /** 0 = pixels, 1 = lines, 2 = pages. No normalization is applied. */
+  deltaMode: number;
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+  /** True once a callback cancels the default, even if the browser event is not cancelable. */
+  readonly defaultPrevented: boolean;
 }
 export interface UIKeyEvent extends UIEvent {
   key: string;
