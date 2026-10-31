@@ -214,6 +214,38 @@ The local toolchain was macOS 26.6.2, Xcode 27.0 (27A266a), SDK 27.0, Apple Clan
 21.0.0, CMake 4.4.4, Ninja 1.13.2, Python 3.15.1 and Node 24.22.1. The workflow
 records the actual hosted toolchain rather than claiming it matches this machine.
 
+## PR 35: Codex review follow-up
+
+Codex reviewed `a940bb59f6a450b9d6aaf112dc40a174c02f9420` in
+[PR 35](https://github.com/VictorQueiroz/ludic-canvas/pull/35) and reported two
+AppKit defects. Both were reproduced before changing runtime behavior:
+
+- A mounted text field retained its original class after switching between
+  text and password. The host now replaces incompatible native editors using
+  the latest controlled value, preserving actual focus and a clamped selection.
+  Synchronization emits no synthetic user edit/focus callbacks and an unfocused
+  replacement does not take focus.
+- Window deactivation emitted blur, but reactivation did not restore the
+  retained native focus to portable input. The become-key handler now reports
+  the retained target, or clears it if removed, hidden or disabled.
+
+`ludic-host-test` exercises actual AppKit editors and the window delegate through
+injected AppKit notifications. Before the fixes it failed the two password
+transitions and both editor/button reactivation checks. After the fixes all
+checks pass, including controlled resets, selection clamping and ineligible
+focus targets. An initial test attempted to acquire key windows directly from
+the command-line process; window activation was unreliable, so that attempt
+does not count as physical window-switching evidence. The deterministic test
+explicitly injects the notifications instead.
+
+After these changes, `native:build`, `native:test` and `native:test:host` passed:
+eight raster operations, rejected-frame recovery, Hermes startup errors, nine
+behavioral checks per runtime with identical layout trees, AppKit controls and
+both AppKit callback/startup error fixtures. SDK/browser runtime source is
+unchanged. Logs are in `build/native/pr-preparation/review-*.log` and
+`build/native/host-contracts/host-controls.log`. Hosted review and checks are
+tracked on the PR; this local evidence alone does not establish their outcome.
+
 ## Limits
 
 The macOS proof remains experimental. It is not signed/notarized distribution

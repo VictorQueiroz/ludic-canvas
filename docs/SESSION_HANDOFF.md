@@ -6,7 +6,7 @@ This is a dated evidence snapshot, not a live release dashboard. Start in the
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
 
-## Portable core and macOS proof — local, unreleased
+## Portable core and macOS proof — PR 35, unreleased
 
 The approved first portability milestone is implemented on `feat/portable-runtime`
 from `ec57f47`. It adds portable layout/rendering/input/host boundaries, a shared
@@ -20,7 +20,14 @@ surface disposal and native exception lifetime. A detached checkout with empty
 native caches built and passed the native contracts. Final local checks passed
 113 unit tests, package/type/docs gates, native contracts and AppKit error/quit
 checks. The new hosted job is configured and linted but has not run remotely.
-The branch remains local; no PR has been opened by this preparation task.
+The branch is now pushed and [PR 35](https://github.com/VictorQueiroz/ludic-canvas/pull/35)
+is open. Codex reviewed `a940bb5` and identified native password-type changes
+and focus restoration after window reactivation. Both have failing-before and
+passing-after AppKit regressions in the review follow-up. The new control test
+uses real AppKit editors and injected window notifications; physical application
+switching is not established by it. Native build, behavioral/rendering contracts
+and all AppKit control/error tests passed locally after the fixes. Review of the
+updated head and hosted checks remain merge gates; refresh their live state.
 
 The original milestone's `npm run check` passed 111 unit tests and package/type/docs/consumer gates. The
 complete browser suite passed 387 tests with 13 existing explicit skips and no

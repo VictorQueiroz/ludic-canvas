@@ -9,6 +9,15 @@ const root = fileURLToPath(new URL('../..', import.meta.url));
 const binary = join(root, 'build/native/app/ludic-native.app/Contents/MacOS/ludic-native');
 const output = join(root, 'build/native/host-contracts');
 await mkdir(output, { recursive: true });
+const controls = spawnSync(join(root, 'build/native/app/ludic-host-test'), [], {
+  encoding: 'utf8',
+  timeout: 15000,
+});
+await writeFile(join(output, 'host-controls.log'), `${controls.stdout ?? ''}${controls.stderr ?? ''}`);
+if (controls.error) throw controls.error;
+strictEqual(controls.signal, null, 'AppKit control contracts crashed');
+strictEqual(controls.status, 0, `AppKit control contracts failed: ${controls.stderr}`);
+match(controls.stdout, /AppKit editor replacement and window focus contracts passed/);
 for (const [fixture, expected] of [
   ['host-dispose-error', 'expected error after surface disposal'],
   ['host-startup-error', 'expected host startup failure with live resources'],
@@ -25,4 +34,7 @@ for (const [fixture, expected] of [
   match(result.stdout, /Native host cleanup: layouts=0 nodes=0 surfaces=0/);
   if (fixture === 'host-dispose-error') match(result.stdout, /Reentrant surface disposal recovered/);
 }
+console.log(
+  'AppKit controls: password toggles preserve controlled values, focus and selection; window notifications restore focus.',
+);
 console.log('AppKit error recovery: callback disposal and startup failure released native resources without crashing.');

@@ -1,3 +1,4 @@
+#include "macos.hpp"
 #include "engine.hpp"
 #include "include/core/SkPixmap.h"
 #include "include/core/SkSurface.h"
@@ -21,42 +22,6 @@ static NSString *ns(const std::string &s) {
   return [[NSString alloc] initWithBytes:s.data() length:s.size() encoding:NSUTF8StringEncoding] ?: @"";
 }
 static std::string utf8(NSString *s) { return s ? std::string(s.UTF8String ?: "") : std::string(); }
-@class LCView;
-
-@interface LCElement : NSAccessibilityElement
-@property(nonatomic, weak) LCView *owner;
-@property(nonatomic, strong) NSDictionary *nodeInfo;
-@end
-
-@interface LCView : NSView <NSTextFieldDelegate, NSTextViewDelegate> {
-@public
-  Engine *engine;
-  std::shared_ptr<jsi::Function> listener;
-  std::unique_ptr<SkiaRenderer> renderer;
-  sk_sp<GrDirectContext> context;
-  std::vector<float> commands;
-  std::vector<uint32_t> resources;
-  std::unordered_map<uint32_t, sk_sp<SkImage>> images;
-  uint32_t nextImage;
-  double frameTime;
-  float logicalWidth, logicalHeight;
-}
-@property(nonatomic, strong) id<MTLDevice> device;
-@property(nonatomic, strong) id<MTLCommandQueue> queue;
-@property(nonatomic, strong) NSMutableDictionary<NSNumber *, LCElement *> *elements;
-@property(nonatomic, strong) NSMutableDictionary<NSNumber *, NSView *> *editors;
-@property(nonatomic, strong) NSArray<NSDictionary *> *semantics;
-@property(nonatomic, strong) NSTrackingArea *tracking;
-@property(nonatomic) NSInteger focusedKey;
-@property(nonatomic) BOOL syncing;
-- (BOOL)emit:(NSDictionary *)event;
-- (void)present;
-- (void)sync:(NSArray *)nodes;
-- (BOOL)focusKey:(NSInteger)key;
-- (void)editChanged:(id)sender;
-- (void)dispose;
-@end
-
 static NSString *role(NSString *value) {
   return (@{
     @"text" : NSAccessibilityStaticTextRole,
@@ -325,6 +290,8 @@ static NSString *role(NSString *value) {
   return YES;
 }
 - (void)controlTextDidBeginEditing:(NSNotification *)notification {
+  if (self.syncing)
+    return;
   NSInteger key = [((NSControl *)notification.object).identifier integerValue];
   self.focusedKey = key;
   [self emit:@{@"type" : @"focus", @"key" : @(key)}];
@@ -336,6 +303,8 @@ static NSString *role(NSString *value) {
   [self editChanged:notification.object];
 }
 - (void)textDidBeginEditing:(NSNotification *)notification {
+  if (self.syncing)
+    return;
   NSInteger key = [((NSTextView *)notification.object).identifier integerValue];
   self.focusedKey = key;
   [self emit:@{@"type" : @"focus", @"key" : @(key)}];
@@ -404,6 +373,30 @@ static NSString *role(NSString *value) {
         [self.elements removeObjectForKey:key];
         NSView *native = self.editors[key];
         BOOL multiline = [description[@"multiline"] boolValue];
+        BOOL secure = !multiline && [description[@"type"] isEqual:@"password"];
+        BOOL restoreFocus = NO;
+        NSRange selection = NSMakeRange(0, 0);
+        if (native &&
+            (multiline != [native isKindOfClass:NSScrollView.class] ||
+             (!multiline && secure != [native isKindOfClass:NSSecureTextField.class]))) {
+          NSTextView *text = [native isKindOfClass:NSScrollView.class]
+                                ? (NSTextView *)((NSScrollView *)native).documentView
+                                : (NSTextView *)((NSTextField *)native).currentEditor;
+          restoreFocus = text && self.window.firstResponder == text;
+          if (restoreFocus)
+            selection = text.selectedRange;
+          // Finish the old editor without emitting a user edit or focus change.
+          // The replacement is synchronized from the controlled description below.
+          if ([native isKindOfClass:NSTextField.class])
+            ((NSTextField *)native).delegate = nil;
+          else
+            text.delegate = nil;
+          if (restoreFocus)
+            [self.window makeFirstResponder:self];
+          [native removeFromSuperview];
+          [self.editors removeObjectForKey:key];
+          native = nil;
+        }
         if (!native) {
           if (multiline) {
             NSScrollView *scroll = [[NSScrollView alloc] initWithFrame:NSZeroRect];
@@ -419,7 +412,7 @@ static NSString *role(NSString *value) {
             scroll.documentView = text;
             native = scroll;
           } else {
-            NSTextField *field = [description[@"type"] isEqual:@"password"]
+            NSTextField *field = secure
                                      ? [[NSSecureTextField alloc] initWithFrame:NSZeroRect]
                                      : [[NSTextField alloc] initWithFrame:NSZeroRect];
             field.bordered = NO;
@@ -513,6 +506,17 @@ static NSString *role(NSString *value) {
                             MIN(selection.length, value.length - MIN(selection.location, value.length)));
           }
         }
+        if (restoreFocus && enabled) {
+          NSView *responder = [native isKindOfClass:NSScrollView.class]
+                                  ? ((NSScrollView *)native).documentView
+                                  : native;
+          [self.window makeFirstResponder:responder];
+          NSTextView *text = [native isKindOfClass:NSScrollView.class]
+                                ? (NSTextView *)responder
+                                : (NSTextView *)((NSTextField *)native).currentEditor;
+          const NSUInteger start = MIN(selection.location, value.length);
+          text.selectedRange = NSMakeRange(start, MIN(selection.length, value.length - start));
+        }
       } else {
         LCElement *element = self.elements[key];
         if (!element) {
@@ -578,10 +582,6 @@ static NSString *role(NSString *value) {
 }
 @end
 
-@interface LCDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
-@property(nonatomic) Engine *engine;
-@property(nonatomic) BOOL terminating;
-@end
 @implementation LCDelegate
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
   return YES;
@@ -610,6 +610,22 @@ static NSString *role(NSString *value) {
   LCView *view = ((NSWindow *)notification.object).contentView;
   if ([view isKindOfClass:LCView.class])
     [view emit:@{@"type" : @"blur"}];
+}
+- (void)windowDidBecomeKey:(NSNotification *)notification {
+  LCView *view = ((NSWindow *)notification.object).contentView;
+  if (![view isKindOfClass:LCView.class])
+    return;
+  // AppKit keeps its first responder across deactivation; portable input clears
+  // focus on blur. Restore only a still-visible, enabled semantic target.
+  NSNumber *key = nil;
+  for (NSDictionary *node in view.semantics)
+    if ([node[@"key"] integerValue] == view.focusedKey &&
+        ![node[@"hidden"] boolValue] && ![node[@"disabled"] boolValue]) {
+      key = node[@"key"];
+      break;
+    }
+  view.focusedKey = key.integerValue;
+  [view emit:@{@"type" : @"focus", @"key" : key ?: NSNull.null}];
 }
 @end
 
@@ -647,6 +663,7 @@ static sk_sp<SkImage> loadImage(const std::filesystem::path &path) {
       SkPixmap(SkImageInfo::Make(w, h, kRGBA_8888_SkColorType, kPremul_SkAlphaType), pixels.data(), w * 4));
 }
 
+#ifndef LUDIC_HOST_TEST
 int main(int argc, const char **argv) {
   @autoreleasepool {
     try {
@@ -900,3 +917,5 @@ int main(int argc, const char **argv) {
     }
   }
 }
+
+#endif

@@ -44,7 +44,9 @@ evidence. Preserve the separation between native contract tests and actual
 platform/editor/device qualification.
 The `native-macos` CI job builds and tests on macOS 26 ARM64. Run
 `npm run native:test:host` separately in a logged-in macOS GUI session when
-changing AppKit event delivery or startup/teardown behavior.
+changing AppKit event delivery, editor synchronization or startup/teardown
+behavior. This includes actual AppKit control tests with injected window
+notifications; it does not qualify physical application switching or IME use.
 
 ## Documentation changes
 
