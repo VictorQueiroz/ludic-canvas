@@ -8,7 +8,7 @@ Enter or Space.
 
 Edit `src/main.tsx` to change the text, colors, spacing or counter behavior. The
 example uses the default font and compiled layout WASM included in the published
-`ludic-canvas@0.7.0` package. No font generation or native build is required.
+`ludic-canvas@0.8.0` package. No font generation or native build is required.
 
 This example pins Vite 7.3.7 to avoid the Vite 8 Rolldown binding failure in
 StackBlitz WebContainers ([upstream report](https://github.com/stackblitz/starters/issues/118)).
