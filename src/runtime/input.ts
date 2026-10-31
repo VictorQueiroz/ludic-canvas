@@ -144,6 +144,8 @@ export class InputSystem extends PointerRouter {
     };
   }
   #wheelEvent(e: WheelEvent): HostWheelEvent {
+    // Gecko can convert line deltas to pixels if a delta is read before its mode.
+    const deltaMode = e.deltaMode;
     const [x, y] = this.#local(e);
     return {
       x,
@@ -151,7 +153,7 @@ export class InputSystem extends PointerRouter {
       deltaX: e.deltaX,
       deltaY: e.deltaY,
       deltaZ: e.deltaZ,
-      deltaMode: e.deltaMode,
+      deltaMode,
       shiftKey: e.shiftKey,
       ctrlKey: e.ctrlKey,
       altKey: e.altKey,

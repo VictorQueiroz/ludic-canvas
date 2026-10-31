@@ -15,7 +15,7 @@ Node 26.12.1; the completed package/browser/native build commands used Node 24.
 Native compiler jobs were limited to two. The standalone host and Hermes were
 built with an explicit macOS 26 deployment target.
 
-SHA-256 identities:
+SHA-256 identities for the original milestone in commit `177a8d9`:
 
 | Input/artifact                                      | SHA-256                                                            |
 | --------------------------------------------------- | ------------------------------------------------------------------ |
@@ -99,6 +99,37 @@ Logs and retained initial traces are local under `build/native/`, including
 build artifacts, not npm package contents. The compiler's warning about the
 `performance` global is expected for this standalone bundle: the embedding
 installs it before evaluation, and runtime execution is verified above.
+
+## Compatibility follow-up
+
+A review after `177a8d9` found a browser wheel-unit regression in the extracted
+adapter: it read `deltaX/Y/Z` before `deltaMode`. The previous implementation
+read the mode first. For trusted line-based events, Gecko can select converted
+pixel deltas when a delta is accessed before the mode; this changes callback
+values and the library's default scroll distance. See the
+[Gecko implementation](https://github.com/mozilla-firefox/firefox/blob/main/dom/events/WheelEvent.cpp)
+and [MDN's unit warning](https://developer.mozilla.org/en-US/docs/Web/API/WheelEvent/deltaMode).
+
+The adapter again reads the mode first. A browser regression models Gecko's
+access-dependent event getters and asserts the observable callback units and
+values. Before the fix it failed with mode 0 and deltas 80/120/160 instead of
+mode 1 and deltas 2/3/4. Ordinary constructed WheelEvents bypass Gecko's
+conversion, which explains why the original synthetic unit-preservation test
+passed. This fixture is a controlled reproduction, not physical wheel-device
+qualification.
+
+The follow-up input, input-example and portable-example suites passed across
+all five browser configurations: 72 passed, three existing mobile-WebKit wheel
+injection skips, no retries (1.5 minutes). Both TypeScript checks, focused
+formatting and whitespace checks passed. The original 387-test browser result
+above remains evidence for `177a8d9`; this follow-up reran the affected paths.
+
+The updated SDK source-set digest is
+`fc5232e5a898c7a22d8684513a64fccc7598f3afa0d6f72127edc01d2237dbfc`.
+Native sources and artifacts are unchanged. The failing trace is retained in
+`build/native/wheel-unit-regression-failure/`, with before/after logs in
+`build/native/wheel-unit-regression-before.log` and
+`build/native/wheel-unit-regression-after.log`.
 
 ## Limits
 
