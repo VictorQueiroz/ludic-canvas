@@ -2,6 +2,12 @@
 
 Ludic Canvas source is MIT licensed. Third-party components retain their own licenses.
 
+The optional macOS proof additionally builds pinned Hermes (MIT, including its
+bundled third-party notices) and Skia (BSD-style, including skcms). Revisions and
+archive hashes are in `tools/native/dependencies.json`. `native:build` copies
+upstream license files and the existing React/Yoga/font notices into the app's
+Resources/licenses directory. These native libraries are not in the npm tarball.
+
 | Component                                                                                                       | Version / use                                                   | License                                                               |
 | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------- |
 | [React](https://github.com/facebook/react)                                                                      | React 19.3.1 peer and react-reconciler 0.34.0 runtime           | MIT; copies in licenses/                                              |

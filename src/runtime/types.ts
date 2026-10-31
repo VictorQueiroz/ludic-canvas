@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import type { FontFamily } from '../gfx/font.ts';
 import type { ScrollHandle, ScrollSnapshot } from '../scroll.ts';
-import type { EditorProps } from './editing.ts';
+import type { EditorProps } from '../platform/editor-types.ts';
 
 export type Dim = number | `${number}%` | 'auto';
 

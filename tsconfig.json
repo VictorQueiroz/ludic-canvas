@@ -16,7 +16,9 @@
     "noEmit": true,
     "types": ["vite/client", "node"],
     "paths": {
-      "ludic-canvas": ["./src/index.ts"]
+      "ludic-canvas": ["./src/index.ts"],
+      "ludic-canvas/core": ["./src/core.ts"],
+      "ludic-canvas/native": ["./src/native.ts"]
     }
   },
   "include": ["src", "docs", "tests", "examples", "*.config.ts"]

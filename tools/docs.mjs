@@ -1,4 +1,5 @@
 import { editingGuide } from './docs-editing.mjs';
+import { portabilityGuide } from './docs-portability.mjs';
 import { inputGuide, inputPage } from './docs-input.mjs';
 import { typographyGuide } from './docs-typography.mjs';
 import { virtualizationGuide } from './docs-virtualization.mjs';
@@ -84,6 +85,7 @@ const guideSections = [
     'Architecture',
     `<div class="architecture-line"><b>React</b><span>→</span><b>Retained nodes</b><span>→</span><b>Yoga WASM</b><span>→</span><b>WebGL</b></div><p>The React reconciler owns a retained host tree. Each host node owns a Yoga layout node. After layout, boxes are read in one batch from WebAssembly memory. The painter traverses the tree, animates visual values and sends primitive quads to a WebGL batch. Pointer input hit-tests the most recently painted frame. A separate DOM mirror provides keyboard controls.</p><p>The package owns UI infrastructure. Applications own domain models, state, persistence, audio, scene effects and asset catalogs. Feed immutable view data into components and pass actions back to the simulation. The library has no game-state schema or ECS dependency.</p><p>The native layout ABI is versioned and checked at load. The custom React host config is kept internal and paired with an exact supported React version because <a href="https://github.com/facebook/react/tree/main/packages/react-reconciler">react-reconciler has an unstable API</a>.</p>`,
   ],
+  ['portability', 'Experimental native hosts', portabilityGuide(code)],
   [
     'primitives',
     'Compose primitives',
@@ -237,6 +239,8 @@ for (const match of readFileSync('dist/index.d.ts', 'utf8').matchAll(/\{([^}]+)\
 const entries = [];
 for (const file of [
   'root',
+  'platform/root-types',
+  'platform/contracts',
   'context',
   'controls',
   'primitives',

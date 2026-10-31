@@ -401,7 +401,7 @@ export class UiBatch {
     this.#fonts.forEach((font, i) => {
       gl.uniform1i(p.uniform[`u_font${i}`]!, i + 1);
       gl.activeTexture(gl.TEXTURE0 + i + 1);
-      gl.bindTexture(gl.TEXTURE_2D, font.texture.handle);
+      gl.bindTexture(gl.TEXTURE_2D, font.texture.handle as WebGLTexture);
     });
     gl.activeTexture(gl.TEXTURE0);
 

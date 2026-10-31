@@ -19,6 +19,9 @@ try {
     'cli/init.mjs',
     'cli/templates/shared/fonts/Interface.ttf',
     'dist/controls.js',
+    'dist/core.js',
+    'dist/core.d.ts',
+    'dist/native.js',
     'dist/text-input.js',
     'dist/text-input.d.ts',
     'dist/runtime/editing.js',
@@ -40,6 +43,10 @@ try {
   const bin = join(installed, metadata.bin['ludic-canvas']);
   await access(join(project, 'node_modules/.bin', process.platform === 'win32' ? 'ludic-canvas.cmd' : 'ludic-canvas'));
   const imported = await import(pathToFileURL(join(installed, 'dist/index.js')).href);
+  const core = await import(pathToFileURL(join(installed, 'dist/core.js')).href);
+  const native = await import(pathToFileURL(join(installed, 'dist/native.js')).href);
+  if (typeof core.createPortableUI !== 'function' || typeof native.createNativeUI !== 'function')
+    throw new Error('Portable entry points do not resolve');
   if (typeof imported.createUI !== 'function') throw new Error('Root exports do not resolve');
   for (const name of [
     'Button',
@@ -100,7 +107,7 @@ ui.render(createElement(View, null,
   const declarations = await readFile(join(installed, 'dist/runtime/types.d.ts'), 'utf8');
   if (!declarations.includes('interface UIWheelEvent') || !declarations.includes('onWheel?'))
     throw new Error('Packed wheel declarations are missing');
-  if (!(await readFile(join(installed, 'dist/root.d.ts'), 'utf8')).includes('isPointerOverUI'))
+  if (!(await readFile(join(installed, 'dist/platform/root-types.d.ts'), 'utf8')).includes('isPointerOverUI'))
     throw new Error('Packed root hit query is missing');
   await copyFile(join(root, 'examples/input-routing/main.tsx'), join(project, 'input-routing.tsx'));
   await writeFile(

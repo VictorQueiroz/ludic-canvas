@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Ludic Canvas · Portable UI</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #101620;
+      }
+      #stage {
+        position: relative;
+        width: min(720px, 100vw);
+        height: 640px;
+        margin: auto;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas aria-label="Portable interface"></canvas></div>
+    <script type="module" src="./browser.tsx"></script>
+  </body>
+</html>

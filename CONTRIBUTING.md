@@ -36,6 +36,13 @@ Yoga owns their boxes and WebGL draws their decoration. See
 [the editing contract](docs/NATIVE_EDITING.md) before changing synchronization,
 composition, focus or layering.
 
+The experimental portable core and macOS host are described in
+[PORTABILITY.md](docs/PORTABILITY.md). `npm run typecheck` checks both the normal
+project and portable entry points without DOM libs. Native changes also require
+`npm run native:build` and `npm run native:test` on macOS, plus host interaction
+evidence. Preserve the separation between native contract tests and actual
+platform/editor/device qualification.
+
 ## Documentation changes
 
 Edit `tools/docs*.mjs` for guide/page content and `src/` for public API comments or

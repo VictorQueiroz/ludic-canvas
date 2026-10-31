@@ -15,6 +15,12 @@ editors for topmost form panels and dialogs. See the [native editing contract](d
 for fonts, layering, composition and qualification limits. These fields require
 ludic-canvas 0.7.0 or later.
 
+The checkout also includes an **experimental portable core and macOS proof**:
+the same React components run with Hermes, native Yoga and Skia/Metal. This work
+has a pending release changeset. See [the architecture and build instructions](docs/PORTABILITY.md)
+and [qualification results](docs/PORTABILITY_RESULTS.md). Android, iOS, Windows
+and Linux hosts remain future work.
+
 ## Install
 
 The npm package includes JavaScript, TypeScript declarations, a precompiled Yoga reactor, a default OFL font atlas, the portable font atlas compiler and license notices.

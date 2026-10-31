@@ -1,43 +1,18 @@
+import { loadFontJson } from './gfx/font-loading.ts';
 import { createElement, type ReactNode } from 'react';
 import { UIRootContext } from './context.ts';
 import { createAssetResolver, type AssetResolver, type ImageAssets } from './assets.ts';
 import { defaultAssets } from './defaults.ts';
 import { UiBatch } from './gfx/batch.ts';
-import { Font, FontBook, loadFontJson, validateFontMetrics, type AtlasJson, type FontDiagnostic } from './gfx/font.ts';
+import { Font, FontBook, validateFontMetrics, type AtlasJson, type FontDiagnostic } from './gfx/font.ts';
 import { createTexture, parseColor } from './gfx/gl.ts';
 import { TextureStore } from './gfx/textures.ts';
 import { UiRuntime } from './runtime/runtime.ts';
-import type { FrameProfile } from './runtime/profile.ts';
+import type { UIRoot, UITheme, FrameInfo, FontSource } from './platform/root-types.ts';
+export type { UIRoot, UITheme, FrameInfo, FontSource } from './platform/root-types.ts';
+import { InputSystem } from './runtime/input.ts';
 import { YogaLayout } from './wasm/layout.ts';
 import { defaultResourceLimits, fetchBytes, throwIfAborted, type ResourceLimits } from './resources.ts';
-
-/** An MTSDF atlas and its metrics, produced by msdf-atlas-gen. Maximum: four faces per root. */
-export interface FontSource {
-  name: string;
-  atlas: string;
-  metrics: string | AtlasJson;
-}
-
-/** Visual defaults. Individual primitive styles take precedence. */
-export interface UITheme {
-  textColor: string;
-  emphasisColor: string;
-  focusRing: string;
-}
-
-/** CSS and device-pixel dimensions of the latest frame. */
-export interface FrameInfo {
-  width: number;
-  height: number;
-  dpr: number;
-  cssWidth: number;
-  cssHeight: number;
-  drawCalls: number;
-  contextLost: boolean;
-  textureBytes: number;
-  /** Present only when profiling is enabled and a frame is drawn. */
-  profile?: FrameProfile;
-}
 
 /** Browser root configuration. Game state and image content stay application-owned. */
 export interface UIOptions {
@@ -76,43 +51,6 @@ export interface UIOptions {
   onError?: (error: unknown) => void;
   /** Opt-in missing-glyph diagnostics, queued after layout. At most 1024 unique codepoint/chain reports per root. */
   onFontDiagnostic?: (diagnostic: FontDiagnostic) => void;
-}
-
-/** A mounted React interface and its layout, input and GPU resources. */
-export interface UIRoot {
-  /** Schedule an update. State, context and ordinary React hooks work inside the tree. */
-  render(element: ReactNode): void;
-  /** Draw a frame; now is a requestAnimationFrame timestamp in milliseconds. */
-  frame(now?: number): FrameInfo;
-  /** Start or resume automatic drawing. Idempotent. */
-  start(): void;
-  /** Pause automatic drawing; the React tree stays mounted. */
-  stop(): void;
-  /** Unmount React, cancel frames, remove listeners and free resources. Idempotent. */
-  destroy(): void;
-  setTextScale(scale: number): void;
-  setReducedMotion(enabled: boolean): void;
-  setTheme(theme: Partial<UITheme>): void;
-  /** Preload image identifiers. Rejects on unknown assets or failed requests. */
-  preloadImages(ids: readonly string[]): Promise<void>;
-  /** Host tree with computed boxes for development tools. */
-  invalidateImages(ids?: readonly string[]): void;
-  /** Focus a named pressable, or navigate spatially from a gamepad adapter. */
-  focus(id: string): boolean;
-  /** Navigate mounted geometry or an owning collection's logical items. Accepted collection focus settles in a frame. */
-  navigate(direction: 'up' | 'down' | 'left' | 'right'): boolean;
-  activateFocused(): boolean;
-  /**
-   * Whether this root reserves a viewport point for UI, using its latest painted geometry.
-   * Accepts a browser pointer/wheel event; no prior pointer movement is needed.
-   * Counts controls (including disabled ones), wheel surfaces, scroll regions and block boxes.
-   * Respects clipping, transforms and pointerEvents. A modal reserves the entire canvas.
-   * Empty layout/decorative boxes do not count. An application world-input View does count.
-   * Returns false outside the canvas, before first paint, while suspended, or after destroy.
-   * Does not dispatch, cancel events, render, or report pointer capture ownership.
-   */
-  isPointerOverUI(point: { clientX: number; clientY: number }): boolean;
-  inspect(): unknown;
 }
 
 // Ownership lives on the associated DOM surface, including across bundled copies.
@@ -221,7 +159,7 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
       if (!runtime) layout?.dispose();
       textures?.dispose();
       batch?.dispose();
-      for (const font of fonts.all()) gl?.deleteTexture(font.texture.handle);
+      for (const font of fonts.all()) gl?.deleteTexture(font.texture.handle as WebGLTexture);
       ownedA11y?.remove();
       restoreParent();
       if (originalTabIndex === null) canvas.removeAttribute('tabindex');
@@ -254,7 +192,7 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
       }
       return created;
     } catch (error) {
-      for (const font of created) gl!.deleteTexture(font.texture.handle);
+      for (const font of created) gl!.deleteTexture(font.texture.handle as WebGLTexture);
       throw error;
     }
   };
@@ -294,7 +232,7 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
         void (async () => {
           const replacement = await uploadFonts();
           if (destroyed || attempt !== generation) {
-            for (const font of replacement) gl!.deleteTexture(font.texture.handle);
+            for (const font of replacement) gl!.deleteTexture(font.texture.handle as WebGLTexture);
             return;
           }
           let next: UiBatch;
@@ -302,11 +240,11 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
             next = new UiBatch(gl!);
             next.setFonts(replacement);
           } catch (error) {
-            for (const font of replacement) gl!.deleteTexture(font.texture.handle);
+            for (const font of replacement) gl!.deleteTexture(font.texture.handle as WebGLTexture);
             throw error;
           }
           batch?.dispose();
-          for (const font of fonts.all()) gl!.deleteTexture(font.texture.handle);
+          for (const font of fonts.all()) gl!.deleteTexture(font.texture.handle as WebGLTexture);
           for (const font of replacement) fonts.replace(font);
           batch = next;
           lost = false;
@@ -351,7 +289,18 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
     textures = new TextureStore(gl, createAssetResolver(options.assets), options.textureBudgetBytes, report, limits);
     batch = new UiBatch(gl);
     batch.setFonts(fonts.all());
-    runtime = new UiRuntime({ canvas, a11y, layout, fonts, onError: report });
+    runtime = new UiRuntime({
+      layout,
+      fonts,
+      onError: report,
+      input: (painter, commit) => new InputSystem(canvas, a11y, painter, commit),
+      scheduler: {
+        now: () => performance.now(),
+        requestFrame: (callback) => requestAnimationFrame(callback),
+        cancelFrame: (id) => cancelAnimationFrame(id),
+        microtask: (callback) => queueMicrotask(callback),
+      },
+    });
     Object.assign(runtime.theme, options.theme);
     runtime.setTextScale(options.textScale ?? 1);
     runtime.reducedMotion = options.reducedMotion ?? window.matchMedia('(prefers-reduced-motion: reduce)').matches;

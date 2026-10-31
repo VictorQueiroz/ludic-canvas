@@ -2,9 +2,8 @@
 // draw calls. It also owns per-node animation (transitions, enter, hover and
 // press blending) so React never re-renders for motion.
 
-import type { UiBatch, Rgba } from '../gfx/batch.ts';
-import { parseColor } from '../gfx/gl.ts';
-import type { TextureStore } from '../gfx/textures.ts';
+import type { RenderContext, Rgba, ImageProvider } from '../platform/contracts.ts';
+import { parseColor } from '../platform/color.ts';
 import type { FontBook } from '../gfx/font.ts';
 import { HostNode, type Box } from './nodes.ts';
 import type { ImageStyleProp, TextStyleProp, ViewStyle } from './types.ts';
@@ -17,8 +16,8 @@ const evaluate = (t: { from: number[]; to: number[]; start: number; duration: nu
     : t.to;
 
 export interface PaintFrame {
-  batch: UiBatch;
-  textures: TextureStore;
+  batch: RenderContext;
+  textures: ImageProvider;
   fonts: FontBook;
   dpr: number;
   now: number; // ms

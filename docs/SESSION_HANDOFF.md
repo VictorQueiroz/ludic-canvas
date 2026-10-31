@@ -6,6 +6,25 @@ This is a dated evidence snapshot, not a live release dashboard. Start in the
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
 
+## Portable core and macOS proof — local, unreleased
+
+The approved first portability milestone is implemented on `feat/portable-runtime`
+from `ec57f47`. It adds portable layout/rendering/input/host boundaries, a shared
+browser/macOS example, and a standalone Hermes/native-Yoga/Skia-Metal host with
+AppKit editing and accessibility. A minor changeset is pending; local package
+metadata remains 0.8.0. This work did not publish or deploy a new artifact.
+
+`npm run check` passed 111 unit tests and package/type/docs/consumer gates. The
+complete browser suite passed 387 tests with 13 existing explicit skips and no
+retries in its final run. Native raster operations, Hermes/WASM behavioral/layout
+comparison and actual AppKit smoke checks passed. Command-Q released all native
+layout/node/surface ownership before VM shutdown without an application hook.
+
+Use [PORTABILITY.md](PORTABILITY.md) for build instructions and contracts, and
+[PORTABILITY_RESULTS.md](PORTABILITY_RESULTS.md) for source/artifact identities,
+failed attempts, corrections and evidence limits. Native support is experimental;
+Android, iOS, Windows and Linux hosts are future milestones.
+
 ## Wheel and world input 0.8
 
 The implementation adds `onWheel`/`UIWheelEvent`, native-field wheel callbacks,

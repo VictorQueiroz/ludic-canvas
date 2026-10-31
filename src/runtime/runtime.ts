@@ -1,11 +1,14 @@
 // UiRuntime: per-frame glue between React's host tree, Yoga and the painter.
 
 import type { ReactNode } from 'react';
-import type { UiBatch } from '../gfx/batch.ts';
+import type {
+  RenderContext,
+  ImageProvider,
+  LayoutBackend,
+  InputDriver,
+  RuntimeDependencies,
+} from '../platform/contracts.ts';
 import type { FontBook } from '../gfx/font.ts';
-import type { TextureStore } from '../gfx/textures.ts';
-import type { YogaLayout } from '../wasm/layout.ts';
-import { InputSystem } from './input.ts';
 import { HostNode, type RuntimeContext } from './nodes.ts';
 import { Painter } from './paint.ts';
 import { createUiRoot, type UiRoot } from './reconciler.ts';
@@ -14,10 +17,10 @@ import { updateScroll, finishScrollFrame } from '../scroll.ts';
 
 export class UiRuntime {
   readonly ctx: RuntimeContext;
-  readonly input: InputSystem;
+  readonly input: InputDriver;
   readonly #root: UiRoot;
   readonly #painter = new Painter();
-  readonly #layout: YogaLayout;
+  readonly #layout: LayoutBackend;
   #handles = new Uint32Array(256);
   #boxes = new Float32Array(1024);
   #size = [0, 0];
@@ -26,27 +29,25 @@ export class UiRuntime {
   theme = { focusRing: '#90b4ff', textColor: '#edf2ff', emphasisColor: '#90b4ff' };
   reducedMotion = false;
 
-  constructor(options: {
-    canvas: HTMLCanvasElement;
-    a11y: HTMLElement;
-    layout: YogaLayout;
-    fonts: FontBook;
-    onError?: (error: unknown) => void;
-  }) {
+  constructor(options: RuntimeDependencies) {
     this.#layout = options.layout;
     this.ctx = {
       layout: options.layout,
       fonts: options.fonts,
       textScale: 1,
+      scheduler: options.scheduler,
       invalidate: () => {
         this.#revision++;
       },
       onError: options.onError,
     };
     this.#root = createUiRoot(this.ctx);
-    this.input = new InputSystem(options.canvas, options.a11y, this.#painter, (callback) =>
-      this.#root.flushSync(callback),
-    );
+    try {
+      this.input = options.input(this.#painter, (callback) => this.#root.flushSync(callback));
+    } catch (error) {
+      this.#root.destroy();
+      throw error;
+    }
   }
 
   /** Development aid: the host tree with computed boxes. */
@@ -65,11 +66,14 @@ export class UiRuntime {
   }
 
   destroy() {
-    this.input.destroy();
     try {
-      this.#root.destroy();
+      this.input.destroy();
     } finally {
-      this.#layout.dispose();
+      try {
+        this.#root.destroy();
+      } finally {
+        this.#layout.dispose();
+      }
     }
   }
 
@@ -85,15 +89,15 @@ export class UiRuntime {
   }
 
   frame(
-    batch: UiBatch,
-    textures: TextureStore,
+    batch: RenderContext,
+    textures: ImageProvider,
     fonts: FontBook,
     size: { width: number; height: number; dpr: number; cssWidth?: number; cssHeight?: number },
     now: number,
     dt: number,
     profile = false,
   ): FrameProfile | undefined {
-    const startedAt = profile ? performance.now() : 0;
+    const startedAt = profile ? this.ctx.scheduler!.now() : 0;
     const { width, height, dpr } = size;
     if (this.#scale !== dpr) {
       this.#scale = dpr;
@@ -113,9 +117,9 @@ export class UiRuntime {
     // including when the application calls frame() immediately after scrollTo().
     for (let pass = 0; pass < 3; pass++) {
       layoutPasses++;
-      const layoutAt = profile ? performance.now() : 0;
+      const layoutAt = profile ? this.ctx.scheduler!.now() : 0;
       this.#layout.calculate(root.yoga, cssW, cssH);
-      const readAt = profile ? performance.now() : 0;
+      const readAt = profile ? this.ctx.scheduler!.now() : 0;
       nodes = [];
       const collect = (n: HostNode) => {
         nodes.push(n);
@@ -140,7 +144,7 @@ export class UiRuntime {
         n.box.w = w;
         n.box.h = h;
       }
-      const commitAt = profile ? performance.now() : 0;
+      const commitAt = profile ? this.ctx.scheduler!.now() : 0;
       const notifications: (() => void)[] = [];
       for (const n of nodes) updateScroll(n, notifications);
       const revision = this.#revision;
@@ -151,13 +155,13 @@ export class UiRuntime {
       if (profile) {
         layoutMs += readAt - layoutAt;
         readLayoutMs += commitAt - readAt;
-        scrollCommitMs += performance.now() - commitAt;
+        scrollCommitMs += this.ctx.scheduler!.now() - commitAt;
       }
       if (revision === this.#revision) break;
       if (pass === 2) throw new Error('Scroll subscriptions did not settle within three layout passes');
     }
     if (changed.size) {
-      queueMicrotask(() => {
+      this.ctx.scheduler!.microtask(() => {
         for (const n of changed)
           if (!n.destroyed) {
             try {
@@ -170,7 +174,7 @@ export class UiRuntime {
       });
     }
 
-    const readAt = profile ? performance.now() : 0;
+    const readAt = profile ? this.ctx.scheduler!.now() : 0;
     batch.begin(cssW * dpr, cssH * dpr, now / 1000, width, height);
     try {
       this.#painter.paint(root, {
@@ -187,7 +191,7 @@ export class UiRuntime {
     } finally {
       batch.end();
     }
-    const paintedAt = profile ? performance.now() : 0;
+    const paintedAt = profile ? this.ctx.scheduler!.now() : 0;
     this.input.afterPaint();
     for (const node of nodes) finishScrollFrame(node);
 
@@ -204,7 +208,7 @@ export class UiRuntime {
       }
     }
     if (profile) {
-      const endedAt = performance.now();
+      const endedAt = this.ctx.scheduler!.now();
       return {
         layoutMs,
         readLayoutMs,
