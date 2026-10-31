@@ -4,6 +4,20 @@ Completed releases and planned work are tracked separately. See
 [CHANGELOG.md](CHANGELOG.md) for individual changes and
 [PRODUCTION.md](PRODUCTION.md) for the supported boundary.
 
+## Implemented, unreleased: portable core and macOS proof
+
+- Platform-independent layout, drawing, input and host contracts; browser
+  adapters retain the existing public API and direct WebGL batch.
+- A shared React example running in browser and standalone macOS hosts.
+- Hermes bytecode, native Yoga with opaque handles, Skia/Metal rendering,
+  AppKit editors/accessibility and root-local resource lifetime.
+- Headless recording and native/WASM behavioral and layout comparison.
+
+See [the architecture](docs/PORTABILITY.md) and
+[acquired evidence](docs/PORTABILITY_RESULTS.md). The native host remains
+experimental. Android is the next port; iOS, Windows and Linux follow with
+their own host implementations, packaging and device qualification.
+
 ## Completed: 0.4 — shared controls and project adoption
 
 The scope is reusable interaction behavior, application-owned visual design and

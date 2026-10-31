@@ -1,97 +1,27 @@
 name: Check
 on:
   pull_request:
-  workflow_call:
+  merge_group:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm run format:check
-      - run: npm pack --dry-run
+  checks:
+    uses: ./.github/workflows/ci.yml
+    with:
+      full: ${{ github.event_name != 'pull_request' }}
+
+  # Preserve the second required context without executing the tests twice.
   browser:
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [chromium, firefox, mobile-chromium]
+    if: ${{ always() }}
+    needs: checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # Keep this version aligned with @playwright/test. The image includes its
-    # browsers, Xvfb and native dependencies; no package-mirror install is needed.
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
-      options: --ipc=host --user 1001
+    timeout-minutes: 2
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      # Headed focus, blur and pointer-capture contracts share one native display.
-      # Isolate projects in separate jobs and run one foreground test at a time.
-      - run: xvfb-run --auto-servernum npm run test:browser -- --project=${{ matrix.project }} --workers=1
+      - name: Verify the reusable workflow result
         env:
-          LIBGL_ALWAYS_SOFTWARE: '1'
-          LUDIC_HEADED: '1'
-      - if: matrix.project == 'chromium' || matrix.project == 'firefox'
-        run: xvfb-run --auto-servernum npm run test:consumer -- --project=${{ matrix.project }} --workers=1
-        env:
-          LIBGL_ALWAYS_SOFTWARE: '1'
-          LUDIC_HEADED: '1'
-      - if: matrix.project == 'chromium'
-        run: xvfb-run --auto-servernum npm run test:consumer -- --project=chromium --workers=1
-        env:
-          LUDIC_CONSUMER_PACKAGE: registry
-          LIBGL_ALWAYS_SOFTWARE: '1'
-          LUDIC_HEADED: '1'
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
-        with:
-          name: browser-report-${{ matrix.project }}
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 14
-  browser-webkit:
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [webkit, mobile-webkit]
-    # The native macOS WebKit port is the closest Playwright target to Safari.
-    runs-on: macos-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install webkit
-        timeout-minutes: 8
-      - run: npm run test:browser -- --project=${{ matrix.project }} --workers=1
-      - if: matrix.project == 'webkit'
-        run: npm run test:consumer -- --project=webkit --workers=1
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
-        with:
-          name: browser-report-${{ matrix.project }}
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 14
+          RESULT: ${{ needs.checks.result }}
+          PASSED: ${{ needs.checks.outputs.passed }}
+        run: |
+          printf 'CI workflow: %s; aggregate passed: %s\n' "$RESULT" "$PASSED" >> "$GITHUB_STEP_SUMMARY"
+          test "$RESULT" = success && test "$PASSED" = true

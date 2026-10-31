@@ -1,6 +1,7 @@
 export { createUI } from './root.ts';
 export type { UIRoot, UIOptions, UITheme, FontSource, FrameInfo } from './root.ts';
 export type { FrameProfile } from './runtime/profile.ts';
+export type { SurfacePoint, ClientPoint } from './platform/contracts.ts';
 export { createScrollHandle } from './scroll.ts';
 export type { ScrollHandle, ScrollSnapshot } from './scroll.ts';
 export { VirtualList, createVirtualListHandle } from './virtual-list.tsx';

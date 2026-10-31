@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "lib": ["ES2023"], "types": [] },
+  "include": ["src/core.ts", "src/native.ts", "tools/native/host-globals.d.ts"],
+  "exclude": []
+}

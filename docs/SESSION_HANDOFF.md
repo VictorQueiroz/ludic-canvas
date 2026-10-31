@@ -6,6 +6,51 @@ This is a dated evidence snapshot, not a live release dashboard. Start in the
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
 
+## Portable core and macOS proof — PR 35, unreleased
+
+The approved first portability milestone is implemented on `feat/portable-runtime`
+from `ec57f47`. It adds portable layout/rendering/input/host boundaries, a shared
+browser/macOS example, and a standalone Hermes/native-Yoga/Skia-Metal host with
+AppKit editing and accessibility. A minor changeset is pending; local package
+metadata remains 0.8.0. This work did not publish or deploy a new artifact.
+
+PR preparation in `30d1f48` adds the `native-macos` CI job and regression fixes
+for portable scheduling cleanup, rejected drawing-command state, reentrant
+surface disposal and native exception lifetime. A detached checkout with empty
+native caches built and passed the native contracts. Final local checks passed
+113 unit tests, package/type/docs gates, native contracts and AppKit error/quit
+checks. The hosted native job subsequently passed a cold build and a cache-hit
+build in the PR checks.
+The branch is now pushed and [PR 35](https://github.com/VictorQueiroz/ludic-canvas/pull/35)
+is open. Codex reviewed `a940bb5` and identified native password-type changes
+and focus restoration after window reactivation. Both have failing-before and
+passing-after AppKit regressions in the review follow-up. The new control test
+uses real AppKit editors and injected window notifications; physical application
+switching is not established by it. Native build, behavioral/rendering contracts
+and all AppKit control/error tests passed locally after the fixes. Codex reviewed
+`c75f432` without further findings; all nine CI jobs passed, including 392 browser
+tests with 13 explicit skips and 16 independent-consumer checks.
+
+The CI follow-up preserves the ruleset's `browser` and `checks / browser`
+contexts as always-evaluated aggregates. A reusable workflow runs the test
+matrix once; the PR wrapper checks its conclusion and explicit success output.
+Only allowlisted prose-only PRs can exclude browser/native work, with package
+checks retained. All other changes and all release runs select the full matrix.
+Required skips, missing results, cancellation and planning failures block the
+gate. The updated workflow still needs its hosted check-name verification and
+fresh Codex review before merging; refresh the PR's live state.
+
+The original milestone's `npm run check` passed 111 unit tests and package/type/docs/consumer gates. The
+complete browser suite passed 387 tests with 13 existing explicit skips and no
+retries in its final run. Native raster operations, Hermes/WASM behavioral/layout
+comparison and actual AppKit smoke checks passed. Command-Q released all native
+layout/node/surface ownership before VM shutdown without an application hook.
+
+Use [PORTABILITY.md](PORTABILITY.md) for build instructions and contracts, and
+[PORTABILITY_RESULTS.md](PORTABILITY_RESULTS.md) for source/artifact identities,
+failed attempts, corrections and evidence limits. Native support is experimental;
+Android, iOS, Windows and Linux hosts are future milestones.
+
 ## Wheel and world input 0.8
 
 The implementation adds `onWheel`/`UIWheelEvent`, native-field wheel callbacks,

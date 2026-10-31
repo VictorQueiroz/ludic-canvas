@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { UIRoot } from './root.ts';
+import type { UIRoot } from './platform/root-types.ts';
 
 /** Internal provider; each createUI().render() supplies its own root. */
 export const UIRootContext = createContext<UIRoot | undefined>(undefined);

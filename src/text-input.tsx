@@ -1,7 +1,7 @@
 import { useImperativeHandle, useRef, type ComponentType, type Ref } from 'react';
 import { View } from './primitives.ts';
 import type { ViewProps, ViewStyle } from './runtime/types.ts';
-import type { EditorProps } from './runtime/editing.ts';
+import type { EditorProps } from './platform/editor-types.ts';
 
 /** Browser font configuration, independent of the offline canvas font atlases. */
 export interface NativeTextStyle {

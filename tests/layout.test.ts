@@ -28,10 +28,7 @@ describe('committed Yoga reactor', () => {
     ).toEqual([
       'env.lc_log',
       'env.lcl_measure',
-      'wasi_snapshot_preview1.clock_time_get',
-      'wasi_snapshot_preview1.fd_close',
       'wasi_snapshot_preview1.fd_fdstat_get',
-      'wasi_snapshot_preview1.fd_seek',
       'wasi_snapshot_preview1.fd_write',
     ]);
   });

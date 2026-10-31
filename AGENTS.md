@@ -12,9 +12,10 @@ dated starting point; refresh its mutable state before relying on it.
 - Keep the public repository independent of private source applications. Their
   names, identifiers, content and assets do not belong in its code, documentation,
   examples, commits or release messages.
-- React owns composition, Yoga WebAssembly owns layout and WebGL owns drawing.
-  Native text fields are the explicit exception: root-owned DOM editors draw
-  their text, caret and selection inside Yoga boxes with WebGL decoration.
+- React owns composition and Yoga owns layout. Browser adapters use Yoga WASM,
+  WebGL and root-owned DOM editors. The experimental native host uses Hermes,
+  native Yoga, Skia and platform editors. Keep platform globals out of the core;
+  see [docs/PORTABILITY.md](docs/PORTABILITY.md) for contracts and qualification limits.
   Applications own game state and the simulation/frame loop. Keep resources,
   focus, scrolling and subscriptions root-local; avoid a global active root.
 - Generate font atlases offline with the packaged CLI. Preserve the documented

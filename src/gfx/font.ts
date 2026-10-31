@@ -1,8 +1,7 @@
 // MSDF fonts: metrics from msdf-atlas-gen's JSON, text layout (word wrap,
 // alignment, tracking, **emphasis** runs) into glyph quads in CSS pixels.
 
-import type { Texture } from './gl.ts';
-import { fetchBytes } from '../resources.ts';
+import type { TextureResource as Texture } from '../platform/contracts.ts';
 
 export type FontName = string;
 /** An explicitly ordered list of registered faces. No implicit system-font lookup. */
@@ -469,12 +468,4 @@ export class FontBook {
     }
     return { width: Math.ceil(natural), height: Math.ceil(height), lines: lines.length, glyphs };
   }
-}
-
-export async function loadFontJson(
-  url: string,
-  options: { signal?: AbortSignal; maxBytes?: number } = {},
-): Promise<AtlasJson> {
-  const bytes = await fetchBytes(url, { ...options, label: 'Font metrics' });
-  return validateFontMetrics(JSON.parse(new TextDecoder().decode(bytes)));
 }

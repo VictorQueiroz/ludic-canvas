@@ -71,6 +71,45 @@ test('wheel preserves units, modifiers, coordinates and bubbling cancellation', 
   }
 });
 
+test('wheel preserves line units when the browser selects units on first access', async ({ page }) => {
+  await scene(page, 'bubble');
+  const calls = await page.evaluate(() => {
+    const c = (window as any).routing;
+    const rect = c.canvas.getBoundingClientRect();
+    const event = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      clientX: rect.left + 20,
+      clientY: rect.top + 20,
+    });
+    // Model Gecko's trusted line-event getters. Constructed WheelEvents skip
+    // this compatibility conversion, so ordinary synthetic events miss it.
+    let modeChecked: boolean | undefined;
+    Object.defineProperty(event, 'deltaMode', {
+      get() {
+        modeChecked ??= true;
+        return modeChecked ? 1 : 0;
+      },
+    });
+    for (const [name, value] of [
+      ['deltaX', 2],
+      ['deltaY', 3],
+      ['deltaZ', 4],
+    ] as const) {
+      Object.defineProperty(event, name, {
+        get() {
+          modeChecked ??= false;
+          return modeChecked ? value : value * 40;
+        },
+      });
+    }
+    c.canvas.dispatchEvent(event);
+    return c.calls;
+  });
+  expect(calls.map((e: any) => e.name)).toEqual(['child', 'parent']);
+  for (const call of calls) expect(call).toMatchObject({ deltaMode: 1, deltaX: 2, deltaY: 3, deltaZ: 4 });
+});
+
 test('hit query respects geometry, clips, pass-through and disabled controls', async ({ page }) => {
   await scene(page, 'geometry');
   const hits = await page.evaluate(() => {

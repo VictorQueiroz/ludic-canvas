@@ -18,7 +18,7 @@ import {
   Unit,
   WRAP,
 } from '../wasm/abi.ts';
-import type { YogaLayout } from '../wasm/layout.ts';
+import type { LayoutBackend as YogaLayout, Scheduler } from '../platform/contracts.ts';
 import type { FontBook, TextStyle } from '../gfx/font.ts';
 import type { AnyProps, Dim, HostType, LayoutStyle, TextStyleProp } from './types.ts';
 import { detachScroll, type ScrollSnapshot } from '../scroll.ts';
@@ -34,6 +34,7 @@ export interface RuntimeContext {
   layout: YogaLayout;
   fonts: FontBook;
   textScale: number;
+  scheduler?: Scheduler;
   invalidate(): void;
   onError?: (error: unknown) => void;
   nextNodeId?: number;
@@ -78,7 +79,7 @@ export class HostNode {
   contentHeight = 0;
   scrollSnapshot?: ScrollSnapshot;
   scrollEventQueued = false;
-  mountedAt = performance.now();
+  mountedAt: number;
   tweens = new Map<string, { from: number[]; to: number[]; start: number; duration: number }>();
   hoverT = 0;
   pressT = 0;
@@ -91,6 +92,7 @@ export class HostNode {
     this.id = ctx.nextNodeId = (ctx.nextNodeId ?? 0) + 1;
     this.type = type;
     this.ctx = ctx;
+    this.mountedAt = ctx.scheduler?.now() ?? performance.now();
     this.props = props;
     this.yoga = ctx.layout.create();
     if (type === 'line') {

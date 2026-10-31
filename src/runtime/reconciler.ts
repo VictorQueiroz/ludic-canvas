@@ -113,7 +113,10 @@ const hostConfig = {
   resolveUpdatePriority: () => (currentPriority !== NoEventPriority ? currentPriority : DefaultEventPriority),
   resetFormInstance() {},
   requestPostPaintCallback(callback: (time: number) => void) {
-    requestAnimationFrame((t) => callback(t));
+    const frame = (globalThis as { requestAnimationFrame?: (fn: (time: number) => void) => unknown })
+      .requestAnimationFrame;
+    if (frame) frame(callback);
+    else setTimeout(() => callback(performance.now()), 16);
   },
   shouldAttemptEagerTransition: () => false,
   trackSchedulerEvent() {},

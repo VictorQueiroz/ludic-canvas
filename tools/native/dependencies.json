@@ -1,0 +1,17 @@
+{
+  "hermes": {
+    "revision": "26fbb82fad39d9d06901adb1d6d630dacc84c877",
+    "url": "https://codeload.github.com/facebook/hermes/tar.gz/26fbb82fad39d9d06901adb1d6d630dacc84c877",
+    "sha256": "bcb17c06dc62a4536d6b6447a97be64518c9677487b5efccbcedde3d4ed7946e"
+  },
+  "skia": {
+    "revision": "607de4b035dcf7fdbaafb66c6cc04f22009ff4d4",
+    "url": "https://codeload.github.com/google/skia/tar.gz/607de4b035dcf7fdbaafb66c6cc04f22009ff4d4",
+    "sha256": "15ae5922b39fb4ba51c8a25b027dc87a017ae7028504bbcd825c2367e647f152"
+  },
+  "yoga": {
+    "revision": "3.2.1",
+    "url": "https://codeload.github.com/facebook/yoga/tar.gz/refs/tags/v3.2.1",
+    "sha256": "86b399ac31fd820d8ffa823c3fae31bb690b6fc45301b2a8a966c09b5a088b55"
+  }
+}
