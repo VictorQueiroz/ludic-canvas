@@ -131,6 +131,89 @@ Native sources and artifacts are unchanged. The failing trace is retained in
 `build/native/wheel-unit-regression-before.log` and
 `build/native/wheel-unit-regression-after.log`.
 
+## PR preparation: clean build, ownership review and native CI
+
+Implementation revision: `30d1f4892f6c13c033fb6f7913534c0cf4cabb19`.
+SDK source-set SHA-256:
+`c919d30a4ea4ae44fff80ec84b8c9b9159d9ba711f42e2b6e6f14f97ff53bf24`.
+Native source-set SHA-256:
+`1b3e8d27b579796be42d67641c23acbcf4e5b0b14af8738732e6b26f84160b65`.
+The source-set definitions match those above. This work remains local and
+unreleased; these identities do not describe an npm publication or deployment.
+
+An isolated detached worktree at `c9b3b5c` started without `node_modules`, native
+sources, dependency builds or application outputs. `npm ci`, `native:build` and
+`native:test` passed using newly downloaded checksum-verified archives. No source
+or build cache was copied from the development checkout. This establishes the
+documented build procedure in the recorded local environment, not bit-for-bit
+reproducibility or a different machine's toolchain compatibility.
+
+After the review fixes were committed, the same isolated checkout advanced to
+`30d1f48`; `native:build` and `native:test` passed again with its freshly acquired
+dependency cache. Application source and outputs were built from the final
+implementation revision. This second run also exercises the cache-hit path.
+
+The targeted review covered public exports/types, browser pointer/wheel
+adaptation, scheduling, layout/JSI ownership and native exception/teardown paths.
+It found and corrected these additional issues in the new portable/native code:
+
+- Automatic scheduling failures could leave portable services allocated, and a
+  cancellation exception could stop destruction before the tree and resources
+  were released. Two failing tests reported zero calls to layout disposal;
+  both now pass, including editor-handle clearing and idempotent destruction.
+- Rejecting a drawing command after applying a clip left canvas state behind.
+  A failing raster test now passes: rejection restores the save stack and a
+  subsequent frame draws outside the rejected frame's clip.
+- A native event callback that destroyed its own surface and then threw crashed
+  in the event error handler. Capturing the application-owned engine fixes that
+  path. The reproduction also exposed a second crash while destroying a JSI
+  exception after its runtime had unwound. Both native executables now catch
+  application exceptions while Hermes is alive. AppKit error exit releases
+  surfaces/listeners, and VM shutdown no longer invokes the unused global
+  application shutdown hook.
+
+The review identified no further browser API removals or browser regressions.
+This follow-up changes the portable root and native implementation; browser
+source remains as checked in the wheel follow-up. The earlier browser results
+are reused for that unchanged source. This was a targeted review, not an
+exhaustive audit or a performance comparison.
+
+Validation at the implementation revision:
+
+- `npm run check`: passed, including 113 unit tests, both typechecks, docs,
+  public-boundary audit and packed consumers.
+- `npm run native:build` and `npm run native:test`: passed; all eight drawing
+  operations, rejected-frame recovery, JS startup-error reporting, nine
+  behavioral checks per runtime and matching native/WASM layout trees.
+- `npm run native:test:host`: both actual AppKit error fixtures passed. Each
+  reported an intentional application error with exit code 1, no signal, and
+  `layouts=0 nodes=0 surfaces=0` before VM destruction.
+- Normal AppKit activation changed Count 0 to Count 1; Command-Q exited 0 with
+  zero native counters before VM shutdown. The first UI attempt had ambiguous
+  application identity and was excluded. The acquired run used a copy with a
+  unique bundle identity; the post-quit state read relaunched that verification
+  copy, which was then stopped separately.
+- `npm run format:check`, `git diff --check` and actionlint 1.7.12 passed. The
+  workflow's toolchain-fingerprint shell step also ran successfully locally.
+
+The new `native-macos` job is part of the existing Check workflow on PRs,
+workflow dispatch and reusable release checks. It uses the standard macOS 26
+ARM64 runner, two compiler jobs, and a dependency cache keyed by pinned inputs,
+architecture, workspace path and recorded toolchain versions. It always builds
+and tests, including on cache hits, and retains logs and results. The runner
+choice was checked against [GitHub's runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners),
+and cache behavior against [the pinned action](https://github.com/actions/cache/tree/cdf6c1fa76f9f475f3d7449005a359c84ca0f306).
+The hosted job has not run yet; actionlint and local commands do not establish
+cloud CI success. AppKit GUI fixtures remain a separate local command.
+
+Logs and identities are retained under `build/native/pr-preparation/`: clean
+install/build/test logs, before/after ownership and renderer failures, the native
+crash reproduction and LLDB stack, final checks, isolated normal quit and
+toolchain details. AppKit fixture logs are in `build/native/host-contracts/`.
+The local toolchain was macOS 26.6.2, Xcode 27.0 (27A266a), SDK 27.0, Apple Clang
+21.0.0, CMake 4.4.4, Ninja 1.13.2, Python 3.15.1 and Node 24.22.1. The workflow
+records the actual hosted toolchain rather than claiming it matches this machine.
+
 ## Limits
 
 The macOS proof remains experimental. It is not signed/notarized distribution

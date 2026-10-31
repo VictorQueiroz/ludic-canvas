@@ -14,7 +14,15 @@ browser/macOS example, and a standalone Hermes/native-Yoga/Skia-Metal host with
 AppKit editing and accessibility. A minor changeset is pending; local package
 metadata remains 0.8.0. This work did not publish or deploy a new artifact.
 
-`npm run check` passed 111 unit tests and package/type/docs/consumer gates. The
+PR preparation in `30d1f48` adds the `native-macos` CI job and regression fixes
+for portable scheduling cleanup, rejected drawing-command state, reentrant
+surface disposal and native exception lifetime. A detached checkout with empty
+native caches built and passed the native contracts. Final local checks passed
+113 unit tests, package/type/docs gates, native contracts and AppKit error/quit
+checks. The new hosted job is configured and linted but has not run remotely.
+The branch remains local; no PR has been opened by this preparation task.
+
+The original milestone's `npm run check` passed 111 unit tests and package/type/docs/consumer gates. The
 complete browser suite passed 387 tests with 13 existing explicit skips and no
 retries in its final run. Native raster operations, Hermes/WASM behavioral/layout
 comparison and actual AppKit smoke checks passed. Command-Q released all native
