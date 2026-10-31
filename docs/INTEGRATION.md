@@ -63,9 +63,17 @@ as the existing browser contracts. The first headless Linux Firefox candidate
 could not acquire WebGL 1. That failure was in the CI graphics environment;
 startup deadlines and SDK behavior were not changed to accommodate it.
 
-## 0.7.0 consumer update
+## 0.8.0 consumer update
 
-Both standalone examples pin the published 0.7.0 artifact. The minimal counter
+Both standalone examples now pin the exact 0.8.0 registry artifact and its
+integrity. The SDK adds wheel callbacks and the root UI hit query; the
+[map-and-sidebar example](../examples/input-routing) demonstrates both routing
+arrangements. Publication, installed-package interaction and deployment evidence
+are recorded in [the 0.8.0 release record](RELEASE_0_8_0.md).
+
+## Historical 0.7.0 consumer update
+
+Both standalone examples were pinned to the published 0.7.0 artifact. The minimal counter
 keeps the Vite 7 toolchain, updated to Vite 7.3.7 and esbuild 0.28.2 to resolve
 the advisories reported for its previous development dependencies. Its npm audit
 reported zero advisories after the update; this is a dependency snapshot, not a

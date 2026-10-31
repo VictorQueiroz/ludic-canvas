@@ -17,7 +17,7 @@ npm run build
 npm run preview
 ```
 
-Node 24+ is required. The browser must support WebGL 2 for Three.js and WebGL 1 for Ludic Canvas. The project installs the published `ludic-canvas@0.6.0` package, including the regional archive's virtualization API. The repository's documentation build uses the current library checkout instead; CI also copies this project into a temporary directory and builds it against the packed library.
+Node 24+ is required. The browser must support WebGL 2 for Three.js and WebGL 1 for Ludic Canvas. The project installs the published `ludic-canvas@0.8.0` package, including the regional archive's virtualization API. The repository's documentation build uses the current library checkout instead; CI also copies this project into a temporary directory and builds it against the packed library.
 
 ## Play
 

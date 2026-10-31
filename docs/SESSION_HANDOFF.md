@@ -14,11 +14,23 @@ The [input verification record](INPUT_ROUTING.md) records source identity,
 the reproduced missing API, 62 focused browser passes, three explicit mobile
 WebKit wheel-injection skips and the earlier test/acquisition failures.
 
-A minor changeset prepares publication through the existing Changesets/OIDC
-workflow. Package metadata is still 0.7.0 until the version PR; source changes,
-the published artifact and the production deployment must be verified separately.
-The refreshed starting production deployment was READY at `67f95b2` in project
-`prj_kEyfh6TLuhsYKTfZryYKA2vo3K6o`, team `team_2RngWKl69QIK4FGBEZdpNkgN`.
+[ludic-canvas 0.8.0](https://www.npmjs.com/package/ludic-canvas/v/0.8.0) is published
+and npm latest. Implementation PR 32 merged as `59d1ba8`; release PR 33 merged
+as `64660902d8748211e83d33763c7f173d77fce82c`, matching tag v0.8.0 and npm gitHead.
+The downloaded 829,164-byte tarball matched registry integrity. Both standalone
+examples now pin this artifact. The independent registry consumer and fresh
+npm-installed map/sidebar interactions passed, including teardown.
+
+The complete local suite and implementation CI each passed 382 browser tests
+with 13 explicit skips and no retries. Package/type/unit/docs/packed-consumer
+checks passed. The publishing workflow also passed its complete check matrix.
+Vercel reported the canonical production alias READY at the release commit;
+the live 0.8.0 example passed both routing arrangements and a 320-pixel layout.
+
+See [the 0.8.0 release verification record](RELEASE_0_8_0.md) for identities,
+source checksum, registry-availability attempts and evidence limits. This
+documentation/consumer-pin follow-up leaves SDK source unchanged; a subsequent
+deployment can legitimately have a later documentation commit than npm gitHead.
 
 ## Published native editing 0.7.0
 
