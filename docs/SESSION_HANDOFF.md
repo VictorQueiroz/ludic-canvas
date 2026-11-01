@@ -8,7 +8,8 @@ Preserve unrelated edits and original acquisition bytes/checksums.
 
 ## Repository formatting and commit hook
 
-The `chore/project-prettier-hooks` branch starts at merged PR 35 (`e7cc645`).
+[PR 37](https://github.com/VictorQueiroz/ludic-canvas/pull/37) targets `main` from
+`chore/project-prettier-hooks`, starting at merged PR 35 (`e7cc645`).
 Prettier now checks the repository from its root, with generated font assets,
 generated documentation and immutable performance acquisitions excluded. The
 repository-wide write pass found the authored files already formatted. Husky
@@ -18,9 +19,11 @@ production and non-Git installations skip hook setup.
 Actual commits in a temporary repository verified formatting with a spaced
 filename, preservation of partially staged edits and ignored/unsupported files,
 and commit rejection with staged-input restoration after a syntax error. CI and
-production hook-install skips also passed. `npm run format:check` passed; full
-package validation and hosted PR checks/review are pending. No package release
-or deployment is requested by this tooling change. The older milestone sections
+production hook-install skips also passed. `npm run format:check`, `npm run check`
+(140 unit tests plus package/type/docs/packed-consumer checks) and
+`npm pack --dry-run` passed. The package excludes hook files. Hosted PR checks
+and Codex review are pending at preparation time. No package release or
+deployment is requested by this tooling change. The older milestone sections
 below retain their historical state; PR 35 has since merged.
 
 ## Portable core and macOS proof — PR 35, unreleased
