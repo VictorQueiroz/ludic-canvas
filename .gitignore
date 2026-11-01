@@ -5,6 +5,7 @@ site/
 build/
 .vercel/
 .serena/
+.husky/_/
 *.tgz
 *.tsbuildinfo
 .DS_Store

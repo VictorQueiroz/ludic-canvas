@@ -10,6 +10,16 @@ npm ci
 npm run dev
 ```
 
+`npm ci` also installs the Husky pre-commit hook. Each commit runs Prettier on
+staged files through lint-staged, which restores unstaged edits in partially
+staged files afterward. Hook installation is skipped in CI, production installs
+and directories without Git metadata; `HUSKY=0` explicitly disables it.
+
+Run `npm run format` to format all supported files across the repository, or
+`npm run format:check` to check them without writing. Both commands and the hook
+respect `.gitignore` and `.prettierignore`. Generated font assets, generated
+documentation and original performance acquisitions remain excluded.
+
 Keep unrelated changes intact. An isolated worktree is useful when another task
 is active in the checkout. Use only servers, temporary directories and processes
 created for your task when cleaning up.
