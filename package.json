@@ -67,9 +67,9 @@
     "wasm": "cmake --preset wasm-release && cmake --build --preset wasm-release -j 4",
     "fonts": "node tools/fontgen/build.mjs",
     "prepack": "npm run build",
-    "format": "prettier --write src tests tools cli examples .changeset \"docs/*.md\" docs/main.tsx docs/enhance.ts docs/style.css docs/performance docs/components/main.tsx docs/components/style.css docs/play/main.tsx docs/play/game.css docs/play/gallery.ts docs/play/gallery.css docs/3d/main.ts docs/3d/scene.css *.json *.ts *.md .github",
-    "format:check": "prettier --check src tests tools cli examples .changeset \"docs/*.md\" docs/main.tsx docs/enhance.ts docs/style.css docs/performance docs/components/main.tsx docs/components/style.css docs/play/main.tsx docs/play/game.css docs/play/gallery.ts docs/play/gallery.css docs/3d/main.ts docs/3d/scene.css *.json *.ts *.md .github",
-    "prepare": "npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "npm run build && node .husky/install.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts && npm run build && npm run docs:generate",
     "release": "changeset publish",
@@ -86,7 +86,8 @@
     "qualify:desktop": "node tools/qualification/desktop.mjs",
     "native:build": "node tools/native/build.mjs",
     "native:test": "node tools/native/test.mjs",
-    "native:test:host": "node tools/native/test-host.mjs"
+    "native:test:host": "node tools/native/test-host.mjs",
+    "precommit": "lint-staged"
   },
   "peerDependencies": {
     "react": "19.3.1"
@@ -101,6 +102,8 @@
     "@types/react": "19.3.0",
     "@types/react-reconciler": "0.34.1",
     "@types/three": "0.186.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
     "prettier": "3.9.10",
     "react": "19.3.1",
     "shiki": "4.5.0",
@@ -115,5 +118,8 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
+  },
+  "lint-staged": {
+    "*": "prettier --write --ignore-unknown"
   }
 }
