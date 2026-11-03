@@ -61,6 +61,12 @@ regression reproduced that activation before the fix. Regions containing
 blocking descendants now retain canvas presentation; the same click no longer
 activates the covered control in all five browser projects, without retries.
 
+A further review pass reproduced a stale intermediate animation state when the
+application's next frame arrived after a transition finished. Each region now
+remembers whether its preceding preparation was animated and invalidates once
+more when it settles. The delayed-frame regression verifies final pixels and
+that a subsequent idle frame reuses its tiles.
+
 The initial PR 39 Mac verification also timed out in the unchanged Git-diff
 policy fixture at its existing five-second limit. Browser/native jobs passed.
 The follow-up leaves that fixture and its deadlines unchanged and requires a

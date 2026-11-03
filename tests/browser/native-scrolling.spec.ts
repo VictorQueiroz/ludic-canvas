@@ -1,6 +1,48 @@
 import { expect, test } from '@playwright/test';
 import { panTouch } from './touch-pan.ts';
 
+test('native tiles repaint the final animation state after a delayed frame', async ({ page }) => {
+  await page.goto('/tests/browser/native-scrolling/?kind=transition-red');
+  await expect(page.getByRole('button', { name: 'Row 0', exact: true })).toBeAttached();
+  const start = await page.evaluate(() => {
+    const c = (window as any).nativeScrolling;
+    c.pause();
+    const now = performance.now();
+    c.root.frame(now);
+    const committed = c.committed;
+    c.change('transition-green');
+    return { now, committed };
+  });
+  await expect
+    .poll(() => page.evaluate(() => (window as any).nativeScrolling.committed))
+    .toBeGreaterThan(start.committed);
+  const result = await page.evaluate((now) => {
+    const c = (window as any).nativeScrolling;
+    const sample = () => {
+      const tile = document.querySelector<HTMLCanvasElement>('[data-ludic-scroll-tile]')!;
+      const dpr = tile.width / 320;
+      return [...tile.getContext('2d')!.getImageData(200 * dpr, 20 * dpr, 1, 1).data];
+    };
+    c.root.frame(now + 1);
+    const initial = sample();
+    const settled = c.root.frame(now + 201);
+    const final = sample();
+    const idle = c.root.frame(now + 401);
+    return {
+      initial,
+      final,
+      settled: settled.nativeScroll.copiedTiles,
+      idle: idle.nativeScroll.copiedTiles,
+      errors: c.errors,
+    };
+  }, start.now);
+  expect(result.initial).toEqual([255, 0, 0, 255]);
+  expect(result.final).toEqual([0, 255, 0, 255]);
+  expect(result.settled).toBeGreaterThan(0);
+  expect(result.idle).toBe(0);
+  expect(result.errors).toEqual([]);
+});
+
 test('blocking descendants prevent activation of covered controls', async ({ page }) => {
   await page.goto('/tests/browser/native-scrolling/?kind=block');
   await expect(page.getByRole('button', { name: 'Row 0', exact: true })).toBeAttached();

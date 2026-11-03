@@ -14,6 +14,7 @@ interface Entry {
   tiles: Map<number, HTMLCanvasElement>;
   plan: NativeTilePlan;
   key: string;
+  animated: boolean;
 }
 const inside = (node: HostNode, ancestor: HostNode) => {
   for (let n: HostNode | undefined = node; n; n = n.parent) if (n === ancestor) return true;
@@ -186,7 +187,7 @@ export class NativeScrollManager implements ScrollPresentation {
     viewport.append(content);
     host.append(viewport);
     this.container.append(host);
-    const entry: Entry = { node, host, viewport, content, tiles: new Map(), plan, key: '' };
+    const entry: Entry = { node, host, viewport, content, tiles: new Map(), plan, key: '', animated: false };
     this.#entries.set(node, entry);
     this.active.add(node);
     let representable = true;
@@ -299,10 +300,11 @@ export class NativeScrollManager implements ScrollPresentation {
       };
       scan(node);
       const key = `${revision}/${node.box.w}/${node.box.h}/${node.contentHeight}/${frame.dpr}/${tileHeight}/${node.paintedOpacity}/${frame.textColor}/${frame.emphasisColor}/${frame.focusRing}/${frame.reducedMotion}/${interactions.join(',')}`;
-      if (key !== entry.key || animated) {
+      if (key !== entry.key || animated || entry.animated) {
         this.#clearTiles(entry);
         entry.key = key;
       }
+      entry.animated = animated;
     }
     for (const node of [...this.#entries.keys()]) if (!wanted.has(node)) this.#retire(node);
     return true;

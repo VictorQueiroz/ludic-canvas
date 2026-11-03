@@ -45,10 +45,19 @@ function App() {
       onPress={() => select(index)}
       onHover={kind === 'hover-button' && index === 0 ? (hovered) => hoverEvents.push(hovered) : undefined}
       pressStyle={{ opacity: 0.5 }}
+      transition={kind.startsWith('transition-') ? 100 : undefined}
       style={{
         height: 40,
         flexShrink: 0,
-        background: index === selected ? '#406080' : index % 2 ? '#182838' : '#203040',
+        background: kind.startsWith('transition-')
+          ? kind === 'transition-green'
+            ? '#00ff00'
+            : '#ff0000'
+          : index === selected
+            ? '#406080'
+            : index % 2
+              ? '#182838'
+              : '#203040',
       }}
     >
       <Text>{`Row ${index}${selected === index ? ' selected' : ''}`}</Text>
@@ -144,6 +153,9 @@ const destroy = () => {
 Object.assign(window, {
   nativeScrolling: {
     root,
+    get committed() {
+      return committed;
+    },
     scroll,
     virtual,
     errors,

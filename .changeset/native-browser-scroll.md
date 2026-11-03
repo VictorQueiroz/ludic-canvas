@@ -12,4 +12,6 @@ Retain canvas presentation for blocking descendants so covered controls cannot r
 
 Repaint native tiles when viewport height changes so percentage-sized descendants stay aligned with their native controls.
 
+Capture the final settled animation state after delayed application frames, then resume reusing static tiles.
+
 Synchronize browser extents before programmatic/focus/anchor commands, retain native DOM activation and keyboard semantics, and extend fixed-height virtual windows to cover the prepared raster range. Native scrolling does not create another React root, WebGL context, animation loop or font cache.
