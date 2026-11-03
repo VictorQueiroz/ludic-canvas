@@ -77,6 +77,21 @@ packed-consumer gates. Mobile-width inspection at 390 CSS pixels found no
 horizontal page overflow. No physical scrolling or timing result is inferred
 from these software checks.
 
+## Hosted preview
+
+[Draft PR 38](https://github.com/VictorQueiroz/ludic-canvas/pull/38) contains the
+prototype. The [phone comparison preview](https://ludic-canvas-258jgah6d-victorqueiroz.vercel.app/native-scroll/)
+is Vercel deployment `dpl_CwjQuPNjYPM66LwssFNQK1fvgGZ5`, READY, from Git source
+`d3876aa9e3f491fb83fc8b53761e175a4bee8404`. That immutable deployment remains
+the target for the initial phone comparison, even if later documentation-only
+commits produce another preview.
+
+Hosted browser checks confirmed startup, a distant jump, selection of Item 85,
+bounded tile storage and no console errors. The embedded revision is
+`d3876aa9e3f491fb83fc8b53761e175a4bee8404-dirty`; build-time working-tree changes
+have not been attributed. Deployment identity and Vercel Git metadata identify
+this artifact; it is not described as a clean-build or physical-device result.
+
 ## Physical iPhone evaluation — pending
 
 Use the exact preview revision and record the phone model, iOS version and Chrome
