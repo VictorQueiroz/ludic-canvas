@@ -1,6 +1,17 @@
 import { expect, test } from '@playwright/test';
 import { panTouch } from './touch-pan.ts';
 
+test('blocking descendants prevent activation of covered controls', async ({ page }) => {
+  await page.goto('/tests/browser/native-scrolling/?kind=block');
+  await expect(page.getByRole('button', { name: 'Row 0', exact: true })).toBeAttached();
+  const box = (await page.locator('body > canvas').boundingBox())!;
+  await page.mouse.click(box.x + 200, box.y + 20);
+  await page.evaluate(() => (window as any).nativeScrolling.frame());
+  await expect(page.getByRole('button', { name: 'Row 0 selected', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).nativeScrolling.scroll.getSnapshot().mode)).toBe('canvas');
+  expect(await page.evaluate(() => (window as any).nativeScrolling.errors)).toEqual([]);
+});
+
 test('height-only viewport changes repaint percentage-sized native tile content', async ({ page }) => {
   await page.goto('/tests/browser/native-scrolling/?kind=viewport-resize&reduced');
   await expect(page.getByRole('button', { name: 'Percent target', exact: true })).toBeAttached();

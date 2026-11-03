@@ -98,6 +98,13 @@ function App() {
             </ScrollArea>
           ) : null}
           {rows}
+          {kind === 'block' ? (
+            <View
+              block
+              label="Blocking overlay"
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 40, background: '#804020' }}
+            />
+          ) : null}
           {kind === 'viewport-resize' ? (
             <View
               label="Percent target"

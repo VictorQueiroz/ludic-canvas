@@ -55,6 +55,12 @@ projects without retries. The complete SDK native-scrolling suite then passed
 81 cases with four existing capability skips and no retries; package checks
 (145 unit tests) and formatting also pass on this follow-up.
 
+The next Codex pass identified a blocking View inside a scroll region whose
+missing native hit surface allowed a covered button to activate. A focused
+regression reproduced that activation before the fix. Regions containing
+blocking descendants now retain canvas presentation; the same click no longer
+activates the covered control in all five browser projects, without retries.
+
 The initial PR 39 Mac verification also timed out in the unchanged Git-diff
 policy fixture at its existing five-second limit. Browser/native jobs passed.
 The follow-up leaves that fixture and its deadlines unchanged and requires a
