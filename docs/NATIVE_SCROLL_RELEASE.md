@@ -38,6 +38,19 @@ skips. `npm run check` also passed on the rebased candidate with 145 unit tests.
 The SDK source is unchanged from the fully qualified preparation;
 the parent follow-up changes the experiment lifecycle and verification input.
 
+Codex review of PR 39 identified hover-only targets whose callbacks were hidden
+by native overflow without a matching DOM event surface. A failing-before
+regression observed an empty callback log when hovering such a view. Automatic
+mode now retains canvas presentation for those targets, while labeled native
+buttons still deliver hover enter/leave callbacks. The focused regression runs
+both paths across all five browser projects. Initial observation wiring in the
+test fixture was corrected before acquiring the actual empty-log reproduction.
+
+The initial PR 39 Mac verification also timed out in the unchanged Git-diff
+policy fixture at its existing five-second limit. Browser/native jobs passed.
+The follow-up leaves that fixture and its deadlines unchanged and requires a
+fresh complete hosted check result before merge.
+
 [Prototype PR 38](https://github.com/VictorQueiroz/ludic-canvas/pull/38) and the
 [immutable comparison preview](https://ludic-canvas-258jgah6d-victorqueiroz.vercel.app/native-scroll/)
 still describe the earlier prototype. Its deployment source is `d3876aa` with

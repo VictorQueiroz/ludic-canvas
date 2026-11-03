@@ -14,6 +14,7 @@ const canvas = document.querySelector('canvas')!;
 const scroll = createScrollHandle();
 const virtual = createVirtualListHandle();
 const errors: string[] = [];
+const hoverEvents: boolean[] = [];
 const params = new URLSearchParams(location.search);
 const root = await createUI({
   canvas,
@@ -41,6 +42,7 @@ function App() {
       id={`row-${index}`}
       label={`Row ${index}${selected === index ? ' selected' : ''}`}
       onPress={() => select(index)}
+      onHover={kind === 'hover-button' && index === 0 ? (hovered) => hoverEvents.push(hovered) : undefined}
       pressStyle={{ opacity: 0.5 }}
       style={{
         height: 40,
@@ -71,6 +73,16 @@ function App() {
           scrollHandle={scroll}
           style={{ flex: 1, scale: kind === 'scale' ? 0.9 : 1 }}
         >
+          {kind === 'hover-only' ? (
+            <View
+              label="Hover target"
+              onHover={(hovered) => hoverEvents.push(hovered)}
+              hoverStyle={{ background: '#00ff00' }}
+              style={{ height: 40, flexShrink: 0, background: '#ff0000' }}
+            >
+              <Text>Hover target</Text>
+            </View>
+          ) : null}
           {kind === 'unlabeled' ? <View onPress={() => {}} style={{ height: 40, flexShrink: 0 }} /> : null}
           {kind === 'editor' ? (
             <TextInput label="Editor" value="keep selection" onValueChange={() => {}} readOnly />
@@ -101,6 +113,7 @@ const frame = () => {
     scroll: scroll.getSnapshot(),
     virtual: virtual.scroll.getSnapshot(),
     errors,
+    hoverEvents,
   });
   return result;
 };
@@ -115,6 +128,7 @@ Object.assign(window, {
     scroll,
     virtual,
     errors,
+    hoverEvents,
     frame,
     pause: () => cancelAnimationFrame(raf),
     contextLoss: canvas.getContext('webgl')!.getExtension('WEBGL_lose_context'),

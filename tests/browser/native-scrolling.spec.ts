@@ -1,6 +1,24 @@
 import { expect, test } from '@playwright/test';
 import { panTouch } from './touch-pan.ts';
 
+test('hover-only targets retain callbacks through fallback while native buttons keep hover support', async ({
+  page,
+}) => {
+  for (const kind of ['hover-only', 'hover-button']) {
+    await page.goto(`/tests/browser/native-scrolling/?kind=${kind}`);
+    await expect(page.getByRole('button', { name: 'Row 0', exact: true })).toBeAttached();
+    const box = (await page.locator('body > canvas').boundingBox())!;
+    await page.mouse.move(box.x + 200, box.y + 20);
+    await expect.poll(() => page.evaluate(() => (window as any).nativeScrolling.hoverEvents)).toContain(true);
+    expect(await page.evaluate(() => (window as any).nativeScrolling.scroll.getSnapshot().mode)).toBe(
+      kind === 'hover-only' ? 'canvas' : 'native',
+    );
+    await page.mouse.move(box.x + box.width + 10, box.y + 20);
+    await expect.poll(() => page.evaluate(() => (window as any).nativeScrolling.hoverEvents)).toContain(false);
+    expect(await page.evaluate(() => (window as any).nativeScrolling.errors)).toEqual([]);
+  }
+});
+
 test('native controls retain Yoga geometry under document-wide button styles', async ({ page }) => {
   for (const query of ['', '?kind=canvas']) {
     await page.goto(`/tests/browser/native-scrolling/${query}`);

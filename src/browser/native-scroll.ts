@@ -112,6 +112,8 @@ export class NativeScrollManager implements ScrollPresentation {
     }
     const visit = (n: HostNode): string | undefined => {
       if (n.props.editor) return 'canvas presentation for native editors';
+      if (n.props.onHover && !n.props.onPress && !n.props.focusable)
+        return 'canvas presentation for hover-only targets without a native event surface';
       if (
         (n.props.onPress || n.props.focusable) &&
         (!(n.props.label ?? labelOf(n)).trim() ||

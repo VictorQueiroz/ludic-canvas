@@ -39,7 +39,7 @@ maximum sizes and transforms cannot move their Yoga-defined click/focus boxes.
 The default support boundary is a topmost, unscaled scrolling region fully
 inside a root-owned canvas. Shared engine contexts, nested scrollers/interior
 clips, native editors, custom pointer/wheel handlers, overlapping foreground
-content, unlabeled pressables and unrepresentable browser extents retain canvas
+content, hover-only targets without native controls, unlabeled pressables and unrepresentable browser extents retain canvas
 scrolling. This avoids changing custom gesture ownership or editor lifetime.
 The browser host uses native overscroll locally without chaining to the page.
 Portable/native hosts retain their canvas/renderer scrolling path.
