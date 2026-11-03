@@ -1,0 +1,125 @@
+.scroll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0;
+}
+.scroll-actions button {
+  border: 1px solid #526480;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #eef4ff;
+  background: #17243a;
+  font: inherit;
+  cursor: pointer;
+}
+.scroll-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 24px;
+}
+.scroll-comparison section {
+  min-width: 0;
+}
+.scroll-comparison h2 {
+  font-size: 22px;
+}
+.scroll-comparison section > p {
+  min-height: 3em;
+}
+.scroll-viewport,
+.canvas-reference {
+  width: 100%;
+  max-width: 480px;
+  height: 384px;
+  border: 1px solid #526480;
+  border-radius: 12px;
+  background: #0c1323;
+  overflow: hidden;
+}
+.scroll-viewport {
+  overflow-y: auto;
+  touch-action: pan-y pinch-zoom;
+  overscroll-behavior-y: contain;
+  position: relative;
+}
+.scroll-content {
+  position: relative;
+  width: 100%;
+}
+.scroll-tile {
+  position: absolute;
+  left: 0;
+  pointer-events: none;
+}
+.scroll-item {
+  display: block;
+  width: 100%;
+  height: 72px;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid #293850;
+  background: #101c30;
+  color: #eef4ff;
+  text-align: left;
+  padding: 12px 18px;
+  font:
+    18px/1.3 system-ui,
+    sans-serif;
+  touch-action: pan-y pinch-zoom;
+}
+.scroll-item small {
+  display: block;
+  color: #a8b9d1;
+  font-size: 13px;
+}
+.scroll-item:nth-child(even) {
+  background: #142238;
+}
+.scroll-item[aria-pressed='true'] {
+  background: #244a52;
+}
+.scroll-hit {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  background: transparent !important;
+  color: transparent;
+  padding: 0;
+  border: 0;
+}
+.scroll-item:focus-visible {
+  outline: 2px solid #79e1c5;
+  outline-offset: -3px;
+}
+.canvas-reference {
+  position: relative;
+}
+#canvas-scroll {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.scroll-comparison output {
+  display: block;
+  margin-top: 10px;
+}
+#scroll-diagnostics {
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.scroll-staging {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  pointer-events: none;
+}
+.scroll-staging canvas {
+  display: block;
+  height: 384px;
+}
+.native-scroll-document {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  padding: 40px 24px;
+}
