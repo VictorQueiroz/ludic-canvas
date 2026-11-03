@@ -18,10 +18,11 @@ for (const mode of ['ui', 'external']) {
     const list = stage.getByRole('region', { name: 'Map waypoints' });
     await expect(list).toBeAttached();
     await page.mouse.move(rect.x + rect.width - 50, rect.y + 75);
-    await page.mouse.wheel(0, 10000);
-    // Wait for the last row to reach the clipped list viewport before testing its boundary.
+    // Native browsers can limit a single large wheel event to a viewport-sized step.
+    // Keep scrolling until the last row reaches the viewport before testing its boundary.
     await expect
       .poll(async () => {
+        await page.mouse.wheel(0, 10000);
         const row = (await stage.getByRole('button', { name: 'Waypoint 12', exact: true }).boundingBox())!;
         const reset = (await stage.getByRole('button', { name: 'Reset map zoom' }).boundingBox())!;
         return row.y + row.height <= reset.y;

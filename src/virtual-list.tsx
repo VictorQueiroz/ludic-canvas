@@ -2,7 +2,14 @@ import { useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { ScrollAreaProps } from './controls.tsx';
 import { useUIRoot } from './context.ts';
 import { View } from './primitives.ts';
-import { createScrollHandle, observeScrollFrames, hasPendingScroll, type ScrollHandle } from './scroll.ts';
+import {
+  createScrollHandle,
+  observeScrollFrames,
+  hasPendingScroll,
+  getScrollRenderRange,
+  nativeScrollCallback,
+  type ScrollHandle,
+} from './scroll.ts';
 import { fixedRange, offsetForIndex, type ScrollAlignment } from './virtual/range.ts';
 import type { Interactive, UIKeyEvent, ViewStyle } from './runtime/types.ts';
 
@@ -93,7 +100,7 @@ export interface VirtualListProps<T> extends Omit<ScrollAreaProps, 'children' | 
   gap?: number;
   /** Uniform inset in CSS pixels. Use this instead of style.padding. */
   contentPadding?: number;
-  /** Extra rows on each side. Default: 2. Active, pending-focus and pointer targets may retain three additional rows. */
+  /** Extra rows on each side. Default: 2, in addition to any native raster overscan. Interaction targets may retain three more rows. */
   overscan?: number;
   rowStyle?: ViewStyle | ((item: T, index: number, state: VirtualItemState) => ViewStyle);
   rowHoverStyle?: Interactive['hoverStyle'];
@@ -182,14 +189,15 @@ export function VirtualList<T>({
     let previous: (ReturnType<typeof fixedRange> & { hasViewport: boolean }) | undefined;
     return () => {
       const snapshot = handle.scroll.getSnapshot();
+      const raster = getScrollRenderRange(handle.scroll);
       const next = {
         ...fixedRange({
           count: items.length,
           itemHeight,
           gap,
           padding: contentPadding,
-          viewport: snapshot.viewportHeight,
-          offset: snapshot.offset,
+          viewport: raster ? raster.end - raster.start : snapshot.viewportHeight,
+          offset: raster ? raster.start : snapshot.offset,
           overscan,
         }),
         hasViewport: snapshot.viewportHeight > 0,
@@ -426,12 +434,12 @@ export function VirtualList<T>({
             direction === 'up' ? move(index, -1) : direction === 'down' ? move(index, 1) : false
           }
           onKeyDown={(event) => keyboard(event, index)}
-          onPointerDown={() => {
+          onPointerDown={nativeScrollCallback(() => {
             publish(store, { ...store.snapshot, pointer: key });
             root.focus(id(key));
-          }}
-          onPointerUp={() => publish(store, { ...store.snapshot, pointer: undefined })}
-          onPointerCancel={() => publish(store, { ...store.snapshot, pointer: undefined })}
+          })}
+          onPointerUp={nativeScrollCallback(() => publish(store, { ...store.snapshot, pointer: undefined }))}
+          onPointerCancel={nativeScrollCallback(() => publish(store, { ...store.snapshot, pointer: undefined }))}
           onPress={() => {
             root.focus(id(key));
             onItemPress?.(item, index);

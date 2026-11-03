@@ -85,6 +85,7 @@ export async function runBenchmark(canvas: HTMLCanvasElement, options: Benchmark
   const create = async () => {
     const root = await createUI({
       canvas,
+      scrollMode: 'canvas',
       fonts,
       autoStart: false,
       profile: options.profile ?? false,

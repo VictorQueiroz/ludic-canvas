@@ -30,6 +30,18 @@ export interface FrameInfo {
   textureBytes: number;
   /** Present only when profiling is enabled and a frame is drawn. */
   profile?: FrameProfile;
+  /** Browser-native scroll presentation. RGBA estimates exclude browser/GPU overhead. */
+  nativeScroll?: NativeScrollInfo;
+}
+
+export interface NativeScrollInfo {
+  regions: number;
+  tiles: number;
+  rasterBytes: number;
+  copiedTiles: number;
+  copyCallMs: number;
+  drawCalls: number;
+  submittedQuads: number;
 }
 
 /** A mounted React interface and its layout, input and GPU resources. */

@@ -21,7 +21,7 @@ import {
 import type { LayoutBackend as YogaLayout, Scheduler } from '../platform/contracts.ts';
 import type { FontBook, TextStyle } from '../gfx/font.ts';
 import type { AnyProps, Dim, HostType, LayoutStyle, TextStyleProp } from './types.ts';
-import { detachScroll, type ScrollSnapshot } from '../scroll.ts';
+import { detachScroll, type ScrollSnapshot, type ScrollDriver } from '../scroll.ts';
 
 export interface Box {
   x: number;
@@ -38,6 +38,7 @@ export interface RuntimeContext {
   invalidate(): void;
   onError?: (error: unknown) => void;
   nextNodeId?: number;
+  nativeScrollSupported?: boolean;
 }
 
 export class TextInstance {
@@ -76,6 +77,10 @@ export class HostNode {
   pressed = false;
   focused = false;
   scrollY = 0;
+  paintedScrollY = 0;
+  scrollDriver?: ScrollDriver;
+  scrollRenderRange?: { start: number; end: number };
+  scrollPublishedRange?: { start: number; end: number };
   contentHeight = 0;
   scrollSnapshot?: ScrollSnapshot;
   scrollEventQueued = false;

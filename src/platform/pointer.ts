@@ -1,4 +1,5 @@
 import { HostNode } from '../runtime/nodes.ts';
+import { setScrollPosition } from '../scroll.ts';
 import type { Painter } from '../runtime/paint.ts';
 import type { UIPointerEvent, UIWheelEvent } from '../runtime/types.ts';
 
@@ -224,7 +225,7 @@ export class PointerRouter {
       this.#pressed = target;
       target.pressed = true;
     }
-    if (!prevented && scroller && e.pointerType !== 'mouse')
+    if (!prevented && scroller && !scroller.scrollDriver && e.pointerType !== 'mouse')
       this.#drag = { node: scroller, startY: y, scroll: scroller.scrollY, moved: false };
     this.surface.capturePointer(e.pointerId);
   }
@@ -305,9 +306,9 @@ export class PointerRouter {
       if (n.destroyed || n.props.disabled || n.props.style?.overflow !== 'scroll') continue;
       const max = Math.max(0, n.contentHeight - n.box.h),
         before = n.scrollY;
-      n.scrollY = Math.max(
-        0,
-        Math.min(max, before + e.deltaY * (deltaMode === 1 ? 32 : deltaMode === 2 ? n.box.h : 1)),
+      setScrollPosition(
+        n,
+        Math.max(0, Math.min(max, before + e.deltaY * (deltaMode === 1 ? 32 : deltaMode === 2 ? n.box.h : 1))),
       );
       if (n.scrollY !== before) {
         e.preventDefault();

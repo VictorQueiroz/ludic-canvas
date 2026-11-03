@@ -352,6 +352,7 @@ export async function createNativeScrollExperiment(scope: HTMLElement & { [owner
     roots.push(stagingRoot);
     canvasRoot = await createUI({
       canvas,
+      scrollMode: 'canvas',
       signal,
       maxDpr: 2,
       clearColor: '#0c1323',

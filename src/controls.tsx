@@ -301,7 +301,7 @@ export interface ScrollAreaProps extends Omit<ViewProps, 'role'> {
   label: string;
 }
 
-/** A vertically scrolling region using the root's wheel, touch and focus-reveal behavior. Size it explicitly. */
+/** A vertical scrolling region. Browser auto presentation uses supported native scroll surfaces. Size it explicitly. */
 export function ScrollArea({ style, ...props }: ScrollAreaProps) {
   return <View {...props} role="region" style={{ ...style, overflow: 'scroll' }} />;
 }

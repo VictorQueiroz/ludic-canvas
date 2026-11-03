@@ -8,6 +8,9 @@ import {
   TextInput,
   Text,
   View,
+  Image,
+  DrawOp,
+  DRAW_COMMAND_STRIDE,
   createPortableUI,
   createHeadlessHost,
   RecordingRenderer,
@@ -59,6 +62,42 @@ const key = (value: string): HostKeyEvent & { type: 'keydown' } => ({
 });
 
 describe('portable UI contract', () => {
+  it('fits logical image dimensions independently of raster storage on portable hosts', async () => {
+    const owned = await services();
+    const ui = createPortableUI({
+      ...owned,
+      images: {
+        bytes: 384 * 128 * 4,
+        tick() {},
+        invalidate() {},
+        dispose() {},
+        async preload() {},
+        get: () => ({
+          handle: 'vector',
+          width: 384,
+          height: 128,
+          logicalWidth: 100,
+          logicalHeight: 100,
+          bytes: 384 * 128 * 4,
+        }),
+      },
+    });
+    try {
+      ui.render(<Image src="diagram" style={{ width: 300, height: 100, fit: 'contain' }} />);
+      await settle();
+      ui.frame(0);
+      const commands = owned.renderer.frame.commands;
+      const at = Array.from({ length: commands.length / DRAW_COMMAND_STRIDE }, (_, i) => i * DRAW_COMMAND_STRIDE).find(
+        (index) => commands[index] === DrawOp.Image,
+      )!;
+      expect([...commands.slice(at + 1, at + 5)]).toEqual([100, 0, 100, 100]);
+      expect([...commands.slice(at + 9, at + 13)]).toEqual([0, 0, 1, 1]);
+      expect(ui.frame(16).textureBytes).toBe(384 * 128 * 4);
+    } finally {
+      ui.destroy();
+    }
+  });
+
   it('releases owned services when automatic scheduling fails during creation', async () => {
     const owned = await services();
     const dispose = vi.spyOn(owned.layout, 'dispose');

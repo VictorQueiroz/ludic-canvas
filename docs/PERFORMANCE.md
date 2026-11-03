@@ -9,7 +9,7 @@ a completed report. Use Stop to cancel and release the root.
 
 ## Workload contract, version 1
 
-All workloads use application-driven `ui.frame()`, reduced motion and a DPR cap of 2. They share two independent registrations of the bundled Barlow atlas: an ASCII
+All workloads use application-driven `ui.frame()`, explicit canvas scroll presentation, reduced motion and a DPR cap of 2. Canvas mode preserves the historical workload contract after automatic browser-native scrolling was added. Existing acquired bytes and checksums are unchanged; these results do not measure native tile copying or compositor scrolling. They share two independent registrations of the bundled Barlow atlas: an ASCII
 primary metric subset and a Latin-1 fallback. This deliberately exercises fallback
 texture routing while keeping the fixture small and licensed. No world renderer
 runs. Text content and focus targets are deterministic; there is no random input.
@@ -69,6 +69,14 @@ excluded; synchronous virtual-window commits inside `frame()` are included in
 Suspended frames have no profile.
 The feature is root-local and disabled by default; disabled frames do not acquire
 stage timestamps or allocate a profile object.
+
+For native scrolling, `paintMs` includes tile replay and copy calls, while
+`scrollCommitMs` includes presentation planning, geometry measurement and any
+virtual-window commits. Submitted quads and root draw calls include replay.
+`frame().nativeScroll` separately reports regions, tiles, estimated RGBA bytes,
+copied tiles and `copyCallMs`. These counters exclude browser/GPU allocation
+overhead; the copy timer does not establish GPU completion or visible delivery.
+Use matched workloads with the same scroll mode and raster budget for comparisons.
 
 The browser harness accepts `ludicPerformance.run({ profile: true })` and preserves
 each frame's profile in the downloaded JSON. Compare matching profiling modes;

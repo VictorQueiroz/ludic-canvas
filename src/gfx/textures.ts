@@ -156,6 +156,8 @@ export class TextureStore {
     const bytes = await fetchBytes(url, { signal, maxBytes: this.limits.maxBytes, label: 'Vector image' });
     const blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/svg+xml' }));
     const image = new Image();
+    let source: HTMLCanvasElement | undefined;
+    let canvas: HTMLCanvasElement | undefined;
     const cancel = () => {
       image.src = '';
     };
@@ -165,15 +167,38 @@ export class TextureStore {
       image.src = blobUrl;
       await image.decode();
       throwIfAborted(signal);
-      const canvas = document.createElement('canvas');
+      canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('Unable to allocate the SVG rasterization canvas');
-      context.drawImage(image, 0, 0, width, height);
-      return createTexture(this.gl, canvas, { premultiply: true, maxSize: this.limits.maxTextureSize });
+      const logicalWidth = image.naturalWidth;
+      const logicalHeight = image.naturalHeight;
+      if (logicalWidth > 0 && logicalHeight > 0) {
+        // SVG drawImage behavior at a mismatched destination aspect differs by
+        // browser. First rasterize at its source aspect, then resample pixels.
+        // The temporary surface fits inside the existing physical bucket.
+        const scale = Math.min(width / logicalWidth, height / logicalHeight);
+        source = document.createElement('canvas');
+        source.width = Math.max(1, Math.round(logicalWidth * scale));
+        source.height = Math.max(1, Math.round(logicalHeight * scale));
+        const sourceContext = source.getContext('2d');
+        if (!sourceContext) throw new Error('Unable to allocate the SVG source canvas');
+        sourceContext.drawImage(image, 0, 0, source.width, source.height);
+        context.drawImage(source, 0, 0, width, height);
+      } else context.drawImage(image, 0, 0, width, height);
+      const texture = createTexture(this.gl, canvas, { premultiply: true, maxSize: this.limits.maxTextureSize });
+      // Cache buckets can stretch the raster axes independently. Fit the original
+      // SVG aspect, so contain/cover reverse that resampling instead of distorting it.
+      if (logicalWidth > 0 && logicalHeight > 0) {
+        texture.logicalWidth = logicalWidth;
+        texture.logicalHeight = logicalHeight;
+      }
+      return texture;
     } finally {
       signal.removeEventListener('abort', cancel);
+      if (source) source.width = source.height = 0;
+      if (canvas) canvas.width = canvas.height = 0;
       image.src = '';
       URL.revokeObjectURL(blobUrl);
     }
