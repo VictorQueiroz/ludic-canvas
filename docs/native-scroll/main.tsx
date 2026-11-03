@@ -406,7 +406,13 @@ export async function createNativeScrollExperiment(scope: HTMLElement & { [owner
       },
       { signal },
     );
-    window.addEventListener('pagehide', destroy, { signal });
+    window.addEventListener(
+      'pagehide',
+      (event) => {
+        if (!event.persisted) destroy();
+      },
+      { signal },
+    );
     observer = new ResizeObserver(schedule);
     observer.observe(viewport);
     painting = true;

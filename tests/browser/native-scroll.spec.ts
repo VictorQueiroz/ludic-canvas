@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { panTouch } from './touch-pan.ts';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('http://127.0.0.1:6174/native-scroll/');
@@ -94,24 +95,24 @@ test('touch panning belongs to the native scroller and does not select a row', a
     'Trusted touch-drag injection is Chromium-only; physical iPhone evaluation remains pending.',
   );
   const viewport = page.locator('#native-scroll');
-  await viewport.scrollIntoViewIfNeeded();
-  const box = (await viewport.boundingBox())!;
-  const cdp = await page.context().newCDPSession(page);
-  try {
-    await cdp.send('Input.synthesizeScrollGesture', {
-      x: box.x + box.width / 2,
-      y: box.y + box.height * 0.8,
-      yDistance: -220,
-      speed: 500,
-      gestureSourceType: 'touch',
-    });
-    await expect
-      .poll(() => page.evaluate(() => window.nativeScrollExperiment!.snapshot().rawOffset))
-      .toBeGreaterThan(50);
-    expect(await page.evaluate(() => window.nativeScrollExperiment!.snapshot().selected)).toBe(-1);
-    await viewport.getByRole('button', { name: 'Item 5', exact: true }).tap();
-    await expect(page.locator('#native-selection')).toHaveText('Selected item 5');
-  } finally {
-    await cdp.detach();
-  }
+  await panTouch(page, viewport);
+  await expect.poll(() => page.evaluate(() => window.nativeScrollExperiment!.snapshot().rawOffset)).toBeGreaterThan(50);
+  expect(await page.evaluate(() => window.nativeScrollExperiment!.snapshot().selected)).toBe(-1);
+  await viewport.getByRole('button', { name: 'Item 5', exact: true }).tap();
+  await expect(page.locator('#native-selection')).toHaveText('Selected item 5');
+});
+
+test('persisted page transitions preserve the experiment and ordinary exit tears it down', async ({ page }) => {
+  await page.evaluate(() => {
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+  });
+  expect(await page.evaluate(() => window.nativeScrollExperiment!.snapshot().destroyed)).toBe(false);
+  await page.evaluate(() => window.nativeScrollExperiment!.scrollTo(6000));
+  await expect.poll(() => page.evaluate(() => window.nativeScrollExperiment!.snapshot().mountedTiles)).toContain(15);
+  await page.locator('#native-content').getByRole('button', { name: 'Item 85', exact: true }).press('Enter');
+  await expect(page.locator('#native-selection')).toHaveText('Selected item 85');
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
+  expect(await page.evaluate(() => window.nativeScrollExperiment!.snapshot().destroyed)).toBe(true);
+  await expect(page.locator('.scroll-tile, .scroll-staging, [data-ludic-canvas]')).toHaveCount(0);
 });

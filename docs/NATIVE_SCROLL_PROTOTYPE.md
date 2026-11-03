@@ -79,6 +79,29 @@ from these software checks.
 
 ## Hosted preview
 
+### Review and CI follow-up
+
+Codex identified unconditional `pagehide` teardown on back/forward-cache entry.
+The prototype now preserves its owned roots when `event.persisted` is true and
+still destroys them on ordinary page exit. A synthetic persisted pagehide/pageshow
+regression failed before the fix, then passed with interaction after restoration
+and ordinary-exit cleanup. This tests the lifecycle contract; it does not claim
+an acquired physical browser-cache navigation result.
+
+The initial hosted mobile Chromium job returned a zero scroll offset for the
+high-level synthesized gesture on both attempts. The release integration's
+standalone native panel also returned zero on that Linux runner. The touch helper
+now waits for stable target geometry, verifies its hit target, sends explicit CDP
+touch start/move/end events and asserts a trusted start event. A stationary hold
+before release preserves the former no-fling gesture intent; scroll-distance,
+no-activation and subsequent-tap assertions remain. No SDK motion settings,
+browser ports or deadlines changed. Initial hosted traces were inspected and
+retained locally before this change. Physical momentum qualification stays separate.
+
+The focused local follow-up passed 26 cases with four explicit touch-injection
+skips across the five projects, without retries. Fresh hosted checks and a review
+of the follow-up commit are required before merge.
+
 [Draft PR 38](https://github.com/VictorQueiroz/ludic-canvas/pull/38) contains the
 prototype. The [phone comparison preview](https://ludic-canvas-258jgah6d-victorqueiroz.vercel.app/native-scroll/)
 is Vercel deployment `dpl_CwjQuPNjYPM66LwssFNQK1fvgGZ5`, READY, from Git source
