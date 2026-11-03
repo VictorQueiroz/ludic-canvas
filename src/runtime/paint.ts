@@ -7,6 +7,7 @@ import { parseColor } from '../platform/color.ts';
 import type { FontBook } from '../gfx/font.ts';
 import { HostNode, type Box } from './nodes.ts';
 import type { ImageStyleProp, TextStyleProp, ViewStyle } from './types.ts';
+import { emptyRenderer } from './empty-renderer.ts';
 
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 const mixN = (a: readonly number[], b: readonly number[], t: number) => a.map((v, i) => v + (b[i]! - v) * t);
@@ -27,6 +28,7 @@ export interface PaintFrame {
   textColor: string;
   emphasisColor: string;
   reducedMotion: boolean;
+  nativeScrolling?: ReadonlySet<HostNode>;
 }
 
 export class Painter {
@@ -51,6 +53,20 @@ export class Painter {
     this.hitList = [];
     this.visible = [];
     this.#node(root, 0, 0, 1, undefined, 1, true);
+  }
+
+  measure(root: HostNode, frame: PaintFrame) {
+    this.paint(root, { ...frame, batch: emptyRenderer, nativeScrolling: undefined });
+  }
+
+  /** Replay existing mounted content into a bounded host tile; no React/Yoga root is cloned. */
+  paintScrollContent(node: HostNode, frame: PaintFrame, offset: number, height: number) {
+    this.#f = { ...frame, dt: 0, nativeScrolling: undefined };
+    this.hitList = [];
+    this.visible = [];
+    const clip = { x: 0, y: 0, w: node.box.w, h: height };
+    frame.batch.setClip([0, 0, node.box.w * frame.dpr, height * frame.dpr]);
+    for (const child of node.paintOrder()) this.#node(child, 0, -offset, node.paintedOpacity, clip, 1, false);
   }
 
   // ── Animation ──────────────────────────────────────────────────────────────
@@ -142,6 +158,7 @@ export class Painter {
     node.abs = { x: ax, y: ay, w, h };
     node.clip = clip;
     node.paintedOpacity = opacity;
+    node.paintedScrollY = node.scrollY;
 
     if (opacity <= 0.003 || scale <= 0) return;
     this.visible.push(node);
@@ -254,12 +271,19 @@ export class Painter {
     else if (node.type === 'line') this.#line(node, px, py, opacity, node.parent?.box, parentScale);
 
     const oy = style.overflow === 'scroll' ? -node.scrollY : 0;
-    for (const child of children)
-      this.#node(child, ax, ay + oy * scale, opacity, childClip, scale, inputEnabled && pe !== 'none');
+    const native = this.#f.nativeScrolling?.has(node);
+    const previousFrame = this.#f;
+    if (native) this.#f = { ...this.#f, batch: emptyRenderer };
+    try {
+      for (const child of children)
+        this.#node(child, ax, ay + oy * scale, opacity, childClip, scale, inputEnabled && pe !== 'none');
+    } finally {
+      this.#f = previousFrame;
+    }
     if (childClip !== clip) b.setClip(clip ? [clip.x * d, clip.y * d, clip.w * d, clip.h * d] : undefined);
 
     // Scroll affordance: a thin teal thumb when content overflows.
-    if (style.overflow === 'scroll' && node.contentHeight > node.box.h + 1) {
+    if (!native && style.overflow === 'scroll' && node.contentHeight > node.box.h + 1) {
       const ratio = node.box.h / node.contentHeight;
       const th = Math.max(24, h * ratio);
       const tyy = ay + (h - th) * (node.scrollY / (node.contentHeight - node.box.h));
@@ -344,7 +368,17 @@ export class Painter {
       const fit = style.fit ?? 'cover';
       let uv: [number, number, number, number] = [0, 0, 1, 1];
       let [dx, dy, dw, dh] = [x, y, w, h];
-      const ia = tex.width / tex.height;
+      const logicalWidth = tex.logicalWidth;
+      const logicalHeight = tex.logicalHeight;
+      const ia =
+        logicalWidth !== undefined &&
+        logicalHeight !== undefined &&
+        Number.isFinite(logicalWidth) &&
+        Number.isFinite(logicalHeight) &&
+        logicalWidth > 0 &&
+        logicalHeight > 0
+          ? logicalWidth / logicalHeight
+          : tex.width / tex.height;
       const ba = w / Math.max(h, 1e-3);
       if (fit === 'cover') {
         if (ia > ba) {

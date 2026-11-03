@@ -1,7 +1,7 @@
 /** Platform-independent entry point. No DOM or WebGL implementations are imported. */
 export { createPortableUI } from './platform/root.ts';
 export type { PortableUIOptions, PortableImages } from './platform/root.ts';
-export type { UIRoot, UITheme, FrameInfo, FontSource } from './platform/root-types.ts';
+export type { UIRoot, UITheme, FrameInfo, FontSource, NativeScrollInfo } from './platform/root-types.ts';
 export type {
   LayoutBackend,
   RenderContext,
@@ -24,7 +24,7 @@ export type { DrawFrame } from './platform/commands.ts';
 export { Font, FontBook, validateFontMetrics } from './gfx/font.ts';
 export type { FrameProfile } from './runtime/profile.ts';
 export { createScrollHandle } from './scroll.ts';
-export type { ScrollHandle, ScrollSnapshot } from './scroll.ts';
+export type { ScrollHandle, ScrollSnapshot, ScrollMode } from './scroll.ts';
 export { VirtualList, createVirtualListHandle } from './virtual-list.tsx';
 export type {
   VirtualListProps,

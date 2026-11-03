@@ -9,14 +9,21 @@ import { createTexture, parseColor } from './gfx/gl.ts';
 import { TextureStore } from './gfx/textures.ts';
 import { UiRuntime } from './runtime/runtime.ts';
 import type { UIRoot, UITheme, FrameInfo, FontSource } from './platform/root-types.ts';
-export type { UIRoot, UITheme, FrameInfo, FontSource } from './platform/root-types.ts';
+export type { UIRoot, UITheme, FrameInfo, FontSource, NativeScrollInfo } from './platform/root-types.ts';
 import { InputSystem } from './runtime/input.ts';
 import { YogaLayout } from './wasm/layout.ts';
+import { NativeScrollManager } from './browser/native-scroll.ts';
+import { NATIVE_SCROLL_BUDGET } from './browser/native-scroll-plan.ts';
+import type { ScrollMode } from './scroll.ts';
 import { defaultResourceLimits, fetchBytes, throwIfAborted, type ResourceLimits } from './resources.ts';
 
 /** Browser root configuration. Game state and image content stay application-owned. */
 export interface UIOptions {
   canvas: HTMLCanvasElement;
+  /** Default scroll presentation. auto uses supported browser-native surfaces, otherwise canvas. */
+  scrollMode?: ScrollMode;
+  /** Estimated RGBA budget for native scroll tiles per root. Default: 16 MiB; excludes GPU/browser overhead. */
+  nativeScrollBudgetBytes?: number;
   /** Existing WebGL 1 context. Draw UI last and restore engine state before its next pass. */
   context?: WebGLRenderingContext;
   /** WebAssembly URL or bytes. Defaults to the bundled Yoga reactor. */
@@ -85,6 +92,8 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
   positive(options.maxDpr ?? 2, 'maxDpr');
   positive(options.textScale ?? 1, 'textScale');
   positive(options.textureBudgetBytes ?? 64 * 1024 * 1024, 'textureBudgetBytes');
+  positive(options.nativeScrollBudgetBytes ?? NATIVE_SCROLL_BUDGET, 'nativeScrollBudgetBytes');
+  if (!['auto', 'canvas', 'native'].includes(options.scrollMode ?? 'auto')) throw new Error('Unknown scrollMode');
   const limits = { ...defaultResourceLimits, ...options.resourceLimits };
   for (const [name, value] of Object.entries(limits)) {
     positive(value, `resourceLimits.${name}`);
@@ -289,11 +298,22 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
     textures = new TextureStore(gl, createAssetResolver(options.assets), options.textureBudgetBytes, report, limits);
     batch = new UiBatch(gl);
     batch.setFonts(fonts.all());
+    const clear = options.clearColor === undefined ? undefined : parseColor(options.clearColor);
+    const nativeScrolling = new NativeScrollManager(canvas, a11y, gl, {
+      mode: options.scrollMode ?? 'auto',
+      budget: options.nativeScrollBudgetBytes ?? NATIVE_SCROLL_BUDGET,
+      ownedContext: !options.context,
+      clear: () => {
+        gl!.clearColor(...(clear ?? ([0, 0, 0, 0] as const)));
+        gl!.clear(gl!.COLOR_BUFFER_BIT);
+      },
+    });
     runtime = new UiRuntime({
       layout,
       fonts,
       onError: report,
-      input: (painter, commit) => new InputSystem(canvas, a11y, painter, commit),
+      input: (painter, commit) => new InputSystem(canvas, a11y, painter, commit, nativeScrolling),
+      presentation: nativeScrolling,
       scheduler: {
         now: () => performance.now(),
         requestFrame: (callback) => requestAnimationFrame(callback),
@@ -307,7 +327,6 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
     const ui = runtime,
       cache = textures,
       context = gl;
-    const clear = options.clearColor === undefined ? undefined : parseColor(options.clearColor);
     const ensureAlive = () => {
       if (destroyed) throw new Error('UI has been destroyed');
     };
@@ -378,7 +397,13 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
           dt,
           options.profile,
         );
-        return { ...info, drawCalls: batch!.drawCalls, textureBytes: cache.bytes, ...(profile ? { profile } : {}) };
+        return {
+          ...info,
+          drawCalls: batch!.drawCalls + nativeScrolling.info.drawCalls,
+          textureBytes: cache.bytes,
+          nativeScroll: { ...nativeScrolling.info },
+          ...(profile ? { profile } : {}),
+        };
       },
       start() {
         ensureAlive();

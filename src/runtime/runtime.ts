@@ -10,10 +10,11 @@ import type {
 } from '../platform/contracts.ts';
 import type { FontBook } from '../gfx/font.ts';
 import { HostNode, type RuntimeContext } from './nodes.ts';
-import { Painter } from './paint.ts';
+import { Painter, type PaintFrame } from './paint.ts';
 import { createUiRoot, type UiRoot } from './reconciler.ts';
 import type { FrameProfile } from './profile.ts';
-import { updateScroll, finishScrollFrame } from '../scroll.ts';
+import { updateScroll, prepareScroll, finishScrollFrame } from '../scroll.ts';
+import type { ScrollPresentation } from './presentation.ts';
 
 export class UiRuntime {
   readonly ctx: RuntimeContext;
@@ -21,6 +22,7 @@ export class UiRuntime {
   readonly #root: UiRoot;
   readonly #painter = new Painter();
   readonly #layout: LayoutBackend;
+  readonly #presentation?: ScrollPresentation;
   #handles = new Uint32Array(256);
   #boxes = new Float32Array(1024);
   #size = [0, 0];
@@ -31,6 +33,7 @@ export class UiRuntime {
 
   constructor(options: RuntimeDependencies) {
     this.#layout = options.layout;
+    this.#presentation = options.presentation;
     this.ctx = {
       layout: options.layout,
       fonts: options.fonts,
@@ -40,6 +43,7 @@ export class UiRuntime {
         this.#revision++;
       },
       onError: options.onError,
+      nativeScrollSupported: Boolean(options.presentation),
     };
     this.#root = createUiRoot(this.ctx);
     try {
@@ -70,9 +74,13 @@ export class UiRuntime {
       this.input.destroy();
     } finally {
       try {
-        this.#root.destroy();
+        this.#presentation?.destroy();
       } finally {
-        this.#layout.dispose();
+        try {
+          this.#root.destroy();
+        } finally {
+          this.#layout.dispose();
+        }
       }
     }
   }
@@ -80,6 +88,7 @@ export class UiRuntime {
   setTextScale(scale: number) {
     if (this.ctx.textScale === scale) return;
     this.ctx.textScale = scale;
+    this.ctx.invalidate();
     // Every text leaf must re-measure.
     const walk = (n: HostNode) => {
       if (n.type === 'text') this.#layout.markDirty(n.yoga);
@@ -107,6 +116,18 @@ export class UiRuntime {
     const cssH = size.cssHeight ?? height / dpr;
     if (this.#size[0] !== cssW || this.#size[1] !== cssH) this.#size = [cssW, cssH];
     const root = this.#root.root;
+    const paintFrame: PaintFrame = {
+      batch,
+      textures,
+      fonts,
+      dpr,
+      now,
+      time: now / 1000,
+      dt,
+      ...this.theme,
+      reducedMotion: this.reducedMotion,
+    };
+    let measured = false;
     let nodes: HostNode[] = [];
     const changed = new Set<HostNode>();
     let layoutMs = 0,
@@ -146,7 +167,18 @@ export class UiRuntime {
       }
       const commitAt = profile ? this.ctx.scheduler!.now() : 0;
       const notifications: (() => void)[] = [];
-      for (const n of nodes) updateScroll(n, notifications);
+      for (const n of nodes) prepareScroll(n);
+      if (this.#presentation)
+        measured =
+          this.#presentation.prepare(
+            root,
+            nodes,
+            this.#painter,
+            { ...paintFrame, dt: measured ? 0 : dt },
+            size,
+            this.#revision,
+          ) || measured;
+      for (const n of nodes) updateScroll(n, notifications, true);
       const revision = this.#revision;
       if (notifications.length)
         this.#root.flushSync(() => {
@@ -175,24 +207,16 @@ export class UiRuntime {
     }
 
     const readAt = profile ? this.ctx.scheduler!.now() : 0;
+    this.#presentation?.capture(paintFrame, size);
     batch.begin(cssW * dpr, cssH * dpr, now / 1000, width, height);
     try {
-      this.#painter.paint(root, {
-        batch,
-        textures,
-        fonts,
-        dpr,
-        now,
-        time: now / 1000,
-        dt,
-        ...this.theme,
-        reducedMotion: this.reducedMotion,
-      });
+      this.#painter.paint(root, { ...paintFrame, dt: measured ? 0 : dt, nativeScrolling: this.#presentation?.active });
     } finally {
       batch.end();
     }
     const paintedAt = profile ? this.ctx.scheduler!.now() : 0;
     this.input.afterPaint();
+    this.#presentation?.afterPaint();
     for (const node of nodes) finishScrollFrame(node);
 
     // Live region: the newest announced text.
@@ -219,7 +243,7 @@ export class UiRuntime {
         mountedNodes: nodes.length,
         layoutPasses,
         paintedNodes: this.#painter.visible.length,
-        submittedQuads: batch.submittedQuads,
+        submittedQuads: batch.submittedQuads + (this.#presentation?.info.submittedQuads ?? 0),
       };
     }
   }

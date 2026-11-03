@@ -5,6 +5,12 @@ rows on each side by default, and retained interaction targets. Its range math i
 constant-time. Initial key validation/indexing is linear in the collection size;
 keep the items array and key function stable between actual data changes.
 
+Browser-native presentation also prepares the bounded canvas-tile range before
+painting. Its mounted window includes that raster overscan plus the requested
+row overscan; it remains independent of total collection size. `scrollMode`
+supports the same auto/canvas/native selection as ScrollArea. Set canvas mode
+when reproducing historical canvas-only node-count or timing baselines.
+
 ```tsx
 const [inventory] = useState(createVirtualListHandle);
 return (
@@ -44,7 +50,8 @@ taller rows, supply a suitable new `itemHeight`. Variable-height measurement,
 grids, trees and automatic font-driven sizing are outside this first contract.
 
 The implementation uses a small internal fixed-height range calculation and the
-native scroll store. It adds no DOM virtualizer or browser measurement dependency.
+root-local scroll store. The native browser adapter measures its own DOM scroll
+extent; it adds no external DOM virtualizer dependency.
 This keeps manual engine frames, Yoga geometry and root ownership in one contract.
 
 ## Focus, selection and semantics

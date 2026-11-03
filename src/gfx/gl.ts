@@ -65,6 +65,8 @@ export interface Texture {
   handle: WebGLTexture;
   width: number;
   height: number;
+  logicalWidth?: number;
+  logicalHeight?: number;
   bytes: number;
 }
 

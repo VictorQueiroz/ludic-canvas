@@ -4,9 +4,9 @@ async function catalogue(page: Page) {
   await page.goto('http://127.0.0.1:6174/components/');
   const night = page.locator('#lab-night'),
     field = page.locator('#lab-field');
-  await field.locator('canvas').scrollIntoViewIfNeeded();
+  await field.locator('canvas[id^="controls-"]').scrollIntoViewIfNeeded();
   await expect(field.getByRole('slider', { name: 'Signal strength' })).toBeAttached();
-  await night.locator('canvas').scrollIntoViewIfNeeded();
+  await night.locator('canvas[id^="controls-"]').scrollIntoViewIfNeeded();
   await expect(night.getByRole('slider', { name: 'Signal strength' })).toBeAttached();
   return { night, field };
 }
@@ -68,7 +68,7 @@ test('focus reveals scroll content and disabled controls block real pointer acti
   await expect(field.getByRole('button', { name: 'Select cargo 12' })).not.toBeFocused();
   await expect
     .poll(async () => {
-      const canvas = await night.locator('canvas').boundingBox(),
+      const canvas = await night.locator('canvas[id^="controls-"]').boundingBox(),
         target = await last.boundingBox();
       return Boolean(canvas && target && target.y >= canvas.y && target.y + target.height <= canvas.y + canvas.height);
     })
@@ -76,13 +76,13 @@ test('focus reveals scroll content and disabled controls block real pointer acti
   await page.getByLabel('Disable controls', { exact: true }).check();
   const equip = night.getByRole('button', { name: 'Equip scanner' });
   await expect(equip).toBeDisabled();
-  await night.locator('canvas').scrollIntoViewIfNeeded();
+  await night.locator('canvas[id^="controls-"]').scrollIntoViewIfNeeded();
   const box = (await equip.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(night.getByText('Equipped 0 / Cargo - / Hints on', { exact: true })).toBeAttached();
   await page.getByLabel('Disable controls', { exact: true }).uncheck();
   await expect(equip).toBeEnabled();
-  await night.locator('canvas').scrollIntoViewIfNeeded();
+  await night.locator('canvas[id^="controls-"]').scrollIntoViewIfNeeded();
   const enabledBox = (await equip.boundingBox())!;
   await page.mouse.click(enabledBox.x + enabledBox.width / 2, enabledBox.y + enabledBox.height / 2);
   await expect(night.getByText('Equipped 1 / Cargo - / Hints on', { exact: true })).toBeAttached();
@@ -94,13 +94,13 @@ test('the catalogue and large-text controls fit a 320 pixel viewport', async ({ 
   const { night } = await catalogue(page);
   await page.getByLabel('Larger text', { exact: true }).check();
   await page.getByLabel('Reduce motion', { exact: true }).check();
-  await night.locator('canvas').scrollIntoViewIfNeeded();
+  await night.locator('canvas[id^="controls-"]').scrollIntoViewIfNeeded();
   await night.getByRole('slider', { name: 'Signal strength' }).press('Home');
   await expect(night.getByRole('slider', { name: 'Signal strength' })).toHaveAttribute('aria-valuenow', '0');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true,
   );
-  const canvas = (await night.locator('canvas').boundingBox())!;
+  const canvas = (await night.locator('canvas[id^="controls-"]').boundingBox())!;
   expect(canvas.width).toBeLessThanOrEqual(320);
   await night.getByRole('button', { name: 'Open settings' }).press('Enter');
   const close = night.getByRole('button', { name: 'Close settings' });
@@ -125,6 +125,8 @@ test('the catalogue profile dialog edits native fields and preserves independent
   await expect(name).toHaveValue('Mara');
   await expect(night.getByRole('textbox', { name: 'Field notes', exact: true })).toHaveValue('Survey started.');
   await name.press('Escape');
+  await expect(night.getByRole('dialog', { name: 'Player profile', exact: true })).toHaveCount(0);
+  await expect(night.getByRole('button', { name: 'Edit profile', exact: true })).toBeFocused();
   await field.getByRole('button', { name: 'Edit profile', exact: true }).press('Enter');
   await expect(field.getByRole('textbox', { name: 'Player name', exact: true })).toHaveValue('');
 });

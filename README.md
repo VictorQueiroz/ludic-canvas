@@ -15,9 +15,9 @@ editors for topmost form panels and dialogs. See the [native editing contract](d
 for fonts, layering, composition and qualification limits. These fields require
 ludic-canvas 0.7.0 or later.
 
-The checkout also includes an **experimental portable core and macOS proof**:
+Version 0.9.0 includes an **experimental portable core and macOS proof**:
 the same React components run with Hermes, native Yoga and Skia/Metal. This work
-has a pending release changeset. See [the architecture and build instructions](docs/PORTABILITY.md)
+remains experimental. See [the architecture and build instructions](docs/PORTABILITY.md)
 and [qualification results](docs/PORTABILITY_RESULTS.md). Android, iOS, Windows
 and Linux hosts remain future work.
 
@@ -276,3 +276,11 @@ overscan, controlled selection and logical keyboard/gamepad focus. Ordinary
 [Kestrel Survey](https://libraries.ludic-canvas.victorqueiroz.dev/play/?example=kestrel-survey).
 The [performance lab](https://libraries.ludic-canvas.victorqueiroz.dev/performance/)
 compares matched retained/windowed workloads and preserves raw measurements.
+
+Browser roots automatically use native overflow containing rendered canvas tiles
+for supported scrolling panels. The browser supplies momentum while React, Yoga
+and the application's frame loop retain their existing ownership. Use
+`scrollMode="canvas"` per region or `scrollMode: 'canvas'` in `createUI` to select
+canvas presentation. Shared contexts, custom gestures and unsupported layouts
+fall back automatically. See the [scrolling contract](docs/SCROLLING.md) for
+the support boundary, tile budget and snapshot timing.

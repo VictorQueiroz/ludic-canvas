@@ -4,7 +4,23 @@ Completed releases and planned work are tracked separately. See
 [CHANGELOG.md](CHANGELOG.md) for individual changes and
 [PRODUCTION.md](PRODUCTION.md) for the supported boundary.
 
-## Implemented, unreleased: portable core and macOS proof
+## Prepared, unreleased: native browser scrolling
+
+- Browser-native momentum and overscroll for supported ScrollArea/VirtualList
+  surfaces, with explicit presentation selection and safe canvas fallback.
+- Bounded canvas tiles replayed from the owning React/Yoga tree and WebGL context.
+- Shared scroll commands, focus/anchor ordering, native DOM activation and
+  root-local resource lifetime; a raster-aware fixed-height virtual window.
+- Native control geometry isolated from ordinary document button styles.
+- SVG source-aspect fitting independent of raster buckets, with consistent
+  cross-browser rasterization and documented stable-identifier replacement.
+
+See [the scrolling contract](docs/SCROLLING.md) and
+[release preparation evidence](docs/NATIVE_SCROLL_RELEASE.md). The user accepted
+the prototype's appearance; quantified physical-device qualification of
+the integrated SDK remains separate from software checks.
+
+## Shipped in 0.9.0, experimental: portable core and macOS proof
 
 - Platform-independent layout, drawing, input and host contracts; browser
   adapters retain the existing public API and direct WebGL batch.

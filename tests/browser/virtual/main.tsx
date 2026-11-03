@@ -15,6 +15,8 @@ const pressed: number[] = [];
 const isItemDisabled = (value: number) => value === 7;
 const root = await createUI({
   canvas,
+  // Preserve the historical canvas contract; native presentation has dedicated tests.
+  scrollMode: new URLSearchParams(location.search).has('native') ? 'native' : 'canvas',
   autoStart: false,
   maxDpr: 1,
   profile: true,

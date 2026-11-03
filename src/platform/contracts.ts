@@ -1,11 +1,15 @@
 import type { Font, FontBook } from '../gfx/font.ts';
 import type { Painter } from '../runtime/paint.ts';
+import type { ScrollPresentation } from '../runtime/presentation.ts';
 
 /** Renderer-owned resource. Its opaque handle never crosses into the UI model. */
 export interface TextureResource {
   readonly handle: unknown;
   readonly width: number;
   readonly height: number;
+  /** Optional positive source dimensions for fitting. Supply both, independent of raster/cache size. */
+  readonly logicalWidth?: number;
+  readonly logicalHeight?: number;
   readonly bytes: number;
 }
 
@@ -118,4 +122,5 @@ export interface RuntimeDependencies {
   input: InputFactory;
   scheduler: Scheduler;
   onError?: (error: unknown) => void;
+  presentation?: ScrollPresentation;
 }

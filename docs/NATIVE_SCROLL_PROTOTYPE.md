@@ -115,7 +115,14 @@ bounded tile storage and no console errors. The embedded revision is
 have not been attributed. Deployment identity and Vercel Git metadata identify
 this artifact; it is not described as a clean-build or physical-device result.
 
-## Physical iPhone evaluation — pending
+## User feedback and physical qualification
+
+The user reported on 2026-11-03 that the native canvas tile looked good and
+requested standard-library integration. Device, OS and browser versions were
+not specified. This is qualitative prototype acceptance; the detailed physical
+matrix and measured copy/presentation/memory qualification remain incomplete.
+The [release preparation record](NATIVE_SCROLL_RELEASE.md) describes the separate
+SDK integration, which is not yet published or deployed.
 
 Use the exact preview revision and record the phone model, iOS version and Chrome
 and Safari versions. Compare all three lists with ordinary dragging, fast flicks,
@@ -131,6 +138,6 @@ Rotate the phone and repeat scrolling. Download diagnostics before using
 estimates and the last 512 copy samples. Keep observed phone behavior separate
 from those call timings.
 
-The next decision is whether copy cost, tile coverage and physical scrolling
-feel justify integrating a browser scroll adapter with ScrollHandle and
-VirtualList. No public API/default change is implied by this experiment.
+The original experiment leaves the SDK API unchanged. Following the user's
+acceptance, integration with ScrollHandle and VirtualList is prepared separately;
+its source, evidence and delivery state are recorded in the release preparation.

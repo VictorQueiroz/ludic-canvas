@@ -6,7 +6,50 @@ This is a dated evidence snapshot, not a live release dashboard. Start in the
 dist-tags and the canonical deployment before making current-state claims.
 Preserve unrelated edits and original acquisition bytes/checksums.
 
-## Native browser scrolling experiment
+## Native browser scrolling release preparation
+
+The user accepted the prototype's native tile appearance and requested standard
+release preparation, with a readiness report before committing/pushing. The
+integration now moves on `feat/native-scroll-release`, based on `a6fd0ea`,
+adds automatic native tile presentation to supported browser ScrollArea and
+VirtualList surfaces, explicit auto/canvas/native modes and root-local counters.
+It reuses the mounted tree, context/fonts/resources and application frame loop.
+Unsupported layouts retain canvas presentation; portable hosts remain separate.
+A minor changeset prepares 0.10.0; package metadata is still 0.9.0. This new SDK
+integration has not been published or deployed. The user has authorized its PR,
+with prototype PR 38 reviewed and merged before the release-integration PR.
+
+Integration feedback has also produced two independently reproduced SDK fixes:
+document button CSS can no longer resize/transform native control mirrors, and
+SVG contain/cover fitting uses logical source dimensions with browser-normalized
+rasterization. Stable-identifier replacement is documented and tested through
+the existing resolver/invalidation API. See [the integration record](INTEGRATION_FIXES.md).
+Fresh package/type/docs/public/packed-consumer gates pass with 145 unit tests.
+The final complete browser sweep passes 494 tests with 21 explicit skips and no
+retries. All 12 independent packed browser consumers pass, along with native
+build/contracts, formatting and pack checks. The final geometry reset preserves
+inherited visibility during context loss; a catalogue readiness wait fixes an
+Escape/next-root sequencing race. The record preserves failing-before and
+interrupted-run evidence. Changesets still selects 0.10.0 from the combined
+minor/patch changesets. The user has requested commit/push, Codex review and both
+merges in that order. No package was published or new deployment made.
+
+Read [the release preparation record](NATIVE_SCROLL_RELEASE.md) for failing-before
+regressions, corrected anchoring/cache behavior, final local gates and remaining
+delivery. User feedback did not specify a device/browser/version, so detailed
+physical qualification remains incomplete. The prior prototype preview below
+does not contain the new SDK integration.
+
+Earlier scrolling-only preparation passed package/type/docs/public/packed-consumer gates, 144
+unit tests, formatting/pack checks, native build/contracts and all 12 independent
+browser-consumer checks. The complete 500-case browser matrix has 479 passes and
+21 explicit skips across the initial sweep and affected-case rerun; the record
+preserves the initial 27 test-assumption failures and their corrected assertions.
+No retries were used. Changesets confirms the planned 0.10.0 minor. There are no
+dangling registered worktrees at preparation time. Refresh live PR state before
+resuming delivery; the following experiment sections preserve earlier snapshots.
+
+## Earlier native browser scrolling experiment
 
 The approved first milestone is on `feat/native-scroll-prototype`, based on
 `c3917f1`. `/native-scroll/` compares browser-scrolled canvas tiles, the existing

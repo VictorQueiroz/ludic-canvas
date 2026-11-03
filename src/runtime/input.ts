@@ -3,12 +3,16 @@ import { HostNode } from './nodes.ts';
 import type { Painter } from './paint.ts';
 import { PointerRouter, inside, type HostPointerEvent, type HostWheelEvent } from '../platform/pointer.ts';
 import { EditorManager, type EditorElement } from './editing.ts';
+import type { NativeScrollManager } from '../browser/native-scroll.ts';
+import { setScrollPosition } from '../scroll.ts';
+import { labelOf } from './semantics.ts';
 
 type ControlElement = HTMLButtonElement | EditorElement;
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 const pressable = (n: HostNode) => Boolean(n.props.onPress || n.props.focusable);
-const semanticGroup = (n: HostNode) => ['tablist', 'dialog', 'region', 'listbox'].includes(n.props.role ?? '');
+const semanticGroup = (n: HostNode) =>
+  n.props.style?.overflow === 'scroll' || ['tablist', 'dialog', 'region', 'listbox'].includes(n.props.role ?? '');
 
 export class InputSystem extends PointerRouter {
   readonly #canvas: HTMLCanvasElement;
@@ -18,11 +22,20 @@ export class InputSystem extends PointerRouter {
   readonly #controls = new Map<HostNode, ControlElement>();
   readonly #editors: EditorManager;
   readonly #groups = new Map<HostNode, HTMLDivElement>();
+  readonly #controlNodes = new WeakMap<HTMLElement, HostNode>();
+  readonly #native?: NativeScrollManager;
+  #nativePressed?: { node: HostNode; event: HostPointerEvent };
   #announced = '';
   #pendingModalFocus = false;
   readonly #modalFocus = new Map<HostNode, HTMLElement>();
 
-  constructor(canvas: HTMLCanvasElement, a11y: HTMLElement, painter: Painter, commit: (callback: () => void) => void) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    a11y: HTMLElement,
+    painter: Painter,
+    commit: (callback: () => void) => void,
+    nativeScrolling?: NativeScrollManager,
+  ) {
     super(painter, {
       size: () => canvas.getBoundingClientRect(),
       focusSurface: () => canvas.focus({ preventScroll: true }),
@@ -35,6 +48,7 @@ export class InputSystem extends PointerRouter {
     });
     this.#canvas = canvas;
     this.#a11y = a11y;
+    this.#native = nativeScrolling;
     this.#editors = new EditorManager(
       a11y,
       (callback) => this.call(() => commit(callback)),
@@ -78,21 +92,72 @@ export class InputSystem extends PointerRouter {
     listen(canvas, 'lostpointercapture', (e) => {
       this.pointerCancel(this.#pointerEvent(e));
     });
+    const nativePointer = (event: PointerEvent, handler: 'onPointerDown' | 'onPointerUp' | 'onPointerCancel') => {
+      if (handler !== 'onPointerDown') {
+        const pressed = this.#nativePressed;
+        if (!pressed || pressed.event.pointerId !== event.pointerId) return;
+        this.#nativePressed = undefined;
+        pressed.node.pressed = false;
+        if (this.enabled && !pressed.node.destroyed)
+          this.dispatchPointer(handler, pressed.node, this.#pointerEvent(event));
+        return;
+      }
+      if (!this.enabled || !this.#native?.containsTarget(event.target) || !event.isPrimary || event.button !== 0)
+        return;
+      const target = event.target instanceof HTMLElement ? event.target.closest('button') : null;
+      const node = target instanceof HTMLElement ? this.#controlNodes.get(target) : undefined;
+      if (!node || node.destroyed || node.props.disabled || !inside(node, this.modal)) return;
+      this.#cancelNativePointer();
+      node.pressed = true;
+      const input = this.#pointerEvent(event);
+      this.#nativePressed = { node, event: input };
+      this.dispatchPointer(handler, node, input);
+    };
+    listen(a11y, 'pointerdown', (event) => nativePointer(event, 'onPointerDown'));
+    listen(a11y, 'pointerup', (event) => nativePointer(event, 'onPointerUp'));
+    listen(a11y, 'pointercancel', (event) => nativePointer(event, 'onPointerCancel'));
+    window.addEventListener('pointerup', (event) => nativePointer(event, 'onPointerUp'), options);
+    window.addEventListener('pointercancel', (event) => nativePointer(event, 'onPointerCancel'), options);
     listen(canvas, 'pointerleave', () => this.pointerLeave());
     listen(canvas, 'wheel', (e) => this.wheel(this.#wheelEvent(e)), false);
     listen(canvas, 'keydown', (e) => this.#key(e));
     listen(a11y, 'keydown', (e) => this.#key(e));
-    listen(a11y, 'wheel', (e) => this.wheel(this.#wheelEvent(e)), false);
-    window.addEventListener('blur', () => this.cancelPointer(), options);
+    listen(
+      a11y,
+      'wheel',
+      (e) => {
+        if (!this.#native?.containsTarget(e.target)) this.wheel(this.#wheelEvent(e));
+      },
+      false,
+    );
+    window.addEventListener(
+      'blur',
+      () => {
+        this.#cancelNativePointer();
+        this.cancelPointer();
+      },
+      options,
+    );
     document.addEventListener(
       'visibilitychange',
       () => {
-        if (document.hidden) this.cancelPointer();
+        if (document.hidden) {
+          this.#cancelNativePointer();
+          this.cancelPointer();
+        }
       },
       options,
     );
   }
+  #cancelNativePointer() {
+    const pressed = this.#nativePressed;
+    this.#nativePressed = undefined;
+    if (!pressed) return;
+    pressed.node.pressed = false;
+    if (this.enabled && !pressed.node.destroyed) this.dispatchPointer('onPointerCancel', pressed.node, pressed.event);
+  }
   destroy() {
+    this.#cancelNativePointer();
     this.enabled = false;
     this.#events.abort();
     this.#editors.destroy();
@@ -106,7 +171,9 @@ export class InputSystem extends PointerRouter {
     this.#live.remove();
   }
   setEnabled(enabled: boolean) {
+    this.#native?.setEnabled(enabled);
     if (enabled === this.enabled) return;
+    if (!enabled) this.#cancelNativePointer();
     this.enabled = enabled;
     if (!enabled) {
       this.cancelPointer();
@@ -117,6 +184,13 @@ export class InputSystem extends PointerRouter {
       button.disabled = !enabled || Boolean(node.props.disabled) || !inside(node, this.modal);
   }
   afterPaint() {
+    if (
+      this.#nativePressed &&
+      (!this.#native?.owns(this.#nativePressed.node) ||
+        this.#nativePressed.node.destroyed ||
+        this.#nativePressed.node.props.disabled)
+    )
+      this.#cancelNativePointer();
     this.refreshPointer();
     this.#syncMirror();
   }
@@ -318,6 +392,14 @@ export class InputSystem extends PointerRouter {
   #reveal(node: HostNode) {
     for (let p = node.parent; p; p = p.parent) {
       if (p.props.style?.overflow !== 'scroll') continue;
+      if (p.scrollDriver) {
+        const current = Math.max(0, p.scrollDriver.getOffset());
+        const top = node.abs.y - p.abs.y + p.paintedScrollY;
+        const bottom = top + node.abs.h;
+        if (top < current) setScrollPosition(p, top);
+        else if (bottom > current + p.box.h) setScrollPosition(p, bottom - p.box.h);
+        continue;
+      }
       const clip = p.clip,
         top = Math.max(p.abs.y, clip?.y ?? -Infinity),
         bottom = Math.min(p.abs.y + p.abs.h, clip ? clip.y + clip.h : Infinity);
@@ -336,6 +418,7 @@ export class InputSystem extends PointerRouter {
     const returning = Boolean(modal && this.#modalFocus.has(modal));
     const restore: HTMLElement[] = [];
     if (changedModal) {
+      this.#cancelNativePointer();
       this.cancelPointer();
       if (modal && !returning) {
         // A replacement dialog inherits the departing scope's return target.
@@ -365,12 +448,29 @@ export class InputSystem extends PointerRouter {
       if (n.destroyed || !semanticGroup(n)) continue;
       liveGroups.add(n);
       let group = this.#groups.get(n);
+      const native = this.#native?.host(n);
+      if (native && group !== native) {
+        if (group) {
+          for (const child of [...group.childNodes]) this.#native!.content(n)!.append(child);
+          group.remove();
+        }
+        group = native;
+        this.#groups.set(n, group);
+      } else if (!native && group?.dataset.ludicScrollHost) {
+        const previousGroup = group;
+        group = document.createElement('div');
+        const content = previousGroup.querySelector('[data-ludic-scroll] > div');
+        if (content) for (const child of [...content.childNodes]) group.append(child);
+        previousGroup.replaceWith(group);
+        this.#groups.set(n, group);
+      }
       if (!group) {
         group = document.createElement('div');
         group.style.cssText = 'position:static;pointer-events:none';
         this.#groups.set(n, group);
       }
-      group.setAttribute('role', n.props.role!);
+      if (!native) group.style.cssText = 'position:static;pointer-events:none';
+      group.setAttribute('role', n.props.role ?? 'region');
       group.setAttribute('aria-label', n.props.label ?? labelOf(n));
       group.setAttribute('aria-hidden', String(Boolean(modal && !inside(n, modal) && !inside(modal, n))));
       if (n.props.role === 'dialog') group.setAttribute('aria-modal', String(n === modal));
@@ -389,7 +489,7 @@ export class InputSystem extends PointerRouter {
       for (let ancestor = node.parent; ancestor; ancestor = ancestor.parent) {
         const group = this.#groups.get(ancestor);
         if (group && liveGroups.has(ancestor)) {
-          parent = group;
+          parent = this.#native?.content(ancestor) ?? group;
           break;
         }
       }
@@ -400,7 +500,9 @@ export class InputSystem extends PointerRouter {
       while (
         next &&
         next !== element &&
-        (next === this.#live || (next instanceof HTMLElement && (next.hidden || dormant.has(next))))
+        (next === this.#live ||
+          (next instanceof HTMLElement &&
+            (next.hidden || dormant.has(next) || next.hasAttribute('data-ludic-scroll-tile'))))
       )
         next = next.nextSibling;
       if (next !== element) parent.insertBefore(element, next);
@@ -441,6 +543,16 @@ export class InputSystem extends PointerRouter {
           if (!n.destroyed) this.call(n.props.onBlur);
         });
         this.#controls.set(n, button);
+        this.#controlNodes.set(button, n);
+        button.addEventListener('pointerenter', () => {
+          if (!this.enabled || !this.#native?.owns(n) || n.props.disabled) return;
+          const hovered = new Set<HostNode>();
+          for (let p: HostNode | undefined = n; p; p = p.parent) hovered.add(p);
+          this.setHovered(hovered);
+        });
+        button.addEventListener('pointerleave', () => {
+          if (this.#native?.owns(n)) this.setHovered(new Set());
+        });
       }
       button.setAttribute('aria-label', label);
       button.setAttribute('role', n.props.role ?? 'button');
@@ -463,7 +575,9 @@ export class InputSystem extends PointerRouter {
       button.disabled = !this.enabled || Boolean(n.props.disabled) || !inside(n, modal);
       button.setAttribute('aria-hidden', String(!inside(n, modal)));
       const a = n.abs;
-      const style = `position:absolute;opacity:0;pointer-events:none;margin:0;padding:0;border:0;left:${a.x}px;top:${a.y}px;width:${Math.max(0, a.w)}px;height:${Math.max(0, a.h)}px`;
+      const nativePosition = this.#native?.placement(n);
+      // Page button rules must not resize or transform the Yoga-owned hit/focus box.
+      const style = `position:absolute;box-sizing:border-box;min-width:0;min-height:0;max-width:none;max-height:none;inset:auto;transform:none;translate:none;rotate:none;scale:none;zoom:1;animation:none;transition:none;opacity:0;pointer-events:${nativePosition ? 'auto' : 'none'};${nativePosition ? 'touch-action:pan-y pinch-zoom;' : ''}margin:0;padding:0;border:0;left:${nativePosition?.x ?? a.x}px;top:${nativePosition?.y ?? a.y}px;width:${Math.max(0, a.w)}px;height:${Math.max(0, a.h)}px`;
       if (button.dataset.box !== style) {
         button.dataset.box = style;
         button.style.cssText = style;
@@ -521,13 +635,4 @@ export class InputSystem extends PointerRouter {
       }
     }
   }
-}
-function labelOf(node: HostNode): string {
-  const parts: string[] = [];
-  const walk = (n: HostNode) => {
-    if (n.type === 'text' && n.text) parts.push(n.text.replace(/\*\*/g, ''));
-    for (const c of n.children) if (c instanceof HostNode) walk(c);
-  };
-  walk(node);
-  return parts.join(' ').trim();
 }
