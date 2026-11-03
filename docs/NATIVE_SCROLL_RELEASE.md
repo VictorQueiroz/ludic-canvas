@@ -24,6 +24,20 @@ After the readiness report, the user authorized delivery on
 prototype PR 38 first, then review and merge the release integration. This record
 does not establish a new npm publication or production deployment.
 
+Prototype PR 38 has since merged as `d3751b1`, with clean Codex review of `dffa243`
+and all 12 hosted CI jobs passing. [PR 39](https://github.com/VictorQueiroz/ludic-canvas/pull/39)
+now carries the integration rebased onto that main commit. Its SDK touch
+regression uses the parent's explicit trusted-touch helper after Linux CI
+returned zero offset for both high-level synthesized-pan cases. Current-head
+CI and Codex review remain required for PR 39; earlier local results below
+retain their original source scope.
+
+After the rebase and SDK gesture-harness update, the combined local prototype,
+SDK scrolling and vector matrix passed 107 tests with eight explicit capability
+skips. `npm run check` also passed on the rebased candidate with 145 unit tests.
+The SDK source is unchanged from the fully qualified preparation;
+the parent follow-up changes the experiment lifecycle and verification input.
+
 [Prototype PR 38](https://github.com/VictorQueiroz/ludic-canvas/pull/38) and the
 [immutable comparison preview](https://ludic-canvas-258jgah6d-victorqueiroz.vercel.app/native-scroll/)
 still describe the earlier prototype. Its deployment source is `d3876aa` with

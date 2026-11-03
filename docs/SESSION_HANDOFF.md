@@ -10,7 +10,7 @@ Preserve unrelated edits and original acquisition bytes/checksums.
 
 The user accepted the prototype's native tile appearance and requested standard
 release preparation, with a readiness report before committing/pushing. The
-integration now moves on `feat/native-scroll-release`, based on `a6fd0ea`,
+integration on `feat/native-scroll-release`, now based on `d3751b1`,
 adds automatic native tile presentation to supported browser ScrollArea and
 VirtualList surfaces, explicit auto/canvas/native modes and root-local counters.
 It reuses the mounted tree, context/fonts/resources and application frame loop.
@@ -18,6 +18,16 @@ Unsupported layouts retain canvas presentation; portable hosts remain separate.
 A minor changeset prepares 0.10.0; package metadata is still 0.9.0. This new SDK
 integration has not been published or deployed. The user has authorized its PR,
 with prototype PR 38 reviewed and merged before the release-integration PR.
+
+[PR 38](https://github.com/VictorQueiroz/ludic-canvas/pull/38) is now merged as
+`d3751b12ccce677eb651da0efb9efa3bff227d68`, after Codex reviewed `dffa243`
+without further findings and all 12 CI jobs passed. Its back-cache lifecycle
+finding was fixed, reacted to, replied to and resolved. The initial Linux touch
+synthesizer failures are addressed by explicit trusted CDP touch events.
+[PR 39](https://github.com/VictorQueiroz/ludic-canvas/pull/39) contains the SDK
+integration and control/vector fixes, rebased onto that merged main. The SDK
+touch test now shares the validated touch helper. Fresh PR checks and Codex
+review must complete on its updated head before merge.
 
 Integration feedback has also produced two independently reproduced SDK fixes:
 document button CSS can no longer resize/transform native control mirrors, and

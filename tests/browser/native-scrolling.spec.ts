@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { panTouch } from './touch-pan.ts';
 
 test('native controls retain Yoga geometry under document-wide button styles', async ({ page }) => {
   for (const query of ['', '?kind=canvas']) {
@@ -172,25 +173,13 @@ test('native touch panning cancels activation and a subsequent tap uses native c
   await page.goto('/tests/browser/native-scrolling/');
   const viewport = page.locator('[data-ludic-scroll]');
   await expect(viewport).toHaveCount(1);
-  const rect = (await viewport.boundingBox())!;
-  const cdp = await page.context().newCDPSession(page);
-  try {
-    await cdp.send('Input.synthesizeScrollGesture', {
-      x: rect.x + 100,
-      y: rect.y + 190,
-      yDistance: -180,
-      speed: 450,
-      gestureSourceType: 'touch',
-    });
-    await expect
-      .poll(() => page.evaluate(() => (window as any).nativeScrolling.scroll.getSnapshot().offset))
-      .toBeGreaterThan(50);
-    await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Row 6', exact: true }).tap();
-    await expect(page.getByRole('button', { name: 'Row 6 selected', exact: true })).toBeAttached();
-  } finally {
-    await cdp.detach();
-  }
+  await panTouch(page, viewport, 180);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).nativeScrolling.scroll.getSnapshot().offset))
+    .toBeGreaterThan(50);
+  await expect(page.getByRole('button', { name: /selected/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Row 6', exact: true }).tap();
+  await expect(page.getByRole('button', { name: 'Row 6 selected', exact: true })).toBeAttached();
 });
 
 test('native anchors use the new extent before a text-scale row-height command', async ({ page }) => {
