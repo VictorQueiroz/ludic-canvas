@@ -4,6 +4,7 @@ import { inputGuide, inputPage } from './docs-input.mjs';
 import { typographyGuide } from './docs-typography.mjs';
 import { virtualizationGuide } from './docs-virtualization.mjs';
 import { performancePage } from './docs-performance.mjs';
+import { nativeScrollPage } from './docs-native-scroll.mjs';
 import { surveyPage } from './docs-3d.mjs';
 import { playPage } from './docs-play.mjs';
 import { componentsPage } from './docs-components.mjs';
@@ -35,6 +36,13 @@ const routes = {
     main: 'performance-document',
     styles: ['/performance/style.css'],
     script: '/performance/main.ts',
+  },
+  nativeScroll: {
+    path: 'native-scroll/',
+    main: 'native-scroll-document',
+    styles: ['/native-scroll/style.css'],
+    script: '/native-scroll/main.tsx',
+    nav: 'performance',
   },
   play: { path: 'play/', main: 'play-document', styles: ['/play/gallery.css'], script: '/play/gallery.ts' },
   orbital: {
@@ -289,6 +297,7 @@ for (const [path, html] of [
   ['docs/play/orbital-relay/index.html', layout('Orbital Relay', 'orbital', play)],
   ['docs/3d/index.html', layout('Kestrel Survey', '3d', surveyPage(code))],
   ['docs/performance/index.html', layout('Performance', 'performance', performancePage())],
+  ['docs/native-scroll/index.html', layout('Native scrolling experiment', 'nativeScroll', nativeScrollPage())],
   ['docs/index.html', layout('React interfaces for browser games', 'home', home)],
   ['docs/input/index.html', layout('Map and sidebar input', 'input', inputPage())],
   [

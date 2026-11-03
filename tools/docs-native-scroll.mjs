@@ -1,0 +1,14 @@
+export function nativeScrollPage() {
+  return `<p class="eyebrow">EXPERIMENT / NATIVE SCROLLING</p><h1>Feel the difference.</h1>
+<p class="lead">Compare the same 100-item list with browser-scrolled canvas tiles, the current canvas drag behavior, and a plain browser list. On an iPhone, flick each list, interrupt its momentum, and tap an item after scrolling.</p>
+<div class="scroll-actions"><button id="pause-drawing" type="button" aria-pressed="false">Pause drawing</button><button id="stall-script" type="button">Block JavaScript in 1 second</button><button id="reset-scroll" type="button">Back to top</button><button id="save-scroll-report" type="button">Download diagnostics</button><button id="destroy-scroll" type="button">Stop experiment</button></div>
+<p id="scroll-status" role="status">Loading the renderer…</p>
+<div class="scroll-comparison">
+<section><h2>Native canvas tiles</h2><p>The browser moves rendered canvas tiles. Item buttons use native DOM input.</p><div id="native-scroll" class="scroll-viewport" role="region" aria-label="Native canvas list"><div id="native-content" class="scroll-content"></div></div><output id="native-selection">No item selected</output></section>
+<section><h2>Current canvas</h2><p>The existing ScrollArea owns touch dragging and painting.</p><div class="canvas-reference"><canvas id="canvas-scroll" aria-label="Current canvas list"></canvas></div><output id="canvas-selection">No item selected</output></section>
+<section><h2>Browser reference</h2><p>A regular overflow container with ordinary HTML buttons.</p><div id="dom-scroll" class="scroll-viewport" role="region" aria-label="Browser reference list"></div><output id="dom-selection">No item selected</output></section>
+</div>
+<details><summary>Diagnostics and test conditions</summary><pre id="scroll-diagnostics" tabindex="0"></pre></details>
+<p>Pause drawing to check movement of already-painted tiles. Fast scrolling can outrun the bounded tile cache and expose unpainted areas while paused. The JavaScript button schedules a deliberate 250 ms block: press it, then flick a list.</p>
+<p>This is a rendering prototype, not an available ScrollArea or VirtualList backend. Tile copying may stall internally; timings measure JavaScript calls, not GPU completion or presentation. All 100 Yoga rows and native item buttons are retained. Nested scrolling, arbitrary overlapping layers, editors and virtualized collections are not qualified by this experiment. Physical iPhone Chrome/Safari evaluation is pending.</p>`;
+}

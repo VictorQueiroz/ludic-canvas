@@ -33,6 +33,7 @@ export default defineConfig({
         input: resolve(import.meta.dirname, 'docs/input/index.html'),
         components: resolve(import.meta.dirname, 'docs/components/index.html'),
         performance: resolve(import.meta.dirname, 'docs/performance/index.html'),
+        nativeScroll: resolve(import.meta.dirname, 'docs/native-scroll/index.html'),
         play: resolve(import.meta.dirname, 'docs/play/index.html'),
         orbital: resolve(import.meta.dirname, 'docs/play/orbital-relay/index.html'),
         survey: resolve(import.meta.dirname, 'docs/3d/index.html'),
