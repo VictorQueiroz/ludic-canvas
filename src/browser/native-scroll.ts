@@ -297,7 +297,7 @@ export class NativeScrollManager implements ScrollPresentation {
         for (const child of n.children) if (child instanceof HostNode) scan(child);
       };
       scan(node);
-      const key = `${revision}/${node.box.w}/${node.contentHeight}/${frame.dpr}/${tileHeight}/${node.paintedOpacity}/${frame.textColor}/${frame.emphasisColor}/${frame.focusRing}/${frame.reducedMotion}/${interactions.join(',')}`;
+      const key = `${revision}/${node.box.w}/${node.box.h}/${node.contentHeight}/${frame.dpr}/${tileHeight}/${node.paintedOpacity}/${frame.textColor}/${frame.emphasisColor}/${frame.focusRing}/${frame.reducedMotion}/${interactions.join(',')}`;
       if (key !== entry.key || animated) {
         this.#clearTiles(entry);
         entry.key = key;

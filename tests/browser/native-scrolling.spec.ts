@@ -1,6 +1,40 @@
 import { expect, test } from '@playwright/test';
 import { panTouch } from './touch-pan.ts';
 
+test('height-only viewport changes repaint percentage-sized native tile content', async ({ page }) => {
+  await page.goto('/tests/browser/native-scrolling/?kind=viewport-resize&reduced');
+  await expect(page.getByRole('button', { name: 'Percent target', exact: true })).toBeAttached();
+  const result = await page.evaluate(() => {
+    const c = (window as any).nativeScrolling;
+    const canvas = document.querySelector<HTMLCanvasElement>('body > canvas')!;
+    const sample = () => {
+      c.frame();
+      const tile = document.querySelector<HTMLCanvasElement>('[data-ludic-scroll-tile]')!;
+      const dpr = tile.width / 320;
+      return [...tile.getContext('2d')!.getImageData(200 * dpr, 165 * dpr, 1, 1).data];
+    };
+    const target = document.querySelector<HTMLButtonElement>('button[aria-label="Percent target"]')!;
+    const before = sample();
+    const beforeHeight = target.getBoundingClientRect().height;
+    canvas.style.height = '700px';
+    const after = sample();
+    return {
+      before,
+      after,
+      beforeHeight,
+      afterHeight: target.getBoundingClientRect().height,
+      snapshot: c.scroll.getSnapshot(),
+      errors: c.errors,
+    };
+  });
+  expect(result.snapshot.mode).toBe('native');
+  expect(result.beforeHeight).toBe(150);
+  expect(result.afterHeight).toBe(175);
+  expect(result.before).not.toEqual([255, 0, 0, 255]);
+  expect(result.after).toEqual([255, 0, 0, 255]);
+  expect(result.errors).toEqual([]);
+});
+
 test('hover-only targets retain callbacks through fallback while native buttons keep hover support', async ({
   page,
 }) => {

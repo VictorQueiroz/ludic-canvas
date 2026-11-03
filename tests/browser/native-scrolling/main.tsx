@@ -16,6 +16,7 @@ const virtual = createVirtualListHandle();
 const errors: string[] = [];
 const hoverEvents: boolean[] = [];
 const params = new URLSearchParams(location.search);
+if (params.get('kind') === 'viewport-resize') canvas.style.height = '600px';
 const root = await createUI({
   canvas,
   autoStart: false,
@@ -71,7 +72,11 @@ function App() {
           label="Native rows"
           scrollMode={mode}
           scrollHandle={scroll}
-          style={{ flex: 1, scale: kind === 'scale' ? 0.9 : 1 }}
+          style={{
+            flex: kind === 'viewport-resize' ? undefined : 1,
+            height: kind === 'viewport-resize' ? '50%' : undefined,
+            scale: kind === 'scale' ? 0.9 : 1,
+          }}
         >
           {kind === 'hover-only' ? (
             <View
@@ -93,6 +98,13 @@ function App() {
             </ScrollArea>
           ) : null}
           {rows}
+          {kind === 'viewport-resize' ? (
+            <View
+              label="Percent target"
+              onPress={() => {}}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '50%', background: '#ff0000' }}
+            />
+          ) : null}
         </ScrollArea>
       )}
       {kind === 'overlap' ? (

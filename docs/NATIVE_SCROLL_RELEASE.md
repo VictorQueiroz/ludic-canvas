@@ -46,6 +46,15 @@ buttons still deliver hover enter/leave callbacks. The focused regression runs
 both paths across all five browser projects. Initial observation wiring in the
 test fixture was corrected before acquiring the actual empty-log reproduction.
 
+A subsequent height-only resize regression found cached tiles could retain old
+percentage-sized content while the corresponding native control resized. The
+tile cache key now includes viewport height. A pixel regression reproduced the
+stale color before the fix; afterward the resized pixels and native control
+bounds agree. Both review regressions passed all ten cases across five browser
+projects without retries. The complete SDK native-scrolling suite then passed
+81 cases with four existing capability skips and no retries; package checks
+(145 unit tests) and formatting also pass on this follow-up.
+
 The initial PR 39 Mac verification also timed out in the unchanged Git-diff
 policy fixture at its existing five-second limit. Browser/native jobs passed.
 The follow-up leaves that fixture and its deadlines unchanged and requires a
