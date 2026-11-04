@@ -98,16 +98,122 @@ describe('retained UI vertices', () => {
     expect(mock.deleteBuffer).toHaveBeenCalledTimes(mock.createBuffer.mock.calls.length);
   });
 
+  it('keeps main-view vertices when tile captures use another viewport', () => {
+    const { gl, mock, draws } = graphics();
+    const batch = new UiBatch(gl);
+    const paint = (width: number, color: number, physical = width) => {
+      batch.begin(width, 100, 0, physical, 100);
+      batch.rect(1, 2, 30, 40, [color, 0.2, 0.3, 1]);
+      batch.end();
+    };
+    paint(800, 0.1);
+    paint(200, 0.4);
+    paint(200, 0.6, 400);
+    const first = draws.slice();
+    mock.bufferData.mockClear();
+    mock.bufferSubData.mockClear();
+    paint(800, 0.1);
+    paint(200, 0.4);
+    paint(200, 0.6, 400);
+    expect(draws.slice(3)).toEqual(first);
+    expect(mock.bufferData).not.toHaveBeenCalled();
+    expect(mock.bufferSubData).not.toHaveBeenCalled();
+    batch.dispose();
+    expect(mock.deleteBuffer).toHaveBeenCalledTimes(mock.createBuffer.mock.calls.length);
+  });
+
+  it('shares one budget across viewport sizes and retains the most recent viewport', () => {
+    const { gl, mock, buffers } = graphics();
+    const batch = new UiBatch(gl);
+    const frame = (width: number) => {
+      batch.begin(width, 100, 0);
+      for (let i = 0; i < 2000; i++) batch.rect(i, 0, 1, 1, [1, 1, 1, 1]);
+      batch.end();
+    };
+    const streaming = mock.createBuffer.mock.results[0]!.value;
+    const indices = mock.createBuffer.mock.results[1]!.value;
+    for (let width = 200; width < 212; width++) {
+      frame(width);
+      expect(
+        [...buffers]
+          .filter(([buffer]) => buffer !== streaming && buffer !== indices)
+          .reduce((sum, [, data]) => sum + data.byteLength, 0),
+      ).toBeLessThanOrEqual(4 * 1024 * 1024);
+    }
+    mock.bufferData.mockClear();
+    mock.bufferSubData.mockClear();
+    frame(211);
+    expect(mock.bufferData).not.toHaveBeenCalled();
+    expect(mock.bufferSubData).not.toHaveBeenCalled();
+    expect(mock.deleteBuffer).toHaveBeenCalled();
+    batch.dispose();
+    expect(buffers.size).toBe(0);
+  });
+
+  it('streams many small overflow batches without repeatedly scanning protected entries', () => {
+    const { gl, mock } = graphics();
+    let visited = 0,
+      evictionIterators = 0;
+    class CountedMap<K, V> extends Map<K, V> {
+      override entries(): MapIterator<[K, V]> {
+        evictionIterators++;
+        return super.entries();
+      }
+      override *[Symbol.iterator](): MapIterator<[K, V]> {
+        for (const entry of super[Symbol.iterator]()) {
+          visited++;
+          yield entry;
+        }
+      }
+    }
+    vi.stubGlobal('Map', CountedMap);
+    const batch = new UiBatch(gl),
+      quads = 14800;
+    const frame = (width = 200) => {
+      batch.begin(width, 100, 0);
+      for (let i = 0; i < quads; i++) {
+        batch.setClip([i % 2, 0, 100, 100]);
+        batch.rect(0, 0, 1, 1, [1, 1, 1, 1]);
+      }
+      batch.end();
+    };
+    frame();
+    visited = 0;
+    mock.createBuffer.mockClear();
+    mock.deleteBuffer.mockClear();
+    frame();
+    expect(batch.submittedQuads).toBe(quads);
+    expect(visited).toBeLessThan(quads * 4);
+    expect(mock.createBuffer).not.toHaveBeenCalled();
+    expect(mock.deleteBuffer).not.toHaveBeenCalled();
+    evictionIterators = 0;
+    frame(201);
+    expect(batch.submittedQuads).toBe(quads);
+    expect(evictionIterators).toBeLessThan(32);
+    batch.dispose();
+  });
+
   it('keeps retained allocations bounded while oversized frames still render every quad', () => {
     const { gl, mock, buffers } = graphics();
     const batch = new UiBatch(gl);
+    const streaming = mock.createBuffer.mock.results[0]!.value;
+    const indices = mock.createBuffer.mock.results[1]!.value;
     for (let frame = 0; frame < 2; frame++) {
+      mock.bufferData.mockClear();
+      mock.bufferSubData.mockClear();
+      mock.createBuffer.mockClear();
+      mock.deleteBuffer.mockClear();
       batch.begin(200, 100, frame);
       for (let i = 0; i < 18000; i++) batch.rect(i, 0, 1, 1, [1, 1, 1, 1]);
       batch.end();
       expect(batch.submittedQuads).toBe(18000);
-      const streaming = mock.createBuffer.mock.results[0]!.value;
-      const indices = mock.createBuffer.mock.results[1]!.value;
+      if (frame === 1) {
+        expect(mock.createBuffer).not.toHaveBeenCalled();
+        expect(mock.deleteBuffer).not.toHaveBeenCalled();
+        expect(mock.bufferData).toHaveBeenCalledOnce();
+        expect(mock.bufferData.mock.calls[0]![1].byteLength).toBe(8192 * 4 * 18 * 4);
+        expect(mock.bufferSubData).not.toHaveBeenCalled();
+      }
       expect(
         [...buffers]
           .filter(([buffer]) => buffer !== streaming && buffer !== indices)
