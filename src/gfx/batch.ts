@@ -20,6 +20,8 @@ const RETAINED_BYTES = 4 * 1024 * 1024;
 interface RetainedBatch {
   buffer: WebGLBuffer;
   words: Uint32Array;
+  scope: string;
+  index: number;
 }
 
 const VERTEX = `
@@ -121,7 +123,8 @@ export class UiBatch {
   #disposed = false;
   readonly #data = new Float32Array(MAX_QUADS * 4 * FLOATS);
   readonly #words = new Uint32Array(this.#data.buffer);
-  readonly #retained = new Map<number, RetainedBatch>();
+  readonly #retained = new Map<string, RetainedBatch>();
+  #scope = '';
   #retainedBytes = 0;
   #batchIndex = 0;
   #quads = 0;
@@ -189,6 +192,7 @@ export class UiBatch {
   }
 
   begin(width: number, height: number, time: number, physicalWidth = width, physicalHeight = height) {
+    this.#scope = `${width}:${height}:${physicalWidth}:${physicalHeight}`;
     this.#viewport = [width, height];
     this.#physical = [physicalWidth, physicalHeight];
     this.#time = time;
@@ -218,11 +222,11 @@ export class UiBatch {
     try {
       this.flush();
     } finally {
-      for (const [index, entry] of this.#retained)
-        if (index >= this.#batchIndex) {
+      for (const [key, entry] of this.#retained)
+        if (entry.scope === this.#scope && entry.index >= this.#batchIndex) {
           this.#gl.deleteBuffer(entry.buffer);
           this.#retainedBytes -= entry.words.byteLength;
-          this.#retained.delete(index);
+          this.#retained.delete(key);
         }
       this.#gl.disable(this.#gl.SCISSOR_TEST);
       this.#vaoExtension?.bindVertexArrayOES(this.#previousVao);
@@ -471,18 +475,27 @@ export class UiBatch {
     const gl = this.#gl;
     const index = this.#batchIndex++;
     const length = this.#quads * 4 * FLOATS;
-    let entry = this.#retained.get(index);
+    const key = `${this.#scope}:${index}`;
+    let entry = this.#retained.get(key);
     if (entry && entry.words.length !== length) {
       gl.deleteBuffer(entry.buffer);
       this.#retainedBytes -= entry.words.byteLength;
-      this.#retained.delete(index);
+      this.#retained.delete(key);
       entry = undefined;
     }
-    if (!entry && this.#retainedBytes + length * 4 <= RETAINED_BYTES) {
+    if (!entry && length * 4 <= RETAINED_BYTES) {
+      // Captures and the main viewport share one budget. Evict the least recently
+      // used batch so old viewport sizes cannot force permanent streaming.
+      while (this.#retainedBytes + length * 4 > RETAINED_BYTES) {
+        const [oldKey, old] = this.#retained.entries().next().value!;
+        gl.deleteBuffer(old.buffer);
+        this.#retainedBytes -= old.words.byteLength;
+        this.#retained.delete(oldKey);
+      }
       const buffer = gl.createBuffer();
       if (buffer) {
-        entry = { buffer, words: this.#words.slice(0, length) };
-        this.#retained.set(index, entry);
+        entry = { buffer, words: this.#words.slice(0, length), scope: this.#scope, index };
+        this.#retained.set(key, entry);
         this.#retainedBytes += entry.words.byteLength;
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, this.#data.subarray(0, length), gl.STREAM_DRAW);
@@ -495,12 +508,16 @@ export class UiBatch {
       gl.bufferData(gl.ARRAY_BUFFER, this.#data.subarray(0, length), gl.STREAM_DRAW);
       return;
     }
+    this.#retained.delete(key);
+    this.#retained.set(key, entry);
     gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+    const previous = entry.words,
+      current = this.#words;
     let first = 0;
-    while (first < length && entry.words[first] === this.#words[first]) first++;
+    while (first < length && previous[first] === current[first]) first++;
     if (first === length) return;
     let last = length - 1;
-    while (last > first && entry.words[last] === this.#words[last]) last--;
+    while (last > first && previous[last] === current[last]) last--;
     gl.bufferSubData(gl.ARRAY_BUFFER, first * 4, this.#data.subarray(first, last + 1));
     entry.words.set(this.#words.subarray(first, last + 1), first);
   }
