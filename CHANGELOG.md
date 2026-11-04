@@ -1,5 +1,31 @@
 # ludic-canvas
 
+## 0.10.0
+
+### Minor Changes
+
+- f7e7347: Use browser-native scrolling automatically for supported ScrollArea and VirtualList surfaces. Native momentum moves bounded canvas tiles through the browser compositor while React state, Yoga geometry, resources and application frames remain root-owned.
+
+  Add auto/canvas/native scroll presentation controls, native-mode observation on scroll snapshots, and per-frame native tile/copy diagnostics. Preserve canvas rendering for shared WebGL contexts, native editors, nested/clipped or overlapping content, custom gestures, unlabeled pressables, and surfaces outside native resource or browser extent limits.
+
+  Keep hover-only targets without a native event surface on canvas presentation so their callbacks and styling remain functional; labeled native buttons retain hover support.
+
+  Retain canvas presentation for blocking descendants so covered controls cannot receive clicks through overlays.
+
+  Repaint native tiles when viewport height changes so percentage-sized descendants stay aligned with their native controls.
+
+  Capture the final settled animation state after delayed application frames, then resume reusing static tiles.
+
+  Synchronize browser extents before programmatic/focus/anchor commands, retain native DOM activation and keyboard semantics, and extend fixed-height virtual windows to cover the prepared raster range. Native scrolling does not create another React root, WebGL context, animation loop or font cache.
+
+### Patch Changes
+
+- f7e7347: Keep native control mirrors aligned with Yoga when document button rules set minimum/maximum sizes or transforms. Reset geometry constraints on root-owned invisible buttons, including controls inside native scroll tiles.
+
+  Preserve decoded SVG source dimensions separately from quantized raster texture sizes. Image contain/cover fitting now retains the source aspect ratio across resize and DPR changes; fill remains an explicit stretch. Portable image providers can supply optional logical dimensions while texture sizes and byte accounting remain physical.
+
+  Document stable-identifier SVG replacement with an asset resolver and invalidateImages, with pixel and texture-storage regressions for replacement and teardown.
+
 ## 0.9.0
 
 ### Minor Changes
