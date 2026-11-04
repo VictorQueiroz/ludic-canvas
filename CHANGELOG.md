@@ -1,5 +1,11 @@
 # ludic-canvas
 
+## 0.10.1
+
+### Patch Changes
+
+- 2db1348: Cache vector-image capability limits per context, retain unchanged UI vertex buffers within a fixed memory budget, and reuse text-style lookup keys. Refresh caches after invalidation and release retained resources with their root.
+
 ## 0.10.0
 
 ### Minor Changes
