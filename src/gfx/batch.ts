@@ -484,15 +484,16 @@ export class UiBatch {
       entry = undefined;
     }
     if (!entry && length * 4 <= RETAINED_BYTES) {
-      // Captures and the main viewport share one budget. Evict the least recently
-      // used batch so old viewport sizes cannot force permanent streaming.
-      while (this.#retainedBytes + length * 4 > RETAINED_BYTES) {
-        const [oldKey, old] = this.#retained.entries().next().value!;
+      // Evict older viewports, but preserve this viewport's reusable subset when
+      // a frame exceeds the budget. Its overflow uses the streaming buffer.
+      for (const [oldKey, old] of this.#retained) {
+        if (this.#retainedBytes + length * 4 <= RETAINED_BYTES) break;
+        if (old.scope === this.#scope) continue;
         gl.deleteBuffer(old.buffer);
         this.#retainedBytes -= old.words.byteLength;
         this.#retained.delete(oldKey);
       }
-      const buffer = gl.createBuffer();
+      const buffer = this.#retainedBytes + length * 4 <= RETAINED_BYTES ? gl.createBuffer() : null;
       if (buffer) {
         entry = { buffer, words: this.#words.slice(0, length), scope: this.#scope, index };
         this.#retained.set(key, entry);

@@ -153,13 +153,24 @@ describe('retained UI vertices', () => {
   it('keeps retained allocations bounded while oversized frames still render every quad', () => {
     const { gl, mock, buffers } = graphics();
     const batch = new UiBatch(gl);
+    const streaming = mock.createBuffer.mock.results[0]!.value;
+    const indices = mock.createBuffer.mock.results[1]!.value;
     for (let frame = 0; frame < 2; frame++) {
+      mock.bufferData.mockClear();
+      mock.bufferSubData.mockClear();
+      mock.createBuffer.mockClear();
+      mock.deleteBuffer.mockClear();
       batch.begin(200, 100, frame);
       for (let i = 0; i < 18000; i++) batch.rect(i, 0, 1, 1, [1, 1, 1, 1]);
       batch.end();
       expect(batch.submittedQuads).toBe(18000);
-      const streaming = mock.createBuffer.mock.results[0]!.value;
-      const indices = mock.createBuffer.mock.results[1]!.value;
+      if (frame === 1) {
+        expect(mock.createBuffer).not.toHaveBeenCalled();
+        expect(mock.deleteBuffer).not.toHaveBeenCalled();
+        expect(mock.bufferData).toHaveBeenCalledOnce();
+        expect(mock.bufferData.mock.calls[0]![1].byteLength).toBe(8192 * 4 * 18 * 4);
+        expect(mock.bufferSubData).not.toHaveBeenCalled();
+      }
       expect(
         [...buffers]
           .filter(([buffer]) => buffer !== streaming && buffer !== indices)
