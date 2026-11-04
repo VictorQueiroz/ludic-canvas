@@ -1,5 +1,11 @@
 # ludic-canvas
 
+## 0.10.2
+
+### Patch Changes
+
+- 5bc4607: Keep retained main-view vertices separate from native scroll tile viewports. Evict older viewport entries within the existing shared memory budget. Preserve reusable subsets of oversized frames and stream their overflow without repeatedly scanning protected batches.
+
 ## 0.10.1
 
 ### Patch Changes
