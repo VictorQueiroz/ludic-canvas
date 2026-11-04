@@ -1,0 +1,143 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { UiBatch } from '../src/gfx/batch.ts';
+import { TextureStore } from '../src/gfx/textures.ts';
+
+afterEach(() => vi.unstubAllGlobals());
+
+function graphics() {
+  const buffers = new Map<object, Uint8Array>();
+  const bindings = new Map<number, object>();
+  const draws: number[][] = [];
+  let constant = 100;
+  let gl: WebGLRenderingContext;
+  const attributes = ['a_pos', 'a_uv', 'a_color', 'a_params', 'a_shape', 'a_local'];
+  const mock = {
+    createShader: () => ({}),
+    shaderSource() {},
+    compileShader() {},
+    getShaderParameter: () => true,
+    deleteShader() {},
+    createProgram: () => ({}),
+    attachShader() {},
+    linkProgram() {},
+    deleteProgram() {},
+    getProgramParameter: (_p: unknown, key: number) =>
+      key === gl.LINK_STATUS ? true : key === gl.ACTIVE_ATTRIBUTES ? attributes.length : 0,
+    getActiveAttrib: (_p: unknown, index: number) => ({ name: attributes[index] }),
+    getAttribLocation: (_p: unknown, name: string) => attributes.indexOf(name),
+    getShaderPrecisionFormat: () => ({ precision: 23 }),
+    getExtension: () => null,
+    getParameter: () => 0,
+    createBuffer: vi.fn(() => ({})),
+    deleteBuffer: vi.fn((buffer: object) => buffers.delete(buffer)),
+    bindBuffer: (target: number, buffer: object) => bindings.set(target, buffer),
+    bufferData: vi.fn((target: number, data: ArrayBufferView) =>
+      buffers.set(bindings.get(target)!, new Uint8Array(data.buffer, data.byteOffset, data.byteLength).slice()),
+    ),
+    bufferSubData: vi.fn((target: number, offset: number, data: ArrayBufferView) =>
+      buffers.get(bindings.get(target)!)!.set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), offset),
+    ),
+    drawElements: vi.fn(() => draws.push([...new Float32Array(buffers.get(bindings.get(gl.ARRAY_BUFFER)!)!.buffer)])),
+    useProgram() {},
+    uniform2f() {},
+    uniform1f() {},
+    uniform1i() {},
+    activeTexture() {},
+    bindTexture() {},
+    enable() {},
+    disable() {},
+    blendEquation() {},
+    blendFunc() {},
+    scissor() {},
+    enableVertexAttribArray() {},
+    disableVertexAttribArray() {},
+    vertexAttribPointer() {},
+  };
+  gl = new Proxy(mock, {
+    get(target, key) {
+      if (key in target) return Reflect.get(target, key);
+      if (typeof key === 'string' && /^[A-Z_0-9]+$/.test(key))
+        return Reflect.set(target, key, constant++) && Reflect.get(target, key);
+      throw new Error(`Unexpected WebGL method ${String(key)}`);
+    },
+  }) as unknown as WebGLRenderingContext;
+  return { gl, mock, buffers, draws };
+}
+
+describe('retained UI vertices', () => {
+  it('draws unchanged batches without uploading again, updates changed ranges, and frees unused buffers', () => {
+    const { gl, mock, draws } = graphics();
+    const batch = new UiBatch(gl);
+    const frame = (red = 0.4, second = true) => {
+      batch.begin(200, 100, 0);
+      batch.rect(1, 2, 30, 40, [0.1, 0.2, 0.3, 1]);
+      if (second) {
+        batch.setClip([0, 0, 100, 100]);
+        batch.rect(50, 2, 30, 40, [red, 0.5, 0.6, 1]);
+      }
+      batch.end();
+    };
+    frame();
+    const first = draws.slice();
+    mock.bufferData.mockClear();
+    mock.bufferSubData.mockClear();
+    frame();
+    expect(draws.slice(2)).toEqual(first);
+    expect(mock.bufferData).not.toHaveBeenCalled();
+    expect(mock.bufferSubData).not.toHaveBeenCalled();
+    frame(0.8);
+    expect(mock.bufferSubData).toHaveBeenCalledOnce();
+    expect(mock.bufferSubData.mock.calls[0]![2].byteLength).toBeLessThan(4 * 18 * 4);
+    expect(draws[4]).toEqual(first[0]);
+    expect(draws[5]).not.toEqual(first[1]);
+    const deleted = mock.deleteBuffer.mock.calls.length;
+    frame(0.8, false);
+    expect(mock.deleteBuffer.mock.calls.length).toBe(deleted + 1);
+    batch.dispose();
+    batch.dispose();
+    expect(mock.deleteBuffer).toHaveBeenCalledTimes(mock.createBuffer.mock.calls.length);
+  });
+
+  it('keeps retained allocations bounded while oversized frames still render every quad', () => {
+    const { gl, mock, buffers } = graphics();
+    const batch = new UiBatch(gl);
+    for (let frame = 0; frame < 2; frame++) {
+      batch.begin(200, 100, frame);
+      for (let i = 0; i < 18000; i++) batch.rect(i, 0, 1, 1, [1, 1, 1, 1]);
+      batch.end();
+      expect(batch.submittedQuads).toBe(18000);
+      const streaming = mock.createBuffer.mock.results[0]!.value;
+      const indices = mock.createBuffer.mock.results[1]!.value;
+      expect(
+        [...buffers]
+          .filter(([buffer]) => buffer !== streaming && buffer !== indices)
+          .reduce((n, [, data]) => n + data.byteLength, 0),
+      ).toBeLessThanOrEqual(4 * 1024 * 1024);
+    }
+    batch.dispose();
+    expect(buffers.size).toBe(0);
+  });
+});
+
+it('caches vector limits across lookups and refreshes them after full/context invalidation', () => {
+  const getParameter = vi.fn(() => 1024);
+  vi.stubGlobal(
+    'fetch',
+    (_url: unknown, { signal }: RequestInit) =>
+      new Promise((_resolve, reject) => signal!.addEventListener('abort', () => reject(signal!.reason))),
+  );
+  const cache = new TextureStore({ MAX_TEXTURE_SIZE: 1, getParameter } as unknown as WebGLRenderingContext, () => ({
+    url: '/icon.svg',
+    kind: 'vector',
+  }));
+  for (let i = 0; i < 10; i++) cache.get('icon', 100, 100);
+  expect(getParameter).toHaveBeenCalledOnce();
+  cache.invalidate(['icon']);
+  cache.get('icon', 100, 100);
+  expect(getParameter).toHaveBeenCalledOnce();
+  cache.invalidate();
+  getParameter.mockReturnValue(512);
+  cache.get('icon', 100, 100);
+  expect(getParameter).toHaveBeenCalledTimes(2);
+  cache.dispose();
+});

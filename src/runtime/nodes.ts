@@ -92,6 +92,7 @@ export class HostNode {
 
   #measureId = 0;
   #textCache = '';
+  #resolvedTextStyle: TextStyle | undefined;
 
   constructor(type: HostType, props: AnyProps, ctx: RuntimeContext) {
     this.id = ctx.nextNodeId = (ctx.nextNodeId ?? 0) + 1;
@@ -120,10 +121,27 @@ export class HostNode {
   /** Text style resolved for the font book. */
   textStyle(): TextStyle {
     const s = (this.props.style ?? {}) as TextStyleProp;
-    return {
-      font: s.fontFamily ?? this.ctx.fonts.defaultName,
+    const previous = this.#resolvedTextStyle;
+    const font = s.fontFamily ?? this.ctx.fonts.defaultName;
+    const size = (s.fontSize ?? 16) * this.ctx.textScale;
+    if (
+      previous &&
+      previous.font === font &&
+      previous.size === size &&
+      previous.kerning === (s.fontKerning !== 'none') &&
+      previous.lineHeight === (s.lineHeight ?? 1) &&
+      previous.tracking === (s.letterSpacing ?? 0) &&
+      previous.align === (s.textAlign ?? 'left') &&
+      previous.upper === (s.textTransform === 'uppercase') &&
+      previous.rich === Boolean(this.props.rich) &&
+      previous.maxLines === s.maxLines &&
+      previous.ellipsis === (s.textOverflow === 'ellipsis')
+    )
+      return previous;
+    return (this.#resolvedTextStyle = {
+      font,
       kerning: s.fontKerning !== 'none',
-      size: (s.fontSize ?? 16) * this.ctx.textScale,
+      size,
       lineHeight: s.lineHeight ?? 1,
       tracking: s.letterSpacing ?? 0,
       align: s.textAlign ?? 'left',
@@ -131,7 +149,7 @@ export class HostNode {
       rich: Boolean(this.props.rich),
       ...(s.maxLines !== undefined ? { maxLines: s.maxLines } : {}),
       ellipsis: s.textOverflow === 'ellipsis',
-    };
+    });
   }
 
   shape(width: number) {

@@ -14,6 +14,13 @@ export type Rgba = readonly [number, number, number, number];
 const enum_ = { rect: 0, ring: 1, image: 2, glyph: 3, glow: 4, line: 5, gradient: 6 } as const;
 const FLOATS = 18; // pos2 uv2 color4 params4 shape4 local2
 const MAX_QUADS = 8192;
+// Root-owned CPU snapshots and GPU buffers are each bounded by this budget.
+const RETAINED_BYTES = 4 * 1024 * 1024;
+
+interface RetainedBatch {
+  buffer: WebGLBuffer;
+  words: Uint32Array;
+}
 
 const VERTEX = `
 attribute vec2 a_pos;
@@ -113,6 +120,10 @@ export class UiBatch {
   #previousVao: WebGLVertexArrayObjectOES | null = null;
   #disposed = false;
   readonly #data = new Float32Array(MAX_QUADS * 4 * FLOATS);
+  readonly #words = new Uint32Array(this.#data.buffer);
+  readonly #retained = new Map<number, RetainedBatch>();
+  #retainedBytes = 0;
+  #batchIndex = 0;
   #quads = 0;
   #image: Texture | undefined;
   #fonts: Font[] = [];
@@ -164,6 +175,9 @@ export class UiBatch {
   dispose() {
     if (this.#disposed) return;
     this.#disposed = true;
+    for (const entry of this.#retained.values()) this.#gl.deleteBuffer(entry.buffer);
+    this.#retained.clear();
+    this.#retainedBytes = 0;
     this.#gl.deleteBuffer(this.#vbo);
     this.#gl.deleteBuffer(this.#ibo);
     this.#gl.deleteProgram(this.#program.handle);
@@ -179,6 +193,7 @@ export class UiBatch {
     this.#physical = [physicalWidth, physicalHeight];
     this.#time = time;
     this.#quads = 0;
+    this.#batchIndex = 0;
     this.#image = undefined;
     this.#clip = undefined;
     this.drawCalls = 0;
@@ -203,6 +218,12 @@ export class UiBatch {
     try {
       this.flush();
     } finally {
+      for (const [index, entry] of this.#retained)
+        if (index >= this.#batchIndex) {
+          this.#gl.deleteBuffer(entry.buffer);
+          this.#retainedBytes -= entry.words.byteLength;
+          this.#retained.delete(index);
+        }
       this.#gl.disable(this.#gl.SCISSOR_TEST);
       this.#vaoExtension?.bindVertexArrayOES(this.#previousVao);
     }
@@ -422,8 +443,7 @@ export class UiBatch {
       gl.disable(gl.SCISSOR_TEST);
     }
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.#vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, this.#data.subarray(0, this.#quads * 4 * FLOATS), gl.STREAM_DRAW);
+    this.#vertices();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.#ibo);
     const stride = FLOATS * 4;
     const attr = (name: string, size: number, offset: number) => {
@@ -446,6 +466,44 @@ export class UiBatch {
   }
 
   // ── Internals ──────────────────────────────────────────────────────────────
+
+  #vertices() {
+    const gl = this.#gl;
+    const index = this.#batchIndex++;
+    const length = this.#quads * 4 * FLOATS;
+    let entry = this.#retained.get(index);
+    if (entry && entry.words.length !== length) {
+      gl.deleteBuffer(entry.buffer);
+      this.#retainedBytes -= entry.words.byteLength;
+      this.#retained.delete(index);
+      entry = undefined;
+    }
+    if (!entry && this.#retainedBytes + length * 4 <= RETAINED_BYTES) {
+      const buffer = gl.createBuffer();
+      if (buffer) {
+        entry = { buffer, words: this.#words.slice(0, length) };
+        this.#retained.set(index, entry);
+        this.#retainedBytes += entry.words.byteLength;
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, this.#data.subarray(0, length), gl.STREAM_DRAW);
+        return;
+      }
+    }
+    if (!entry) {
+      // Large or allocation-constrained frames retain the original streaming path.
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.#vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, this.#data.subarray(0, length), gl.STREAM_DRAW);
+      return;
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+    let first = 0;
+    while (first < length && entry.words[first] === this.#words[first]) first++;
+    if (first === length) return;
+    let last = length - 1;
+    while (last > first && entry.words[last] === this.#words[last]) last--;
+    gl.bufferSubData(gl.ARRAY_BUFFER, first * 4, this.#data.subarray(first, last + 1));
+    entry.words.set(this.#words.subarray(first, last + 1), first);
+  }
 
   #ensure() {
     if (this.#quads >= MAX_QUADS) this.flush();

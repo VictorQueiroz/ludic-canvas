@@ -10,6 +10,22 @@ function book() {
   return fonts;
 }
 describe('production text measurement', () => {
+  it('keeps cached style keys correct after scalar, fallback-chain and font replacement changes', () => {
+    const fonts = book();
+    const style = { font: ['ui'], size: 20 };
+    const initial = fonts.shape('AA\0BB', style, 200);
+    expect(fonts.shape('AA\0BB', style, 200)).toBe(initial);
+    style.size = 30;
+    expect(fonts.shape('AA\0BB', style, 200).width).toBeGreaterThan(initial.width);
+    style.font[0] = 'missing';
+    expect(() => fonts.shape('AA', style, 200)).toThrow('Unknown font');
+    style.font[0] = 'ui';
+    const before = fonts.shape('AA', style, 200);
+    const changed = structuredClone(metrics);
+    changed.glyphs.find((glyph) => glyph.unicode === 65)!.advance *= 1.5;
+    fonts.replace(new Font('ui', 0, changed, { handle: {} as WebGLTexture, width: 512, height: 512, bytes: 0 }));
+    expect(fonts.shape('AA', style, 200).width).toBeGreaterThan(before.width);
+  });
   it('rejects invalid external metrics before allocating glyph geometry', () => {
     expect(() => validateFontMetrics({ ...metrics, atlas: { ...metrics.atlas, yOrigin: 'bottom' } })).toThrow(
       'top-origin',
