@@ -1,5 +1,21 @@
 # Session handoff — 2026-11-03
 
+## 2026-11-04 retained rendering work
+
+The render-cache change is based on `83df4cb` (published package 0.10.0).
+It caches vector capability limits until full texture invalidation, retains UI
+vertex batches within separate 4 MiB CPU and GPU budgets, and reuses stable
+text-style keys. Streaming remains available when the retention budget is full.
+Root teardown releases retained buffers; font and texture invalidation refresh
+cached data. No application state is retained by these caches.
+
+Local build, both type checks, all 149 unit tests, generated documentation,
+public audit, packed consumer checks, formatting and package dry run passed.
+The two new upload/capability regressions fail against the unchanged base and
+pass with the implementation. Browser qualification and hosted CI are pending;
+this source has not been published. Historical acquisition reports below remain
+unchanged and do not measure this patch.
+
 This is a dated evidence snapshot, not a live release dashboard. Start in the
 `ludic-canvas` checkout, read [AGENTS.md](../AGENTS.md) and
 [CONTRIBUTING.md](../CONTRIBUTING.md), then refresh Git status/origin/main, npm

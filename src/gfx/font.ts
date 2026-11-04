@@ -221,9 +221,28 @@ interface TextLine {
   width: number;
 }
 
+const SHAPE_STYLE_KEYS = [
+  'size',
+  'lineHeight',
+  'tracking',
+  'align',
+  'upper',
+  'rich',
+  'maxLines',
+  'ellipsis',
+  'kerning',
+] as const;
+interface ShapeStyle {
+  input: TextStyle;
+  names: string[];
+  fonts: Font[];
+  prefix: string;
+}
+
 export class FontBook {
   readonly #fonts = new Map<FontName, Font>();
   readonly #cache = new Map<string, ShapedText>();
+  #styleKeys = new WeakMap<TextStyle, ShapeStyle>();
   readonly #reported = new Set<string>();
   readonly #onDiagnostic?: (diagnostic: FontDiagnostic) => void;
   #cachedGlyphs = 0;
@@ -240,6 +259,7 @@ export class FontBook {
 
   #clearCache() {
     this.#cache.clear();
+    this.#styleKeys = new WeakMap();
     this.#cachedGlyphs = 0;
   }
   add(font: Font) {
@@ -276,30 +296,45 @@ export class FontBook {
     maxWidth = Math.max(0, maxWidth);
     if (style.maxLines !== undefined && (!Number.isInteger(style.maxLines) || style.maxLines < 0))
       throw new Error('maxLines must be a nonnegative integer');
-    const names = typeof style.font === 'string' ? [style.font] : [...style.font];
-    if (!names.length || names.length > 4 || new Set(names).size !== names.length)
-      throw new Error('Provide a font name or an ordered chain of one to four unique font names');
-    const fonts = names.map((name) => this.get(name));
-    const key = JSON.stringify([
-      names,
-      style.size,
-      style.lineHeight ?? 1,
-      style.tracking ?? 0,
-      style.align ?? 'left',
-      !!style.upper,
-      !!style.rich,
-      style.maxLines ?? 0,
-      !!style.ellipsis,
-      style.kerning !== false,
-      maxWidth,
-      text,
-    ]);
+    let descriptor = this.#styleKeys.get(style);
+    const family = style.font;
+    const sameFamily =
+      descriptor &&
+      (typeof family === 'string'
+        ? descriptor.names.length === 1 && descriptor.names[0] === family
+        : descriptor.names.length === family.length && descriptor.names.every((name, i) => name === family[i]));
+    if (!descriptor || !sameFamily || SHAPE_STYLE_KEYS.some((key) => descriptor!.input[key] !== style[key])) {
+      const names = typeof family === 'string' ? [family] : [...family];
+      if (!names.length || names.length > 4 || new Set(names).size !== names.length)
+        throw new Error('Provide a font name or an ordered chain of one to four unique font names');
+      descriptor = {
+        input: { ...style },
+        names,
+        fonts: names.map((name) => this.get(name)),
+        prefix: JSON.stringify([
+          names,
+          style.size,
+          style.lineHeight ?? 1,
+          style.tracking ?? 0,
+          style.align ?? 'left',
+          !!style.upper,
+          !!style.rich,
+          style.maxLines ?? 0,
+          !!style.ellipsis,
+          style.kerning !== false,
+        ]),
+      };
+      this.#styleKeys.set(style, descriptor);
+    }
+    // NUL cannot occur literally inside the JSON prefix or numeric width. Text
+    // is the final component, so its contents do not need escaping each frame.
+    const key = `${descriptor.prefix}\0${maxWidth}\0${text}`;
     let shaped = this.#cache.get(key);
     if (shaped) {
       this.#cache.delete(key);
       this.#cache.set(key, shaped);
     } else {
-      shaped = this.#layout(text, style, maxWidth, fonts);
+      shaped = this.#layout(text, style, maxWidth, descriptor.fonts);
       if (text.length <= 16384 && shaped.glyphs.length <= 16384) {
         while (this.#cache.size >= 2000 || this.#cachedGlyphs + shaped.glyphs.length > 100000) {
           const oldest = this.#cache.keys().next().value;

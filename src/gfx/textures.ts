@@ -19,6 +19,7 @@ export class TextureStore {
   #frame = 0;
   #disposed = false;
   #bytes = 0;
+  #maxTextureSize: number | undefined;
   #onLoad: () => void = () => {};
   readonly gl: GL;
   readonly resolve: AssetResolver;
@@ -56,12 +57,12 @@ export class TextureStore {
     const entry = this.resolve(id);
     if (!entry) return undefined;
     const vector = entry.kind === 'vector';
-    const q = (value: number) =>
-      Math.min(
-        this.limits.maxTextureSize,
-        this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE),
-        Math.max(64, Math.ceil(value / 128) * 128),
-      );
+    // Context capabilities are immutable until loss/restoration. Full invalidation
+    // releases this value along with the old context's image slots.
+    const limit = vector
+      ? (this.#maxTextureSize ??= Math.min(this.limits.maxTextureSize, this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE)))
+      : 0;
+    const q = (value: number) => Math.min(limit, Math.max(64, Math.ceil(value / 128) * 128));
     const width = vector ? q(pixelWidth || entry.width || 256) : 0;
     const height = vector ? q(pixelHeight || entry.height || 256) : 0;
     if (!Number.isFinite(width) || !Number.isFinite(height)) throw new Error(`Invalid vector size: ${id}`);
@@ -132,6 +133,7 @@ export class TextureStore {
 
   /** Drop cached failures or outdated images. Next paint/preload retries them. */
   invalidate(ids?: readonly string[]) {
+    if (!ids) this.#maxTextureSize = undefined;
     const selected = ids ? new Set(ids) : undefined;
     for (const slot of this.#slots.values()) if (!selected || selected.has(slot.id)) this.#remove(slot);
   }
