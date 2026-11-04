@@ -152,8 +152,13 @@ describe('retained UI vertices', () => {
 
   it('streams many small overflow batches without repeatedly scanning protected entries', () => {
     const { gl, mock } = graphics();
-    let visited = 0;
+    let visited = 0,
+      evictionIterators = 0;
     class CountedMap<K, V> extends Map<K, V> {
+      override entries(): MapIterator<[K, V]> {
+        evictionIterators++;
+        return super.entries();
+      }
       override *[Symbol.iterator](): MapIterator<[K, V]> {
         for (const entry of super[Symbol.iterator]()) {
           visited++;
@@ -164,8 +169,8 @@ describe('retained UI vertices', () => {
     vi.stubGlobal('Map', CountedMap);
     const batch = new UiBatch(gl),
       quads = 14800;
-    const frame = () => {
-      batch.begin(200, 100, 0);
+    const frame = (width = 200) => {
+      batch.begin(width, 100, 0);
       for (let i = 0; i < quads; i++) {
         batch.setClip([i % 2, 0, 100, 100]);
         batch.rect(0, 0, 1, 1, [1, 1, 1, 1]);
@@ -181,6 +186,10 @@ describe('retained UI vertices', () => {
     expect(visited).toBeLessThan(quads * 4);
     expect(mock.createBuffer).not.toHaveBeenCalled();
     expect(mock.deleteBuffer).not.toHaveBeenCalled();
+    evictionIterators = 0;
+    frame(201);
+    expect(batch.submittedQuads).toBe(quads);
+    expect(evictionIterators).toBeLessThan(32);
     batch.dispose();
   });
 

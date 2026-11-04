@@ -23,6 +23,10 @@ interface RetainedBatch {
 }
 
 interface RetainedScope {
+  key: string;
+  previous?: RetainedScope;
+  next?: RetainedScope;
+  eviction?: MapIterator<[number, RetainedBatch]>;
   batches: Map<number, RetainedBatch>;
   bytes: number;
 }
@@ -127,8 +131,9 @@ export class UiBatch {
   readonly #data = new Float32Array(MAX_QUADS * 4 * FLOATS);
   readonly #words = new Uint32Array(this.#data.buffer);
   readonly #retained = new Map<string, RetainedScope>();
-  #scope: RetainedScope = { batches: new Map(), bytes: 0 };
-  #scopeKey = '';
+  #scope!: RetainedScope;
+  #oldest?: RetainedScope;
+  #newest?: RetainedScope;
   #retainedBytes = 0;
   #batchIndex = 0;
   #quads = 0;
@@ -186,8 +191,11 @@ export class UiBatch {
       for (const entry of scope.batches.values()) this.#gl.deleteBuffer(entry.buffer);
       scope.batches.clear();
       scope.bytes = 0;
+      scope.eviction = undefined;
+      scope.previous = scope.next = undefined;
     }
     this.#retained.clear();
+    this.#oldest = this.#newest = undefined;
     this.#retainedBytes = 0;
     this.#gl.deleteBuffer(this.#vbo);
     this.#gl.deleteBuffer(this.#ibo);
@@ -200,11 +208,11 @@ export class UiBatch {
   }
 
   begin(width: number, height: number, time: number, physicalWidth = width, physicalHeight = height) {
-    this.#scopeKey = `${width}:${height}:${physicalWidth}:${physicalHeight}`;
-    this.#scope = this.#retained.get(this.#scopeKey) ?? { batches: new Map(), bytes: 0 };
-    // The current viewport is last; eviction can select an older viewport in O(1).
-    this.#retained.delete(this.#scopeKey);
-    this.#retained.set(this.#scopeKey, this.#scope);
+    const key = `${width}:${height}:${physicalWidth}:${physicalHeight}`;
+    this.#scope = this.#retained.get(key) ?? { key, batches: new Map(), bytes: 0 };
+    this.#retained.set(key, this.#scope);
+    this.#scope.eviction = undefined;
+    this.#recent(this.#scope);
     this.#viewport = [width, height];
     this.#physical = [physicalWidth, physicalHeight];
     this.#time = time;
@@ -236,7 +244,7 @@ export class UiBatch {
     } finally {
       for (const [index, entry] of this.#scope.batches)
         if (index >= this.#batchIndex) this.#releaseRetained(this.#scope, index, entry);
-      if (!this.#scope.batches.size) this.#retained.delete(this.#scopeKey);
+      if (!this.#scope.batches.size) this.#removeScope(this.#scope);
       this.#gl.disable(this.#gl.SCISSOR_TEST);
       this.#vaoExtension?.bindVertexArrayOES(this.#previousVao);
     }
@@ -493,11 +501,11 @@ export class UiBatch {
     // overflow directly; never scan that subset again for each small batch.
     if (!entry && length * 4 <= RETAINED_BYTES - this.#scope.bytes) {
       while (this.#retainedBytes + length * 4 > RETAINED_BYTES) {
-        const [key, scope] = this.#retained.entries().next().value!;
+        const scope = this.#oldest!;
         if (scope === this.#scope) break;
-        const [oldIndex, old] = scope.batches.entries().next().value!;
+        const [oldIndex, old] = (scope.eviction ??= scope.batches.entries()).next().value!;
         this.#releaseRetained(scope, oldIndex, old);
-        if (!scope.batches.size) this.#retained.delete(key);
+        if (!scope.batches.size) this.#removeScope(scope);
       }
       const buffer = this.#retainedBytes + length * 4 <= RETAINED_BYTES ? gl.createBuffer() : null;
       if (buffer) {
@@ -525,6 +533,29 @@ export class UiBatch {
     while (last > first && previous[last] === current[last]) last--;
     gl.bufferSubData(gl.ARRAY_BUFFER, first * 4, this.#data.subarray(first, last + 1));
     entry.words.set(this.#words.subarray(first, last + 1), first);
+  }
+
+  #unlinkScope(scope: RetainedScope) {
+    if (scope.previous) scope.previous.next = scope.next;
+    else this.#oldest = scope.next;
+    if (scope.next) scope.next.previous = scope.previous;
+    else this.#newest = scope.previous;
+    scope.previous = scope.next = undefined;
+  }
+
+  #recent(scope: RetainedScope) {
+    if (scope === this.#newest) return;
+    if (scope.previous || scope.next || scope === this.#oldest) this.#unlinkScope(scope);
+    scope.previous = this.#newest;
+    if (this.#newest) this.#newest.next = scope;
+    else this.#oldest = scope;
+    this.#newest = scope;
+  }
+
+  #removeScope(scope: RetainedScope) {
+    this.#unlinkScope(scope);
+    this.#retained.delete(scope.key);
+    scope.eviction = undefined;
   }
 
   #releaseRetained(scope: RetainedScope, index: number, entry: RetainedBatch) {
