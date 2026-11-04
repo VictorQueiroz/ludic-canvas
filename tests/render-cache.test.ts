@@ -150,6 +150,40 @@ describe('retained UI vertices', () => {
     expect(buffers.size).toBe(0);
   });
 
+  it('streams many small overflow batches without repeatedly scanning protected entries', () => {
+    const { gl, mock } = graphics();
+    let visited = 0;
+    class CountedMap<K, V> extends Map<K, V> {
+      override *[Symbol.iterator](): MapIterator<[K, V]> {
+        for (const entry of super[Symbol.iterator]()) {
+          visited++;
+          yield entry;
+        }
+      }
+    }
+    vi.stubGlobal('Map', CountedMap);
+    const batch = new UiBatch(gl),
+      quads = 14800;
+    const frame = () => {
+      batch.begin(200, 100, 0);
+      for (let i = 0; i < quads; i++) {
+        batch.setClip([i % 2, 0, 100, 100]);
+        batch.rect(0, 0, 1, 1, [1, 1, 1, 1]);
+      }
+      batch.end();
+    };
+    frame();
+    visited = 0;
+    mock.createBuffer.mockClear();
+    mock.deleteBuffer.mockClear();
+    frame();
+    expect(batch.submittedQuads).toBe(quads);
+    expect(visited).toBeLessThan(quads * 4);
+    expect(mock.createBuffer).not.toHaveBeenCalled();
+    expect(mock.deleteBuffer).not.toHaveBeenCalled();
+    batch.dispose();
+  });
+
   it('keeps retained allocations bounded while oversized frames still render every quad', () => {
     const { gl, mock, buffers } = graphics();
     const batch = new UiBatch(gl);

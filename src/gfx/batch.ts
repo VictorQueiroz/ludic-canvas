@@ -20,8 +20,11 @@ const RETAINED_BYTES = 4 * 1024 * 1024;
 interface RetainedBatch {
   buffer: WebGLBuffer;
   words: Uint32Array;
-  scope: string;
-  index: number;
+}
+
+interface RetainedScope {
+  batches: Map<number, RetainedBatch>;
+  bytes: number;
 }
 
 const VERTEX = `
@@ -123,8 +126,9 @@ export class UiBatch {
   #disposed = false;
   readonly #data = new Float32Array(MAX_QUADS * 4 * FLOATS);
   readonly #words = new Uint32Array(this.#data.buffer);
-  readonly #retained = new Map<string, RetainedBatch>();
-  #scope = '';
+  readonly #retained = new Map<string, RetainedScope>();
+  #scope: RetainedScope = { batches: new Map(), bytes: 0 };
+  #scopeKey = '';
   #retainedBytes = 0;
   #batchIndex = 0;
   #quads = 0;
@@ -178,7 +182,11 @@ export class UiBatch {
   dispose() {
     if (this.#disposed) return;
     this.#disposed = true;
-    for (const entry of this.#retained.values()) this.#gl.deleteBuffer(entry.buffer);
+    for (const scope of this.#retained.values()) {
+      for (const entry of scope.batches.values()) this.#gl.deleteBuffer(entry.buffer);
+      scope.batches.clear();
+      scope.bytes = 0;
+    }
     this.#retained.clear();
     this.#retainedBytes = 0;
     this.#gl.deleteBuffer(this.#vbo);
@@ -192,7 +200,11 @@ export class UiBatch {
   }
 
   begin(width: number, height: number, time: number, physicalWidth = width, physicalHeight = height) {
-    this.#scope = `${width}:${height}:${physicalWidth}:${physicalHeight}`;
+    this.#scopeKey = `${width}:${height}:${physicalWidth}:${physicalHeight}`;
+    this.#scope = this.#retained.get(this.#scopeKey) ?? { batches: new Map(), bytes: 0 };
+    // The current viewport is last; eviction can select an older viewport in O(1).
+    this.#retained.delete(this.#scopeKey);
+    this.#retained.set(this.#scopeKey, this.#scope);
     this.#viewport = [width, height];
     this.#physical = [physicalWidth, physicalHeight];
     this.#time = time;
@@ -222,12 +234,9 @@ export class UiBatch {
     try {
       this.flush();
     } finally {
-      for (const [key, entry] of this.#retained)
-        if (entry.scope === this.#scope && entry.index >= this.#batchIndex) {
-          this.#gl.deleteBuffer(entry.buffer);
-          this.#retainedBytes -= entry.words.byteLength;
-          this.#retained.delete(key);
-        }
+      for (const [index, entry] of this.#scope.batches)
+        if (index >= this.#batchIndex) this.#releaseRetained(this.#scope, index, entry);
+      if (!this.#scope.batches.size) this.#retained.delete(this.#scopeKey);
       this.#gl.disable(this.#gl.SCISSOR_TEST);
       this.#vaoExtension?.bindVertexArrayOES(this.#previousVao);
     }
@@ -475,28 +484,26 @@ export class UiBatch {
     const gl = this.#gl;
     const index = this.#batchIndex++;
     const length = this.#quads * 4 * FLOATS;
-    const key = `${this.#scope}:${index}`;
-    let entry = this.#retained.get(key);
+    let entry = this.#scope.batches.get(index);
     if (entry && entry.words.length !== length) {
-      gl.deleteBuffer(entry.buffer);
-      this.#retainedBytes -= entry.words.byteLength;
-      this.#retained.delete(key);
+      this.#releaseRetained(this.#scope, index, entry);
       entry = undefined;
     }
-    if (!entry && length * 4 <= RETAINED_BYTES) {
-      // Evict older viewports, but preserve this viewport's reusable subset when
-      // a frame exceeds the budget. Its overflow uses the streaming buffer.
-      for (const [oldKey, old] of this.#retained) {
-        if (this.#retainedBytes + length * 4 <= RETAINED_BYTES) break;
-        if (old.scope === this.#scope) continue;
-        gl.deleteBuffer(old.buffer);
-        this.#retainedBytes -= old.words.byteLength;
-        this.#retained.delete(oldKey);
+    // Protected capacity belongs to this viewport's reusable subset. Stream its
+    // overflow directly; never scan that subset again for each small batch.
+    if (!entry && length * 4 <= RETAINED_BYTES - this.#scope.bytes) {
+      while (this.#retainedBytes + length * 4 > RETAINED_BYTES) {
+        const [key, scope] = this.#retained.entries().next().value!;
+        if (scope === this.#scope) break;
+        const [oldIndex, old] = scope.batches.entries().next().value!;
+        this.#releaseRetained(scope, oldIndex, old);
+        if (!scope.batches.size) this.#retained.delete(key);
       }
       const buffer = this.#retainedBytes + length * 4 <= RETAINED_BYTES ? gl.createBuffer() : null;
       if (buffer) {
-        entry = { buffer, words: this.#words.slice(0, length), scope: this.#scope, index };
-        this.#retained.set(key, entry);
+        entry = { buffer, words: this.#words.slice(0, length) };
+        this.#scope.batches.set(index, entry);
+        this.#scope.bytes += entry.words.byteLength;
         this.#retainedBytes += entry.words.byteLength;
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, this.#data.subarray(0, length), gl.STREAM_DRAW);
@@ -504,13 +511,10 @@ export class UiBatch {
       }
     }
     if (!entry) {
-      // Large or allocation-constrained frames retain the original streaming path.
       gl.bindBuffer(gl.ARRAY_BUFFER, this.#vbo);
       gl.bufferData(gl.ARRAY_BUFFER, this.#data.subarray(0, length), gl.STREAM_DRAW);
       return;
     }
-    this.#retained.delete(key);
-    this.#retained.set(key, entry);
     gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
     const previous = entry.words,
       current = this.#words;
@@ -521,6 +525,13 @@ export class UiBatch {
     while (last > first && previous[last] === current[last]) last--;
     gl.bufferSubData(gl.ARRAY_BUFFER, first * 4, this.#data.subarray(first, last + 1));
     entry.words.set(this.#words.subarray(first, last + 1), first);
+  }
+
+  #releaseRetained(scope: RetainedScope, index: number, entry: RetainedBatch) {
+    this.#gl.deleteBuffer(entry.buffer);
+    scope.bytes -= entry.words.byteLength;
+    this.#retainedBytes -= entry.words.byteLength;
+    scope.batches.delete(index);
   }
 
   #ensure() {
