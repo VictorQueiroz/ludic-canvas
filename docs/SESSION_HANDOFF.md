@@ -1,20 +1,39 @@
 # Session handoff — 2026-11-03
 
-## 2026-11-04 retained rendering work
+## 2026-11-04 retained rendering release
 
-The render-cache change is based on `83df4cb` (published package 0.10.0).
-It caches vector capability limits until full texture invalidation, retains UI
-vertex batches within separate 4 MiB CPU and GPU budgets, and reuses stable
-text-style keys. Streaming remains available when the retention budget is full.
-Root teardown releases retained buffers; font and texture invalidation refresh
-cached data. No application state is retained by these caches.
+Published `ludic-canvas@0.10.2`; tag and registry gitHead both identify
+`303347b7b02716e0da0cc9f07107bcdde385db38`. The standalone example now pins
+that exact registry artifact. The release verifier passed at consumer pin
+`04c0cd5a5e8685800613f0bf293ab881913804b4`: tag, gitHead, downloaded SHA-512
+integrity, provenance metadata, clean independent installation, both font
+atlases, production build and public page version badges. Provenance metadata
+presence is not cryptographic attestation verification. The local report is
+`build/verification/0.10.2/render-cache-release.json`.
 
-Local build, both type checks, all 149 unit tests, generated documentation,
-public audit, packed consumer checks, formatting and package dry run passed.
-The two new upload/capability regressions fail against the unchanged base and
-pass with the implementation. Browser qualification and hosted CI are pending;
-this source has not been published. Historical acquisition reports below remain
-unchanged and do not measure this patch.
+The implementation caches vector limits until full invalidation, reuses text
+style lookup keys and retains UI vertices in separate 4 MiB CPU snapshot and GPU
+vertex budgets. Viewports share those budgets; older viewport entries use a
+recency list and persistent eviction cursors. Oversized frames preserve reusable
+subsets and stream overflow. Teardown releases retained data and GPU buffers.
+
+All 152 unit tests, both type checks, docs/public audit, packed consumers,
+formatting and package dry run pass. Native-scroll/vector checks pass locally.
+The full hosted matrix passed at reviewed head `1419ddf` in
+[CI 41888458965](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/41888458965),
+and the publication matrix passed at the release commit in
+[Release 41892903806](https://github.com/VictorQueiroz/ludic-canvas/actions/runs/41892903806).
+Codex review findings about oversized-frame churn and eviction complexity were
+reproduced and fixed before [PR #43](https://github.com/VictorQueiroz/ludic-canvas/pull/43)
+merged. New regressions check unchanged uploads, viewport isolation, bounded
+retention, linear eviction work and teardown.
+
+The initial local full browser run had 512 passes, 21 skips and seven failures;
+all seven passed in a headed single-worker rerun. The final native-scroll/vector
+subset had 20 passes and one expected desktop touch skip. These correctness
+checks do not establish hardware speedups or physical-device qualification.
+Historical acquisition reports below remain unchanged and do not measure this
+patch.
 
 This is a dated evidence snapshot, not a live release dashboard. Start in the
 `ludic-canvas` checkout, read [AGENTS.md](../AGENTS.md) and
