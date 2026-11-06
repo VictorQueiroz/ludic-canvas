@@ -1,5 +1,13 @@
 # ludic-canvas
 
+## 0.10.3
+
+### Patch Changes
+
+- 58caac9: Keep root-owned native scroll and editor surfaces above their canvas when its CSS
+  z-index changes. This fixes obscured Collection dialog contents and regional
+  archive rows in Kestrel Survey.
+
 ## 0.10.2
 
 ### Patch Changes
