@@ -1,4 +1,24 @@
-# Session handoff — 2026-11-03
+# Session handoff — 2026-11-06
+
+## 2026-11-06 Kestrel dialog stacking fix
+
+The Collection dialog and Regional archive had native scroll tiles behind the
+positioned UI canvas. The browser root now keeps its owned overlay at the canvas's
+computed z-index; caller-owned containers keep application-controlled stacking.
+See [the red-first qualification record](KESTREL_DIALOG_FIX.md) for five initial
+failures, rendered-pixel coverage, pointer/scroll checks and retained startup or
+instrumentation failures.
+
+The fix and its patch changeset are isolated from uncommitted CSS adapter and
+onboarding work. PR preparation uses default-branch source `c5ced8e` (0.10.2),
+which includes retained rendering changes made after the original `f7e7347`
+acquisition. Publication and deployed revision remain separate from PR review
+and merge state. The older release and qualification snapshots below are retained.
+
+Revalidation on that base passes 25 targeted browser cases across all five
+projects without retries, all 152 unit tests with one worker, normal/portable
+typechecks, documentation generation/build, public audit, packed consumers,
+formatting and package dry run. Hosted CI and Codex review are separate gates.
 
 ## 2026-11-04 retained rendering release
 

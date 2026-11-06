@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { renderedColors } from './rendered-pixels.ts';
 test.beforeEach(async ({ page }) => {
   await page.goto('http://127.0.0.1:6174/3d/');
   await expect(page.locator('#survey-stage')).toHaveAttribute('data-ready', 'true');
@@ -94,3 +95,43 @@ test('the regional archive virtualizes real game UI with modal focus and control
   await page.keyboard.press('Escape');
   await expect(page.locator('#survey-stage')).toHaveAttribute('data-phase', 'playing');
 });
+
+for (const width of [1280, 320]) {
+  for (const archive of [false, true]) {
+    test(`${archive ? 'regional archive rows' : 'Collection contents'} paint above the dialog body at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      if (width === 320) {
+        await expect(page.getByRole('button', { name: 'Open survey sites', exact: true })).toBeAttached();
+        await expect(page.getByRole('tablist', { name: 'Survey sites', exact: true })).toHaveCount(0);
+      }
+      await page.locator('#survey-stage').scrollIntoViewIfNeeded();
+      await page.getByRole('button', { name: 'Open field collection', exact: true }).press('Enter');
+      await expect(page.locator('#survey-stage')).toHaveAttribute('data-phase', 'samples');
+      const browse = page.getByRole('button', { name: 'Browse regional archive', exact: true });
+      if (archive) {
+        await browse.press('Enter');
+        await expect(page.locator('#survey-stage')).toHaveAttribute('data-phase', 'archive');
+      }
+      const target = archive
+        ? page.getByRole('option', { name: 'Archive record KS-0001: Basalt', exact: true })
+        : browse;
+      await expect(target).toBeAttached();
+      // Accessibility visibility and offscreen tile pixels both pass when the
+      // main canvas covers the tile. Assert the actual browser composite.
+      await expect
+        .poll(async () => {
+          const box = (await target.boundingBox())!;
+          const result = await renderedColors(page, box, [archive ? [59, 79, 59] : [48, 64, 55]]);
+          return result.counts[0]! / result.pixels;
+        })
+        .toBeGreaterThan(0.35);
+      const pixels = await renderedColors(page, (await target.boundingBox())!, []);
+      expect(pixels.light, 'label glyphs are visible on top of the row/button fill').toBeGreaterThan(20);
+      await page.screenshot({
+        path: test.info().outputPath(archive ? 'archive-painted.png' : 'collection-painted.png'),
+      });
+    });
+  }
+}
