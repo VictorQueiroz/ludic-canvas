@@ -1,5 +1,33 @@
 import { expect, test } from '@playwright/test';
 import { panTouch } from './touch-pan.ts';
+import { renderedColors } from './rendered-pixels.ts';
+
+test('native scroll pixels and pointer targets stay above a positioned canvas layer', async ({ page }) => {
+  await page.goto('/tests/browser/native-scrolling/');
+  const canvas = page.locator('body > canvas');
+  await expect(page.getByRole('button', { name: 'Row 0', exact: true })).toBeAttached();
+  for (const zIndex of ['1', '9', 'auto']) {
+    await canvas.evaluate((element, zIndex) => {
+      element.style.position = 'relative';
+      element.style.zIndex = zIndex;
+      element.style.background = '#800000';
+    }, zIndex);
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => (window as any).nativeScrolling.frame());
+        const box = (await canvas.boundingBox())!;
+        return (await renderedColors(page, { x: box.x + 180, y: box.y + 10, width: 30, height: 20 }, [[32, 48, 64]]))
+          .counts[0];
+      })
+      .toBe(600);
+    const hit = await canvas.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return Boolean(document.elementFromPoint(box.x + 200, box.y + 20)?.closest('[data-ludic-scroll]'));
+    });
+    expect(hit, `native input surface is above canvas z-index ${zIndex}`).toBe(true);
+  }
+  expect(await page.evaluate(() => (window as any).nativeScrolling.errors)).toEqual([]);
+});
 
 test('native tiles repaint the final animation state after a delayed frame', async ({ page }) => {
   await page.goto('/tests/browser/native-scrolling/?kind=transition-red');

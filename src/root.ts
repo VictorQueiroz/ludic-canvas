@@ -352,6 +352,9 @@ export async function createUI(options: UIOptions): Promise<UIRoot> {
           lost || context.isContextLost() || rect.width <= 0 || rect.height <= 0 || width <= 0 || height <= 0;
         ui.input.setEnabled(!suspended);
         if (ownedA11y) {
+          // Later DOM order places native tiles and editors above their canvas
+          // at the same stacking level, including changes made by host CSS.
+          ownedA11y.style.zIndex = getComputedStyle(canvas).zIndex;
           ownedA11y.style.left = `${canvas.offsetLeft}px`;
           ownedA11y.style.top = `${canvas.offsetTop}px`;
           ownedA11y.style.width = `${rect.width}px`;
