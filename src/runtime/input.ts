@@ -6,6 +6,7 @@ import { EditorManager, type EditorElement } from './editing.ts';
 import type { NativeScrollManager } from '../browser/native-scroll.ts';
 import { setScrollPosition } from '../scroll.ts';
 import { labelOf } from './semantics.ts';
+import { TextSelectionManager } from '../browser/text-selection.ts';
 
 type ControlElement = HTMLButtonElement | EditorElement;
 
@@ -24,6 +25,7 @@ export class InputSystem extends PointerRouter {
   readonly #groups = new Map<HostNode, HTMLDivElement>();
   readonly #controlNodes = new WeakMap<HTMLElement, HostNode>();
   readonly #native?: NativeScrollManager;
+  readonly #selection: TextSelectionManager;
   #nativePressed?: { node: HostNode; event: HostPointerEvent };
   #announced = '';
   #pendingModalFocus = false;
@@ -49,6 +51,29 @@ export class InputSystem extends PointerRouter {
     this.#canvas = canvas;
     this.#a11y = a11y;
     this.#native = nativeScrolling;
+    this.#selection = new TextSelectionManager(
+      canvas,
+      a11y,
+      painter,
+      (node, x, y) => {
+        const top = this.surfaceAt(x, y);
+        if (top && !inside(node, top) && !inside(top, node)) return false;
+        const index = painter.visible.indexOf(node);
+        return !painter.visible
+          .slice(index + 1)
+          .some(
+            (front) =>
+              !inside(front, node) &&
+              !inside(node, front) &&
+              front.props.pointerEvents !== 'none' &&
+              Boolean(
+                front.props.style?.background || front.props.block || front.props.editor || front.props.onPress,
+              ) &&
+              this.contains(front, x, y),
+          );
+      },
+      () => this.onActivity(),
+    );
     this.#editors = new EditorManager(
       a11y,
       (callback) => this.call(() => commit(callback)),
@@ -83,13 +108,24 @@ export class InputSystem extends PointerRouter {
         { ...options, ...(passive === undefined ? {} : { passive }) },
       );
     };
-    listen(canvas, 'pointermove', (e) => this.pointerMove(this.#pointerEvent(e)));
-    listen(canvas, 'pointerdown', (e) => this.pointerDown(this.#pointerEvent(e)));
-    listen(canvas, 'pointerup', (e) => this.pointerUp(this.#pointerEvent(e)));
+    listen(canvas, 'pointermove', (e) => {
+      if (!this.#selection.pointerMove(e)) {
+        this.pointerMove(this.#pointerEvent(e));
+        this.#selection.hover(e);
+      }
+    });
+    listen(canvas, 'pointerdown', (e) => {
+      if (!this.#selection.pointerDown(e)) this.pointerDown(this.#pointerEvent(e));
+    });
+    listen(canvas, 'pointerup', (e) => {
+      if (!this.#selection.pointerUp(e)) this.pointerUp(this.#pointerEvent(e));
+    });
     listen(canvas, 'pointercancel', (e) => {
+      this.#selection.cancel();
       this.pointerCancel(this.#pointerEvent(e));
     });
     listen(canvas, 'lostpointercapture', (e) => {
+      this.#selection.cancel();
       this.pointerCancel(this.#pointerEvent(e));
     });
     const nativePointer = (event: PointerEvent, handler: 'onPointerDown' | 'onPointerUp' | 'onPointerCancel') => {
@@ -114,6 +150,20 @@ export class InputSystem extends PointerRouter {
       this.dispatchPointer(handler, node, input);
     };
     listen(a11y, 'pointerdown', (event) => nativePointer(event, 'onPointerDown'));
+    // Native scroll viewports receive events instead of the canvas. Share text gestures
+    // while preserving browser touch panning and the existing control mirrors.
+    listen(a11y, 'pointerdown', (event) => {
+      if (!this.#native?.containsTarget(event.target)) return;
+      if (event.target instanceof Element && event.target.closest('button,input,textarea')) return;
+      this.#selection.pointerDown(event);
+    });
+    listen(a11y, 'pointermove', (event) => {
+      if (this.#native?.containsTarget(event.target)) this.#selection.pointerMove(event);
+    });
+    listen(a11y, 'pointerup', (event) => {
+      if (this.#native?.containsTarget(event.target)) this.#selection.pointerUp(event);
+    });
+    listen(a11y, 'pointercancel', () => this.#selection.cancel());
     listen(a11y, 'pointerup', (event) => nativePointer(event, 'onPointerUp'));
     listen(a11y, 'pointercancel', (event) => nativePointer(event, 'onPointerCancel'));
     window.addEventListener('pointerup', (event) => nativePointer(event, 'onPointerUp'), options);
@@ -160,6 +210,7 @@ export class InputSystem extends PointerRouter {
     this.#cancelNativePointer();
     this.enabled = false;
     this.#events.abort();
+    this.#selection.destroy();
     this.#editors.destroy();
     this.cancelPointer();
     this.setHovered(new Set());
@@ -174,6 +225,7 @@ export class InputSystem extends PointerRouter {
     this.#native?.setEnabled(enabled);
     if (enabled === this.enabled) return;
     if (!enabled) this.#cancelNativePointer();
+    if (!enabled) this.#selection.clear();
     this.enabled = enabled;
     if (!enabled) {
       this.cancelPointer();
@@ -193,12 +245,16 @@ export class InputSystem extends PointerRouter {
       this.#cancelNativePointer();
     this.refreshPointer();
     this.#syncMirror();
+    this.#selection.sync(this.enabled, this.modal);
   }
   isPointerOverUI(point: { clientX: number; clientY: number } | { x: number; y: number }): boolean {
     // Browser events also expose x/y as aliases for viewport coordinates.
-    if (!('clientX' in point)) return this.isSurfaceOccupied(point.x, point.y);
+    if (!('clientX' in point))
+      return this.isSurfaceOccupied(point.x, point.y) || this.#selection.contains(point.x, point.y);
     const rect = this.#canvas.getBoundingClientRect();
-    return this.isSurfaceOccupied(point.clientX - rect.left, point.clientY - rect.top);
+    const x = point.clientX - rect.left,
+      y = point.clientY - rect.top;
+    return this.isSurfaceOccupied(x, y) || this.#selection.contains(x, y);
   }
   #pointerEvent(e: PointerEvent): HostPointerEvent {
     const [x, y] = this.#local(e);
@@ -318,6 +374,7 @@ export class InputSystem extends PointerRouter {
   #key(e: KeyboardEvent) {
     if (!this.enabled) return;
     this.onActivity();
+    if (e.target === this.#canvas && this.#selection.key(e)) return;
     const focused = this.#focused();
     if (focused?.props.editor) {
       e.stopPropagation(); // Game bubble listeners must not consume typing or editing shortcuts.

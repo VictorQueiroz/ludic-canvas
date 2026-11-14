@@ -280,6 +280,7 @@ export class NativeScrollManager implements ScrollPresentation {
       let animated = false;
       const interactions: string[] = [];
       const scan = (n: HostNode) => {
+        if (n.textSelection) interactions.push(`${n.id}:selection:${n.textSelection}`);
         if (n.hovered || n.pressed || n.focused)
           interactions.push(`${n.id}:${Number(n.hovered)}${Number(n.pressed)}${Number(n.focused)}`);
         if (

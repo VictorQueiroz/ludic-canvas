@@ -70,6 +70,8 @@ export class HostNode {
   clip: Box | undefined;
   /** Final inherited opacity shared with native editors. */
   paintedOpacity = 1;
+  /** Root-owned read-only text selection, expressed in the shaped display string. */
+  textSelection?: readonly [number, number];
   releaseEditor?: () => void;
 
   // Interaction & animation state, owned by the painter/input system.

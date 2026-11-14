@@ -218,6 +218,8 @@ export interface UIKeyEvent extends UIEvent {
 }
 
 export interface CommonProps extends Interactive {
+  /** Browser text selection policy, inherited by descendants. Defaults to text, except inside controls/editors. */
+  userSelect?: 'auto' | 'text' | 'none' | 'all';
   /** Called (asynchronously) when the node's laid-out size or position changes. */
   onLayout?: (box: { x: number; y: number; width: number; height: number }) => void;
   /** Milliseconds; animates opacity/transform/colour changes. */

@@ -311,6 +311,30 @@ export class Painter {
     const emph = this.#color(style.emphasisColor ?? f.emphasisColor);
     const weight = style.weight ?? 0;
     const oy = 0;
+    const selected = node.textSelection;
+    if (selected) {
+      let cellIndex = 0;
+      for (let i = 0; i < shaped.selection.lines.length; i++) {
+        const line = shaped.selection.lines[i]!;
+        let left: number | undefined,
+          right = 0;
+        while (cellIndex < shaped.selection.cells.length && shaped.selection.cells[cellIndex]!.line === i) {
+          const cell = shaped.selection.cells[cellIndex++]!;
+          if (cell.end <= selected[0] || cell.start >= selected[1]) continue;
+          left ??= cell.x0;
+          right = cell.x1;
+        }
+        if (left === undefined) continue;
+        f.batch.rect(
+          (x + left * scale) * d,
+          (y + line.y * scale) * d,
+          (right - left) * scale * d,
+          line.height * scale * d,
+          [0.16 * opacity, 0.36 * opacity, 0.75 * opacity, opacity],
+          0,
+        );
+      }
+    }
     if (style.shadow) {
       // A soft drop shadow: same glyphs, offset, with a widened edge.
       const sh: Rgba = [0, 0, 0, 0.7 * opacity];
@@ -332,7 +356,8 @@ export class Painter {
     }
     for (const g of shaped.glyphs) {
       const font = f.fonts.get(g.font);
-      const c = g.emphasis ? emph : base;
+      const c: Rgba =
+        selected && g.end > selected[0] && g.start < selected[1] ? [1, 1, 1, 1] : g.emphasis ? emph : base;
       f.batch.glyph(
         font,
         (x + g.x0 * scale) * d,
