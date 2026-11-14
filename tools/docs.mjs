@@ -1,4 +1,5 @@
 import { editingGuide } from './docs-editing.mjs';
+import { selectionPage } from './docs-selection.mjs';
 import { portabilityGuide } from './docs-portability.mjs';
 import { inputGuide, inputPage } from './docs-input.mjs';
 import { typographyGuide } from './docs-typography.mjs';
@@ -27,6 +28,7 @@ const routes = {
   guide: { path: 'guide/' },
   api: { path: 'api/' },
   input: { path: 'input/', script: '/input/main.ts' },
+  selection: { path: 'selection/', script: '/selection/main.tsx', nav: 'guide' },
   components: {
     path: 'components/',
     main: 'components-document',
@@ -303,6 +305,7 @@ for (const [path, html] of [
   ['docs/native-scroll/index.html', layout('Native scrolling experiment', 'nativeScroll', nativeScrollPage())],
   ['docs/index.html', layout('React interfaces for browser games', 'home', home)],
   ['docs/input/index.html', layout('Map and sidebar input', 'input', inputPage())],
+  ['docs/selection/index.html', layout('Text selection', 'selection', selectionPage())],
   [
     'docs/guide/index.html',
     layout(

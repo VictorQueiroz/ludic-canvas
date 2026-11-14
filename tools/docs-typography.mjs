@@ -1,5 +1,5 @@
 export function typographyGuide(code) {
-  return `<h3>Kerning and explicit font fallback</h3><p>Register one to four MSDF/MTSDF faces. The first is the default. Set <code>fontFamily</code> to a registered name or an ordered array of one to four unique registered names. Each codepoint uses the first face containing it; system fonts are never consulted. Every atlas must include space and question mark. A codepoint absent from the complete chain renders as <code>?</code> from its primary face.</p>${code(
+  return `<p>Browser-rendered Text supports selection and plain-text copying. Try the <a href="/selection/">text selection examples</a>. Use inherited <code>userSelect</code> policies to opt out or select a reference atomically; native fields retain their own editing selection.</p><h3>Kerning and explicit font fallback</h3><p>Register one to four MSDF/MTSDF faces. The first is the default. Set <code>fontFamily</code> to a registered name or an ordered array of one to four unique registered names. Each codepoint uses the first face containing it; system fonts are never consulted. Every atlas must include space and question mark. A codepoint absent from the complete chain renders as <code>?</code> from its primary face.</p>${code(
     `const ui = await createUI({
   canvas,
   fonts: [

@@ -31,6 +31,7 @@ export default defineConfig({
         guide: resolve(import.meta.dirname, 'docs/guide/index.html'),
         api: resolve(import.meta.dirname, 'docs/api/index.html'),
         input: resolve(import.meta.dirname, 'docs/input/index.html'),
+        selection: resolve(import.meta.dirname, 'docs/selection/index.html'),
         components: resolve(import.meta.dirname, 'docs/components/index.html'),
         performance: resolve(import.meta.dirname, 'docs/performance/index.html'),
         nativeScroll: resolve(import.meta.dirname, 'docs/native-scroll/index.html'),

@@ -194,6 +194,8 @@ export interface TextStyle {
 }
 
 export interface ShapedGlyph {
+  start: number;
+  end: number;
   font: FontName;
   x0: number;
   y0: number;
@@ -208,6 +210,29 @@ export interface ShapedText {
   height: number;
   lines: number;
   glyphs: ShapedGlyph[];
+  /** Advance geometry in layout pixels, including spaces; independent of glyph ink. */
+  selection: TextSelectionLayout;
+}
+
+export interface TextSelectionCell {
+  start: number;
+  end: number;
+  x0: number;
+  x1: number;
+  line: number;
+}
+export interface TextSelectionLine {
+  start: number;
+  end: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export interface TextSelectionLayout {
+  text: string;
+  cells: TextSelectionCell[];
+  lines: TextSelectionLine[];
 }
 
 interface ResolvedChar {
@@ -215,10 +240,13 @@ interface ResolvedChar {
   font: Font;
   glyph: Glyph;
   emphasis: boolean;
+  start?: number;
+  end?: number;
 }
 interface TextLine {
   chars: ResolvedChar[];
   width: number;
+  start: number;
 }
 
 const SHAPE_STYLE_KEYS = [
@@ -393,10 +421,10 @@ export class FontBook {
       }
       return width;
     };
-    const lines: TextLine[] = [{ chars: [], width: 0 }];
+    const lines: TextLine[] = [{ chars: [], width: 0, start: 0 }];
     let line = lines[0]!;
-    const nextLine = () => {
-      line = { chars: [], width: 0 };
+    const nextLine = (start: number) => {
+      line = { chars: [], width: 0, start };
       lines.push(line);
     };
     const append = (char: ResolvedChar) => {
@@ -410,20 +438,26 @@ export class FontBook {
       const last = pendingSpaces.at(-1) ?? line.chars.at(-1);
       const needed = measure(pendingSpaces, line.chars.at(-1)) + measure(word, last);
       if (line.chars.length && line.width + needed > maxWidth + 0.01) {
-        nextLine();
+        nextLine(word[0]!.start!);
         pendingSpaces = [];
       }
       // Whitespace at a wrapping boundary is discarded; explicit leading spaces survive.
       for (const char of pendingSpaces) append(char);
       pendingSpaces = [];
       for (const char of word) {
-        if (line.chars.length && line.width + advance(line.chars.at(-1), char) > maxWidth + 0.01) nextLine();
+        if (line.chars.length && line.width + advance(line.chars.at(-1), char) > maxWidth + 0.01) nextLine(char.start!);
         append(char);
       }
       word = [];
     };
     const normalized = raw.replace(/\r\n?/g, '\n');
     const text = style.upper ? normalized.toUpperCase() : normalized;
+    let plain = '';
+    const resolve = (code: number, value: string) => {
+      const start = plain.length;
+      plain += value;
+      return { ...this.#resolve(code, emphasis, fonts), start, end: plain.length };
+    };
     let emphasis = false;
     for (let i = 0; i < text.length; i++) {
       const ch = text[i]!;
@@ -433,19 +467,21 @@ export class FontBook {
       } else if (ch === '\n') {
         flush();
         pendingSpaces = [];
-        nextLine();
+        plain += '\n';
+        nextLine(plain.length);
       } else if (ch === ' ') {
         flush();
-        pendingSpaces.push(this.#resolve(32, emphasis, fonts));
+        pendingSpaces.push(resolve(32, ' '));
       } else {
         const code = text.codePointAt(i)!;
         if (code > 0xffff) i++;
-        word.push(this.#resolve(code, emphasis, fonts));
+        word.push(resolve(code, String.fromCodePoint(code)));
       }
     }
     flush();
     if (style.maxLines && lines.length > style.maxLines) {
       lines.length = style.maxLines;
+      line = lines.at(-1)!;
       if (style.ellipsis) {
         line = lines.at(-1)!;
         const codes = fonts.some((font) => font.glyphs.has(0x2026)) ? [0x2026] : [46, 46, 46];
@@ -456,12 +492,20 @@ export class FontBook {
           const last = line.chars.pop()!;
           line.width -= advance(line.chars.at(-1), last);
         }
-        for (const char of marker) append(char);
+        plain = plain.slice(0, line.chars.at(-1)?.end ?? line.start);
+        for (const char of marker) {
+          char.start = plain.length;
+          plain += String.fromCodePoint(char.code);
+          char.end = plain.length;
+          append(char);
+        }
       }
+      plain = plain.slice(0, line.chars.at(-1)?.end ?? line.start);
     }
     const natural = lines.reduce((maximum, current) => Math.max(maximum, current.width), 0);
     const boxWidth = Number.isFinite(maxWidth) ? Math.max(natural, maxWidth) : natural;
     const glyphs: ShapedGlyph[] = [];
+    const selection: TextSelectionLayout = { text: plain, cells: [], lines: [] };
     let height = 0;
     for (const current of lines) {
       // All faces share a baseline; fallback metrics enlarge the line, never shrink it.
@@ -482,12 +526,29 @@ export class FontBook {
             ? boxWidth - current.width
             : 0;
       let previous: ResolvedChar | undefined;
+      selection.lines.push({
+        start: current.start,
+        end: current.chars.at(-1)?.end ?? current.start,
+        x: pen,
+        y: height,
+        width: current.width,
+        height: lineH,
+      });
       for (const char of current.chars) {
         const g = char.glyph;
         const step = advance(previous, char);
+        selection.cells.push({
+          start: char.start!,
+          end: char.end!,
+          x0: pen,
+          x1: pen + step,
+          line: selection.lines.length - 1,
+        });
         pen += step - g.advance * size - tracking;
         if (g.plane && g.uv)
           glyphs.push({
+            start: char.start!,
+            end: char.end!,
             font: char.font.name,
             x0: pen + g.plane.left * size,
             y0: baseline + g.plane.top * size,
@@ -501,6 +562,6 @@ export class FontBook {
       }
       height += lineH;
     }
-    return { width: Math.ceil(natural), height: Math.ceil(height), lines: lines.length, glyphs };
+    return { width: Math.ceil(natural), height: Math.ceil(height), lines: lines.length, glyphs, selection };
   }
 }
